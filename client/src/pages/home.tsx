@@ -213,7 +213,7 @@ export default function HomePage() {
   });
 
   const heroTitle = siteSettings?.heroTitle || "GROUPTHERAPY";
-  const heroSubtitle = siteSettings?.heroSubtitle || "The future of electronic music, curated for you.";
+  const heroSubtitle = siteSettings?.heroSubtitle || "The future of music, curated for you.";
   const heroBackgroundImage = siteSettings?.heroBackgroundImage || undefined;
   const heroCtaText = siteSettings?.heroCtaText || "Explore Releases";
   const heroCtaLink = siteSettings?.heroCtaLink || "/releases";
@@ -224,7 +224,7 @@ export default function HomePage() {
     name: "GroupTherapy Records",
     url: "https://grouptherapy.com",
     logo: "https://grouptherapy.com/logo.png",
-    description: "Independent electronic music record label pushing the boundaries of sound",
+    description: "Independent music record label pushing the boundaries of sound",
     sameAs: [
       "https://www.instagram.com/grouptherapyrecords",
       "https://twitter.com/grouptherapy",
@@ -235,7 +235,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       <SEOHead
-        title="GroupTherapy Records | Electronic Music Label"
+        title="GroupTherapy Records | Record Label"
         description="Discover the future of electronic music with GroupTherapy Records. Stream new releases, find upcoming events, listen to 24/7 radio."
         keywords={[
           "electronic music label",
