@@ -17,7 +17,7 @@ interface HeroProps {
 
 export function HeroSection({
   title = "GROUPTHERAPY",
-  subtitle = "The future of electronic music, curated for you.",
+  subtitle = "The future of music, curated for you.",
   backgroundImage,
   backgroundVideo,
   backgroundType = "image",
