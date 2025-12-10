@@ -236,9 +236,9 @@ export default function HomePage() {
     <div className="min-h-screen">
       <SEOHead
         title="GroupTherapy Records | Record Label"
-        description="Discover the future of electronic music with GroupTherapy Records. Stream new releases, find upcoming events, listen to 24/7 radio."
+        description="Discover the future of music with GroupTherapy Records. Stream new releases, find upcoming events, listen to 24/7 radio."
         keywords={[
-          "electronic music label",
+          "Record label",
           "house music",
           "techno",
           "DJ events",
