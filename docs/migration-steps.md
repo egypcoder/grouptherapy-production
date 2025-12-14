@@ -130,6 +130,28 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP FUNCTION IF EXISTS update_vote_count();
 ```
 
+## Schema Updates (for existing databases)
+
+If you already have the database set up and need to add new columns, run these SQL statements in the Supabase SQL Editor:
+
+### Add hero_tag column to site_settings (December 2024)
+
+```sql
+-- Add hero_tag column for hero section tag/label
+ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS hero_tag TEXT;
+```
+
+### Add soundcloud_url column to radio_tracks (December 2024)
+
+```sql
+-- Add soundcloud_url column for linking to SoundCloud tracks
+ALTER TABLE radio_tracks ADD COLUMN IF NOT EXISTS soundcloud_url TEXT;
+
+-- Also add album and duration columns if missing
+ALTER TABLE radio_tracks ADD COLUMN IF NOT EXISTS album TEXT;
+ALTER TABLE radio_tracks ADD COLUMN IF NOT EXISTS duration INTEGER;
+```
+
 ## Troubleshooting
 
 ### "Permission denied" errors

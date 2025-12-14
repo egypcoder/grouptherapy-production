@@ -35,6 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MetricsChart } from "@/components/metrics-chart";
+import { AnalyticsChart } from "@/components/analytics-chart";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { queryFunctions } from "@/lib/queryClient";
@@ -502,12 +503,12 @@ export default function AdminDashboard() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {analytics?.pageViewsByDay && analytics.pageViewsByDay.length > 0 ? (
-            <MetricsChart
+            <AnalyticsChart
               title="Page Views Trend"
-              description="Daily page views over the last 30 days"
-              data={analytics.pageViewsByDay.slice(-14).map((day) => ({
-                label: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                value: day.views,
+              description="Daily page views over time"
+              data={analytics.pageViewsByDay.map((day) => ({
+                date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                views: day.views,
               }))}
             />
           ) : (

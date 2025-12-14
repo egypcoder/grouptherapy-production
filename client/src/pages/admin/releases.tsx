@@ -8,6 +8,8 @@ import {
   EyeOff,
   ExternalLink,
   MoreVertical,
+  Link,
+  Loader2,
 } from "lucide-react";
 import { useRoute, useLocation } from "wouter";
 import { AdminLayout } from "./index";
@@ -53,6 +55,150 @@ import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Release } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 
+interface FetchedMetadata {
+  title: string;
+  artistName: string;
+  coverUrl: string;
+  sourceUrl: string;
+  source: 'soundcloud' | 'spotify';
+}
+
+async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | null> {
+  try {
+    const oembedUrl = `https://soundcloud.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const response = await fetch(oembedUrl);
+    if (!response.ok) throw new Error('Failed to fetch SoundCloud metadata');
+    const data = await response.json();
+    
+    let coverUrl = data.thumbnail_url || '';
+    if (coverUrl) {
+      coverUrl = coverUrl.replace('-t500x500', '-t500x500').replace('-large', '-t500x500');
+    }
+    
+    const title = data.title || '';
+    const artistName = data.author_name || '';
+    
+    return {
+      title,
+      artistName,
+      coverUrl,
+      sourceUrl: url,
+      source: 'soundcloud',
+    };
+  } catch (error) {
+    console.error('SoundCloud fetch error:', error);
+    return null;
+  }
+}
+
+async function getSpotifyAccessToken(): Promise<string | null> {
+  const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+  const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
+  
+  if (!clientId || !clientSecret) {
+    console.error('Spotify credentials not configured');
+    return null;
+  }
+  
+  try {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`),
+      },
+      body: 'grant_type=client_credentials',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to get Spotify access token');
+    }
+    
+    const data = await response.json();
+    return data.access_token;
+  } catch (error) {
+    console.error('Error getting Spotify access token:', error);
+    return null;
+  }
+}
+
+function extractSpotifyIdAndType(url: string): { id: string; type: 'track' | 'album' } | null {
+  const trackMatch = url.match(/spotify\.com\/track\/([a-zA-Z0-9]+)/);
+  if (trackMatch && trackMatch[1]) {
+    return { id: trackMatch[1], type: 'track' };
+  }
+  
+  const albumMatch = url.match(/spotify\.com\/album\/([a-zA-Z0-9]+)/);
+  if (albumMatch && albumMatch[1]) {
+    return { id: albumMatch[1], type: 'album' };
+  }
+  
+  return null;
+}
+
+async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null> {
+  try {
+    const extracted = extractSpotifyIdAndType(url);
+    if (!extracted) {
+      console.error('Could not extract Spotify ID from URL');
+      return null;
+    }
+
+    const accessToken = await getSpotifyAccessToken();
+    if (!accessToken) {
+      console.error('Could not get Spotify access token');
+      return null;
+    }
+
+    const apiUrl = extracted.type === 'track' 
+      ? `https://api.spotify.com/v1/tracks/${extracted.id}`
+      : `https://api.spotify.com/v1/albums/${extracted.id}`;
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Spotify ${extracted.type}`);
+    }
+
+    const data = await response.json();
+    
+    let title = '';
+    let artistName = '';
+    let coverUrl = '';
+
+    if (extracted.type === 'track') {
+      title = data.name || '';
+      artistName = data.artists?.map((a: { name: string }) => a.name).join(', ') || '';
+      coverUrl = data.album?.images?.[0]?.url || '';
+    } else {
+      title = data.name || '';
+      artistName = data.artists?.map((a: { name: string }) => a.name).join(', ') || '';
+      coverUrl = data.images?.[0]?.url || '';
+    }
+    
+    return {
+      title,
+      artistName,
+      coverUrl,
+      sourceUrl: url,
+      source: 'spotify',
+    };
+  } catch (error) {
+    console.error('Spotify fetch error:', error);
+    return null;
+  }
+}
+
+function detectLinkType(url: string): 'soundcloud' | 'spotify' | null {
+  if (url.includes('soundcloud.com')) return 'soundcloud';
+  if (url.includes('spotify.com') || url.includes('open.spotify.com')) return 'spotify';
+  return null;
+}
+
 interface ReleaseFormData {
   title: string;
   artistName: string;
@@ -92,6 +238,9 @@ export default function AdminReleases() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
   const [formData, setFormData] = useState<ReleaseFormData>(defaultFormData);
+  const [quickAddLink, setQuickAddLink] = useState("");
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [metadataFetched, setMetadataFetched] = useState(false);
 
   const { data: releases } = useQuery<Release[]>({
     queryKey: ["releases"],
@@ -123,7 +272,65 @@ export default function AdminReleases() {
     setIsDialogOpen(false);
     setEditingRelease(null);
     setFormData(defaultFormData);
+    setQuickAddLink("");
+    setIsFetchingMetadata(false);
+    setMetadataFetched(false);
     setLocation("/admin/releases");
+  };
+
+  const handleQuickAddLink = async (url: string) => {
+    setQuickAddLink(url);
+    
+    if (!url.trim()) return;
+    
+    const linkType = detectLinkType(url);
+    if (!linkType) {
+      return;
+    }
+    
+    setIsFetchingMetadata(true);
+    
+    try {
+      let metadata: FetchedMetadata | null = null;
+      
+      if (linkType === 'soundcloud') {
+        metadata = await fetchSoundCloudMetadata(url);
+      } else if (linkType === 'spotify') {
+        metadata = await fetchSpotifyMetadata(url);
+      }
+      
+      if (metadata) {
+        setFormData(prev => ({
+          ...prev,
+          title: metadata!.title || prev.title,
+          artistName: metadata!.artistName || prev.artistName,
+          coverUrl: metadata!.coverUrl || prev.coverUrl,
+          ...(linkType === 'soundcloud' ? { soundcloudUrl: url } : {}),
+          ...(linkType === 'spotify' ? { spotifyUrl: url } : {}),
+        }));
+        
+        setMetadataFetched(true);
+        
+        toast({
+          title: "Metadata fetched",
+          description: `Successfully imported from ${linkType === 'soundcloud' ? 'SoundCloud' : 'Spotify'}`,
+        });
+      } else {
+        toast({
+          title: "Could not fetch metadata",
+          description: "Please enter the details manually.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error fetching metadata",
+        description: "Please enter the details manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingMetadata(false);
+    }
   };
 
   const handleEdit = (release: Release) => {
@@ -316,7 +523,12 @@ export default function AdminReleases() {
               </TableHeader>
               <TableBody>
                 {filteredReleases.map((release) => (
-                  <TableRow key={release.id} data-testid={`row-release-${release.id}`}>
+                  <TableRow 
+                    key={release.id} 
+                    data-testid={`row-release-${release.id}`}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setLocation(`/admin/releases/${release.id}`)}
+                  >
                     <TableCell>
                       <div className="w-10 h-10 rounded overflow-hidden bg-muted">
                         {release.coverUrl ? (
@@ -350,7 +562,7 @@ export default function AdminReleases() {
                         {release.published ? "Published" : "Draft"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" data-testid={`button-release-actions-${release.id}`}>
@@ -452,23 +664,54 @@ export default function AdminReleases() {
           </DialogHeader>
           
           <div className="grid gap-4 py-4">
+            {!editingRelease && (
+              <div className="grid gap-2 p-4 border rounded-lg bg-muted/30">
+                <Label htmlFor="quickAddLink" className="flex items-center gap-2">
+                  <Link className="h-4 w-4" />
+                  Quick Add from Link
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="quickAddLink"
+                    value={quickAddLink}
+                    onChange={(e) => handleQuickAddLink(e.target.value)}
+                    placeholder="Paste SoundCloud or Spotify URL..."
+                    disabled={isFetchingMetadata}
+                    className="pr-10"
+                  />
+                  {isFetchingMetadata && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Paste a SoundCloud or Spotify link to auto-fill title, artist, and cover image
+                </p>
+              </div>
+            )}
+
             <div className="grid gap-2">
-              <Label htmlFor="title">Title *</Label>
+              <Label htmlFor="title">
+                Title {!quickAddLink && '*'}
+              </Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Release title"
+                disabled={metadataFetched}
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="artistName">Artist Name *</Label>
+              <Label htmlFor="artistName">
+                Artist Name {!quickAddLink && '*'}
+              </Label>
               <Input
                 id="artistName"
                 value={formData.artistName}
                 onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
                 placeholder="Artist name"
+                disabled={metadataFetched}
               />
             </div>
 
@@ -498,11 +741,21 @@ export default function AdminReleases() {
             </div>
 
             <div className="grid gap-2">
-              <Label>Cover Art</Label>
-              <ImageUpload
-                currentImage={formData.coverUrl}
-                onUploadComplete={(url: string) => setFormData({ ...formData, coverUrl: url })}
-              />
+              <Label>Cover Art {metadataFetched && formData.coverUrl && "(fetched from link)"}</Label>
+              {metadataFetched && formData.coverUrl ? (
+                <div className="relative w-full aspect-square max-w-[200px] rounded-lg overflow-hidden border bg-muted">
+                  <img 
+                    src={formData.coverUrl} 
+                    alt="Cover art" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <ImageUpload
+                  currentImage={formData.coverUrl}
+                  onUploadComplete={(url: string) => setFormData({ ...formData, coverUrl: url })}
+                />
+              )}
             </div>
 
             <div className="grid gap-2">

@@ -8,6 +8,8 @@ import {
   EyeOff,
   MoreVertical,
   FileText,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useRoute, useLocation } from "wouter";
 import { AdminLayout } from "./index";
@@ -19,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/image-upload";
+import { MarkdownEditor } from "@/components/markdown-editor";
 import {
   Table,
   TableBody,
@@ -53,6 +56,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Post } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
+import { generateContent, isGeminiConfigured } from "@/lib/gemini";
 
 interface PostFormData {
   title: string;
@@ -95,6 +99,7 @@ export default function AdminPosts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [formData, setFormData] = useState<PostFormData>(defaultFormData);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { data: posts } = useQuery<Post[]>({
     queryKey: ["posts"],
@@ -246,6 +251,94 @@ export default function AdminPosts() {
     });
   };
 
+  const handleGeneratePost = async () => {
+    if (!formData.title) {
+      toast({
+        title: "Title required",
+        description: "Please enter a title first to generate content.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isGeminiConfigured()) {
+      toast({
+        title: "AI not configured",
+        description: "Please add a Gemini API key to use AI generation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const prompt = `You are an expert SEO strategist and music industry blogger for GroupTherapy Records, a cutting-edge electronic music label.
+
+Generate an SEO-optimized blog post about: "${formData.title}"
+
+IMPORTANT SEO REQUIREMENTS:
+1. Use proper heading structure with ## for H2 and ### for H3 headings
+2. Include trending music industry keywords naturally (electronic music, EDM, DJ, producer, remix, festival, streaming, vinyl, etc.)
+3. Add relevant internal links using markdown format to these pages where contextually appropriate:
+   - [our latest releases](/releases)
+   - [featured artists](/artists)
+   - [upcoming events](/events)
+   - [live radio](/radio)
+   - [tour dates](/tours)
+4. Write engaging, shareable content that establishes thought leadership
+5. Include a compelling call-to-action
+
+Format your response as JSON with these fields:
+{
+  "excerpt": "A compelling 1-2 sentence summary with primary keyword for previews",
+  "content": "The full blog post content in Markdown format with:\n- An engaging intro paragraph\n- ## H2 heading for main sections\n- ### H3 subheadings where appropriate\n- 3-5 paragraphs of valuable content\n- Natural keyword placement\n- 2-3 internal links to /releases, /artists, /events, /radio, or /tours\n- A strong conclusion with call-to-action",
+  "tags": "comma-separated trending relevant tags (5-8 tags)",
+  "metaTitle": "SEO-optimized title under 60 characters with primary keyword at start",
+  "metaDescription": "Compelling meta description under 155 characters with primary and secondary keywords, ending with a call-to-action"
+}
+
+Return only valid JSON, no markdown code blocks or additional text.`;
+
+      const result = await generateContent(prompt);
+      
+      if (result.startsWith('Error:')) {
+        toast({
+          title: "Generation failed",
+          description: result,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const cleanResult = result.replace(/```json\n?|\n?```/g, '').trim();
+        const generated = JSON.parse(cleanResult);
+        
+        setFormData(prev => ({
+          ...prev,
+          excerpt: generated.excerpt || prev.excerpt,
+          content: generated.content || prev.content,
+          tags: generated.tags || prev.tags,
+          metaTitle: generated.metaTitle || prev.metaTitle,
+          metaDescription: generated.metaDescription || prev.metaDescription,
+        }));
+
+        toast({
+          title: "Content generated",
+          description: "AI has generated content for your post. Review and edit as needed.",
+        });
+      } catch {
+        toast({
+          title: "Parse error",
+          description: "Could not parse AI response. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -321,7 +414,12 @@ export default function AdminPosts() {
               </TableHeader>
               <TableBody>
                 {filteredPosts.map((post) => (
-                  <TableRow key={post.id} data-testid={`row-post-${post.id}`}>
+                  <TableRow 
+                    key={post.id} 
+                    data-testid={`row-post-${post.id}`}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setLocation(`/admin/posts/${post.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
@@ -444,7 +542,29 @@ export default function AdminPosts() {
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Title *</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="title">Title *</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGeneratePost}
+                  disabled={isGenerating || !formData.title}
+                  className="gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Generate with AI
+                    </>
+                  )}
+                </Button>
+              </div>
               <Input
                 id="title"
                 value={formData.title}
@@ -466,12 +586,11 @@ export default function AdminPosts() {
 
             <div className="grid gap-2">
               <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
+              <MarkdownEditor
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Full post content"
-                rows={6}
+                onChange={(value) => setFormData({ ...formData, content: value })}
+                placeholder="Full post content (supports Markdown)"
+                minHeight="250px"
               />
             </div>
 

@@ -2,12 +2,64 @@ import { useRoute, Link } from "wouter";
 import { motion } from "framer-motion";
 import { ArrowLeft, Calendar, User, Tag, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { db, type Post } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
+
+function renderMarkdown(markdown: string): string {
+  if (!markdown) return "";
+
+  let html = markdown;
+
+  html = html.replace(
+    /^### (.+)$/gm,
+    '<h3 class="text-lg font-semibold mt-6 mb-3">$1</h3>',
+  );
+  html = html.replace(
+    /^## (.+)$/gm,
+    '<h2 class="text-xl font-semibold mt-8 mb-4">$1</h2>',
+  );
+  html = html.replace(
+    /^# (.+)$/gm,
+    '<h1 class="text-2xl font-bold mt-8 mb-4">$1</h1>',
+  );
+
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+  html = html.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" class="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
+
+  html = html.replace(
+    /^(\d+)\. (.+)$/gm,
+    '<li class="ml-4 list-decimal">$2</li>',
+  );
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$2</li>');
+
+  html = html.replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
+    if (match.includes("list-decimal")) {
+      return `<ol class="my-4 space-y-2">${match}</ol>`;
+    }
+    return `<ul class="my-4 space-y-2">${match}</ul>`;
+  });
+
+  html = html.replace(/\n\n/g, '</p><p class="mb-4 leading-relaxed">');
+  html = `<p class="mb-4 leading-relaxed">${html}</p>`;
+
+  html = html.replace(/<p class="mb-4 leading-relaxed"><\/p>/g, "");
+  html = html.replace(/<p class="mb-4 leading-relaxed">(<h[1-3])/g, "$1");
+  html = html.replace(/(<\/h[1-3]>)<\/p>/g, "$1");
+  html = html.replace(/<p class="mb-4 leading-relaxed">(<[uo]l)/g, "$1");
+  html = html.replace(/(<\/[uo]l>)<\/p>/g, "$1");
+
+  return html;
+}
 
 function estimateReadTime(content: string): number {
   const wordsPerMinute = 200;
@@ -36,26 +88,31 @@ export default function PostDetailPage() {
       if (!post?.category) return [];
       const allPosts = await db.posts.getAll();
       return allPosts
-        .filter(p => p.published && p.category === post.category && p.id !== post.id)
+        .filter(
+          (p) =>
+            p.published && p.category === post.category && p.id !== post.id,
+        )
         .slice(0, 3);
     },
     enabled: !!post?.category,
   });
 
-  const postSchema = post ? generateStructuredData("Article", {
-    headline: post.title,
-    description: post.excerpt,
-    image: post.coverUrl || post.ogImageUrl,
-    datePublished: post.publishedAt || post.createdAt,
-    author: {
-      "@type": "Person",
-      name: post.authorName || "GroupTherapy Records",
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "GroupTherapy Records",
-    },
-  }) : null;
+  const postSchema = post
+    ? generateStructuredData("Article", {
+        headline: post.title,
+        description: post.excerpt,
+        image: post.coverUrl || post.ogImageUrl,
+        datePublished: post.publishedAt || post.createdAt,
+        author: {
+          "@type": "Person",
+          name: post.authorName || "GroupTherapy Records",
+        },
+        publisher: {
+          "@type": "Organization",
+          name: "GroupTherapy Records",
+        },
+      })
+    : null;
 
   if (isLoading) {
     return (
@@ -87,7 +144,11 @@ export default function PostDetailPage() {
     <div className="min-h-screen">
       <SEOHead
         title={post.metaTitle || `${post.title} - GroupTherapy Records`}
-        description={post.metaDescription || post.excerpt || `Read ${post.title} on GroupTherapy Records`}
+        description={
+          post.metaDescription ||
+          post.excerpt ||
+          `Read ${post.title} on GroupTherapy Records`
+        }
         keywords={post.tags || [post.category, "news", "music"]}
         structuredData={postSchema}
       />
@@ -104,10 +165,15 @@ export default function PostDetailPage() {
           </div>
         )}
 
-        <div className={`relative pt-24 pb-12 px-4 sm:px-6 lg:px-8 ${post.coverUrl ? '' : 'bg-muted/30'}`}>
+        <div
+          className={`relative pt-24 pb-12 px-4 sm:px-6 lg:px-8 ${post.coverUrl ? "" : "bg-muted/30"}`}
+        >
           <div className="max-w-4xl mx-auto">
             <Link href="/news">
-              <Button variant="ghost" className={`mb-8 ${post.coverUrl ? 'text-white hover:text-white hover:bg-white/10' : ''}`}>
+              <Button
+                variant="ghost"
+                className={`mb-8 ${post.coverUrl ? "text-white hover:text-white hover:bg-white/10" : ""}`}
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to News
               </Button>
@@ -121,11 +187,15 @@ export default function PostDetailPage() {
                 {post.category}
               </Badge>
 
-              <h1 className={`text-3xl md:text-5xl font-bold mb-6 ${post.coverUrl ? 'text-white' : ''}`}>
+              <h1
+                className={`text-3xl md:text-5xl font-bold mb-6 ${post.coverUrl ? "text-white" : ""}`}
+              >
                 {post.title}
               </h1>
 
-              <div className={`flex flex-wrap items-center gap-6 ${post.coverUrl ? 'text-white/80' : 'text-muted-foreground'}`}>
+              <div
+                className={`flex flex-wrap items-center gap-6 ${post.coverUrl ? "text-white/80" : "text-muted-foreground"}`}
+              >
                 {post.authorName && (
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -135,7 +205,12 @@ export default function PostDetailPage() {
                 {(post.publishedAt || post.createdAt) && (
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    <span>{format(new Date(post.publishedAt || post.createdAt), "MMMM d, yyyy")}</span>
+                    <span>
+                      {format(
+                        new Date(post.publishedAt || post.createdAt),
+                        "MMMM d, yyyy",
+                      )}
+                    </span>
                   </div>
                 )}
                 {readTime > 0 && (
@@ -154,21 +229,18 @@ export default function PostDetailPage() {
         <div className="grid md:grid-cols-4 gap-8">
           <article className="md:col-span-3">
             {post.excerpt && (
-              <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
+              <p className="text-xl text-muted-foreground mb-8 leading-relaxed z-10 relative">
                 {post.excerpt}
               </p>
             )}
 
             {post.content && (
-              <div className="prose prose-lg prose-invert max-w-none">
-                {post.content.split('\n').map((paragraph, index) => (
-                  paragraph.trim() && (
-                    <p key={index} className="mb-4 text-foreground leading-relaxed">
-                      {paragraph}
-                    </p>
-                  )
-                ))}
-              </div>
+              <div
+                className="prose prose-lg prose-invert max-w-none text-foreground"
+                dangerouslySetInnerHTML={{
+                  __html: renderMarkdown(post.content),
+                }}
+              />
             )}
 
             {post.tags && post.tags.length > 0 && (
@@ -188,38 +260,46 @@ export default function PostDetailPage() {
             )}
           </article>
 
-          <aside className="space-y-6">
+          <aside className="space-y-3 z-10 w-[300px]">
             {relatedPosts && relatedPosts.length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-4">Related Articles</h3>
-                  <div className="space-y-4">
-                    {relatedPosts.map((relatedPost) => (
-                      <Link key={relatedPost.id} href={`/news/${relatedPost.slug || relatedPost.id}`}>
-                        <div className="group">
+              <div className="bg-card/50 border border-border/50 rounded-2xl p-5 w-full">
+                <h3 className="font-semibold text-lg mb-5">Related Articles</h3>
+                <div className="space-y-4">
+                  {relatedPosts.map((relatedPost) => (
+                    <Link
+                      key={relatedPost.id}
+                      href={`/news/${relatedPost.slug || relatedPost.id}`}
+                    >
+                      <div className="group p-3 -mx-3 rounded-xl hover:bg-muted/50 transition-colors">
+                        <div className="flex gap-3">
                           {relatedPost.coverUrl && (
-                            <div className="aspect-video rounded overflow-hidden mb-2">
+                            <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
                               <img
                                 src={relatedPost.coverUrl}
                                 alt={relatedPost.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />
                             </div>
                           )}
-                          <h4 className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-2">
-                            {relatedPost.title}
-                          </h4>
-                          {relatedPost.publishedAt && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {format(new Date(relatedPost.publishedAt), "MMM d, yyyy")}
-                            </p>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+                              {relatedPost.title}
+                            </h4>
+                            {relatedPost.publishedAt && (
+                              <p className="text-xs text-muted-foreground mt-1.5">
+                                {format(
+                                  new Date(relatedPost.publishedAt),
+                                  "MMM d, yyyy",
+                                )}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </Link>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             )}
           </aside>
         </div>

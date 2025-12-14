@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, Volume2, Radio, Clock, Calendar, Users, ChevronRight, Music } from "lucide-react";
+import { Play, Pause, Volume2, Radio, Clock, Calendar, Users, ChevronRight, Music, ExternalLink } from "lucide-react";
 import { PageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -331,44 +331,132 @@ function ShowCard({ show }: { show: RadioShow }) {
   );
 }
 
+interface SoundCloudOEmbed {
+  title?: string;
+  author_name?: string;
+  thumbnail_url?: string;
+  html?: string;
+}
+
+function useSoundCloudMetadata(soundcloudUrl?: string) {
+  const [metadata, setMetadata] = useState<SoundCloudOEmbed | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!soundcloudUrl) {
+      setMetadata(null);
+      return;
+    }
+
+    async function fetchMetadata() {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(soundcloudUrl)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setMetadata(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch SoundCloud metadata:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchMetadata();
+  }, [soundcloudUrl]);
+
+  return { metadata, loading };
+}
+
 function StreamCard({ track, onPlay }: { track: RadioTrack; onPlay: () => void }) {
   const playedAt = track.playedAt ? new Date(track.playedAt) : new Date();
   const timeAgo = getTimeAgo(playedAt);
+  const [showEmbed, setShowEmbed] = useState(false);
+  const { metadata, loading } = useSoundCloudMetadata(track.soundcloudUrl);
+
+  const displayTitle = metadata?.title || track.title;
+  const displayArtist = metadata?.author_name || track.artist;
+  const displayCover = metadata?.thumbnail_url || track.coverUrl;
+
+  const handleClick = useCallback(() => {
+    if (track.soundcloudUrl) {
+      setShowEmbed(!showEmbed);
+    } else {
+      onPlay();
+    }
+  }, [track.soundcloudUrl, showEmbed, onPlay]);
 
   return (
-    <div 
-      className="flex items-center gap-4 p-3 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group"
-      onClick={onPlay}
-    >
-      <div className="relative w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
-        {track.coverUrl ? (
-          <img
-            src={track.coverUrl}
-            alt={track.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Music className="h-5 w-5 text-muted-foreground" />
+    <div className="space-y-2">
+      <div 
+        className="flex items-center gap-4 p-3 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group"
+        onClick={handleClick}
+      >
+        <div className="relative w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+          {displayCover ? (
+            <img
+              src={displayCover}
+              alt={displayTitle}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Music className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Play className="h-5 w-5 text-white" />
           </div>
-        )}
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <Play className="h-5 w-5 text-white" />
         </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="font-medium truncate">{track.title}</h4>
-        <p className="text-sm text-muted-foreground truncate">{track.artist}</p>
-      </div>
-      <div className="text-right flex-shrink-0">
-        <p className="text-xs text-muted-foreground">{timeAgo}</p>
-        {track.duration && (
-          <p className="text-xs text-muted-foreground">{formatDuration(track.duration)}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="font-medium truncate">{displayTitle}</h4>
+            {track.soundcloudUrl && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-orange-500 border-orange-500/50">
+                SoundCloud
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground truncate">{displayArtist}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-xs text-muted-foreground">{timeAgo}</p>
+          {track.duration && (
+            <p className="text-xs text-muted-foreground">{formatDuration(track.duration)}</p>
+          )}
+        </div>
+        {track.soundcloudUrl ? (
+          <div className="flex gap-1 flex-shrink-0">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(track.soundcloudUrl, '_blank');
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <Button size="icon" variant="ghost" className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Play className="h-4 w-4" />
+          </Button>
         )}
       </div>
-      <Button size="icon" variant="ghost" className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Play className="h-4 w-4" />
-      </Button>
+      
+      {track.soundcloudUrl && showEmbed && metadata?.html && (
+        <div 
+          className="ml-16 rounded-md overflow-hidden"
+          dangerouslySetInnerHTML={{ 
+            __html: metadata.html.replace(/height="\d+"/, 'height="166"').replace(/width="\d+%?"/, 'width="100%"')
+          }} 
+        />
+      )}
     </div>
   );
 }

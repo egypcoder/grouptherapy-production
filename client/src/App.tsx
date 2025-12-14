@@ -31,6 +31,7 @@ import CareersPage from "@/pages/careers";
 import ToursPage from "@/pages/tours";
 import StaticPageView from "@/pages/static-page";
 import PlaylistsPage from "@/pages/playlists";
+import AwardsPage from "@/pages/awards";
 
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/index";
@@ -52,6 +53,16 @@ import AdminAwards from "@/pages/admin/awards";
 import AdminSeoSettings from "@/pages/admin/seo-settings";
 
 import NotFound from "@/pages/not-found";
+
+function ScrollToTop() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location]);
+
+  return null;
+}
 
 function AnalyticsTracker() {
   const [location] = useLocation();
@@ -127,6 +138,11 @@ function Router() {
       <Route path="/playlists">
         <PublicLayout>
           <PlaylistsPage />
+        </PublicLayout>
+      </Route>
+      <Route path="/awards">
+        <PublicLayout>
+          <AwardsPage />
         </PublicLayout>
       </Route>
       <Route path="/about">
@@ -299,6 +315,7 @@ function App() {
         <AuthProvider>
           <RadioProvider>
             <TooltipProvider>
+              <ScrollToTop />
               <AnalyticsTracker />
               <Router />
               <Toaster />

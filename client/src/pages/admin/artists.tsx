@@ -150,7 +150,11 @@ export default function AdminArtists() {
 
         <div className="grid gap-4">
           {artists.map((artist) => (
-            <Card key={artist.id}>
+            <Card 
+              key={artist.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => handleEdit(artist)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-16 h-16 bg-muted rounded-full overflow-hidden flex-shrink-0">

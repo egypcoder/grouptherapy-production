@@ -223,6 +223,15 @@ function ReleaseCard({ release }: { release: Release }) {
               className="h-14 w-14 rounded-full bg-white text-black hover:bg-white/90"
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
+                if (release.spotifyUrl && release.spotifyUrl !== '#') {
+                  window.open(release.spotifyUrl, '_blank', 'noopener,noreferrer');
+                } else if (release.previewUrl) {
+                  const audio = new Audio(release.previewUrl);
+                  audio.play();
+                } else {
+                  window.location.href = `/releases/${release.slug || release.id}`;
+                }
               }}
               data-testid={`button-play-${release.id}`}
             >

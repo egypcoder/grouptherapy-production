@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS radio_tracks (
   duration INTEGER,
   played_at TIMESTAMPTZ NOT NULL,
   show_id UUID REFERENCES radio_shows(id),
+  soundcloud_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -291,6 +292,7 @@ CREATE TABLE IF NOT EXISTS press_assets (
 -- Site settings table (for homepage content control)
 CREATE TABLE IF NOT EXISTS site_settings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  hero_tag TEXT,
   hero_title TEXT DEFAULT 'GROUPTHERAPY',
   hero_subtitle TEXT DEFAULT 'The sound of tomorrow, today. Discover the future of the music you love.',
   hero_background_image TEXT,

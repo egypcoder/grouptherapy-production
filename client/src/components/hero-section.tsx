@@ -17,7 +17,7 @@ interface HeroProps {
 
 export function HeroSection({
   title = "GROUPTHERAPY",
-  subtitle = "The future of music, curated for you.",
+  subtitle = "The future of electronic music, curated for you.",
   backgroundImage,
   backgroundVideo,
   backgroundType = "image",
@@ -253,7 +253,7 @@ export function PageHero({
   backgroundImage?: string;
 }) {
   return (
-    <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden pt-24">
+    <section className="relative min-h-[30vh] flex items-center justify-center overflow-hidden pt-20">
       <div className="absolute inset-0 z-0">
         {backgroundImage ? (
           <img
@@ -267,7 +267,7 @@ export function PageHero({
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/90 to-background" />
       </div>
 
-      <div className="relative z-10 text-center px-6 md:px-8 max-w-4xl mx-auto py-16">
+      <div className="relative z-10 text-center px-6 md:px-8 max-w-4xl mx-auto py-10">
         <motion.h1
           className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-[-0.03em] mb-6 leading-[1.1]"
           initial={{ opacity: 0, y: 30 }}

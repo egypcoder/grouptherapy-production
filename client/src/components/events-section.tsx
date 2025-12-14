@@ -98,11 +98,11 @@ export function EventsSection({
                   
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   
-                  <div className="absolute top-4 left-4 bg-white rounded-xl px-3 py-2 text-center min-w-[52px]">
+                  <div className="absolute top-4 left-4 bg-card border border-border rounded-xl px-3 py-2 text-center min-w-[52px]">
                     <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                       {month}
                     </div>
-                    <div className="text-xl font-bold text-foreground leading-none">
+                    <div className="text-xl font-bold text-card-foreground leading-none">
                       {day}
                     </div>
                   </div>

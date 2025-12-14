@@ -150,8 +150,12 @@ export const radioTracks = pgTable("radio_tracks", {
   showId: varchar("show_id").references(() => radioShows.id),
   title: text("title").notNull(),
   artist: text("artist").notNull(),
+  album: text("album"),
   coverUrl: text("cover_url"),
+  duration: integer("duration"),
+  soundcloudUrl: text("soundcloud_url"),
   playedAt: timestamp("played_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Playlists

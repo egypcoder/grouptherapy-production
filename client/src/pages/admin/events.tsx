@@ -7,8 +7,8 @@ import {
   Eye,
   EyeOff,
   MapPin,
-  MoreVertical,
   Calendar,
+  AlertTriangle,
 } from "lucide-react";
 import { useRoute, useLocation } from "wouter";
 import { AdminLayout } from "./index";
@@ -28,13 +28,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -316,14 +309,19 @@ export default function AdminEvents() {
                   <TableHead>Date</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[180px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredEvents.map((event) => {
                   const isPast = event.date ? new Date(event.date) < new Date() : false;
                   return (
-                    <TableRow key={event.id} data-testid={`row-event-${event.id}`}>
+                    <TableRow 
+                      key={event.id} 
+                      data-testid={`row-event-${event.id}`}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors group"
+                      onClick={() => setLocation(`/admin/events/${event.id}`)}
+                    >
                       <TableCell>
                         <div className="font-medium">{event.title}</div>
                         {event.featured && (
@@ -357,48 +355,46 @@ export default function AdminEvents() {
                           {event.published ? "Published" : "Draft"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" data-testid={`button-event-actions-${event.id}`}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setLocation(`/admin/events/${event.id}`)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                togglePublishMutation.mutate({
-                                  id: event.id!,
-                                  published: !event.published,
-                                })
-                              }
-                            >
-                              {event.published ? (
-                                <>
-                                  <EyeOff className="h-4 w-4 mr-2" />
-                                  Unpublish
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="h-4 w-4 mr-2" />
-                                  Publish
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => setDeleteId(event.id!)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-8 px-2 opacity-70 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setLocation(`/admin/events/${event.id}`)}
+                            data-testid={`button-edit-event-${event.id}`}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 opacity-70 group-hover:opacity-100 transition-opacity"
+                            onClick={() =>
+                              togglePublishMutation.mutate({
+                                id: event.id!,
+                                published: !event.published,
+                              })
+                            }
+                            data-testid={`button-toggle-publish-${event.id}`}
+                          >
+                            {event.published ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-70 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setDeleteId(event.id!)}
+                            data-testid={`button-delete-event-${event.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -416,14 +412,26 @@ export default function AdminEvents() {
       </div>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Event</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this event? This action cannot be undone.
-            </DialogDescription>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <DialogTitle>Delete Event</DialogTitle>
+                <DialogDescription className="mt-1">
+                  This action cannot be undone.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <DialogFooter>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to permanently delete this event? All associated data will be removed.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setDeleteId(null)}>
               Cancel
             </Button>
@@ -432,7 +440,7 @@ export default function AdminEvents() {
               onClick={() => deleteId && deleteMutation.mutate(deleteId)}
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? "Deleting..." : "Yes, Delete Event"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, Loader2, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,6 +30,12 @@ export function AudioUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (currentAudio && currentAudio !== audioUrl) {
+      setAudioUrl(currentAudio);
+    }
+  }, [currentAudio]);
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -43,10 +49,10 @@ export function AudioUpload({
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > 500 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Audio must be less than 50MB",
+        description: "Audio must be less than 500MB",
         variant: "destructive"
       });
       return;
@@ -138,7 +144,7 @@ export function AudioUpload({
             <Music className="h-12 w-12" />
             <div className="text-center">
               <p className="font-medium">Click to upload audio</p>
-              <p className="text-sm">MP3, WAV, M4A, AAC up to 50MB</p>
+              <p className="text-sm">MP3, WAV, M4A, AAC up to 500MB</p>
             </div>
           </div>
         </Card>

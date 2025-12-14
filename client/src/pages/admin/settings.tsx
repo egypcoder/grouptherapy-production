@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { db, type StaticPage } from "@/lib/database";
 import { Loader2 } from "lucide-react";
+import { MarkdownEditor } from "@/components/markdown-editor";
 
 export default function AdminSettings() {
   const { toast } = useToast();
@@ -244,17 +245,15 @@ export default function AdminSettings() {
                   </p>
                 </div>
                 <div>
-                  <Label htmlFor="aboutContent">Full Page Content (HTML)</Label>
-                  <Textarea
-                    id="aboutContent"
-                    rows={15}
+                  <Label htmlFor="aboutContent">Full Page Content (Markdown)</Label>
+                  <MarkdownEditor
                     value={aboutContent.content}
-                    onChange={(e) => setAboutContent({ ...aboutContent, content: e.target.value })}
-                    placeholder="Enter full HTML content for the About page..."
-                    className="font-mono text-sm"
+                    onChange={(value) => setAboutContent({ ...aboutContent, content: value })}
+                    placeholder="Enter content for the About page using Markdown..."
+                    minHeight="300px"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    You can use HTML tags here. If you only update the mission, the rest of the page will use the default template.
+                    Use Markdown formatting. If you only update the mission, the rest of the page will use the default template.
                   </p>
                 </div>
                 <Button

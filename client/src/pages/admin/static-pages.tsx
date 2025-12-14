@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, FileText, Eye, Plus, Trash2, Home } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
@@ -17,6 +18,54 @@ import { db, StaticPage, SiteSettings, MarqueeItem, StatItem } from "@/lib/datab
 import { Link } from "wouter";
 import { VideoUpload } from "@/components/video-upload";
 import { ImageUpload } from "@/components/image-upload";
+import { MarkdownEditor } from "@/components/markdown-editor";
+
+function renderMarkdown(markdown: string): string {
+  if (!markdown) return '';
+  
+  let html = markdown;
+  
+  html = html.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="text-xl font-semibold mt-6 mb-3">$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-6 mb-4">$1</h1>');
+  
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal">$2</li>');
+  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$2</li>');
+  
+  html = html.replace(/(<li[^>]*>.*<\/li>\n?)+/g, (match) => {
+    if (match.includes('list-decimal')) {
+      return `<ol class="my-2 space-y-1">${match}</ol>`;
+    }
+    return `<ul class="my-2 space-y-1">${match}</ul>`;
+  });
+  
+  html = html.replace(/\n\n/g, '</p><p class="mb-4">');
+  html = `<p class="mb-4">${html}</p>`;
+  
+  html = html.replace(/<p class="mb-4"><\/p>/g, '');
+  html = html.replace(/<p class="mb-4">(<h[1-3])/g, '$1');
+  html = html.replace(/(<\/h[1-3]>)<\/p>/g, '$1');
+  html = html.replace(/<p class="mb-4">(<[uo]l)/g, '$1');
+  html = html.replace(/(<\/[uo]l>)<\/p>/g, '$1');
+  
+  return html;
+}
+
+function MarkdownPreview({ content }: { content: string }) {
+  const html = useMemo(() => renderMarkdown(content), [content]);
+  
+  return (
+    <div 
+      className="prose prose-sm dark:prose-invert max-w-none min-h-[300px] p-4 border rounded-md bg-muted/30"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
 
 const iconOptions = [
   { value: "Disc3", label: "💿 Disc" },
@@ -64,6 +113,7 @@ export default function AdminStaticPages() {
   });
 
   const [heroSettings, setHeroSettings] = useState({
+    heroTag: "",
     heroTitle: "GROUPTHERAPY",
     heroSubtitle: "The sound of tomorrow, today. Discover the future of the music you love.",
     heroBackgroundImage: "",
@@ -93,6 +143,7 @@ export default function AdminStaticPages() {
   useEffect(() => {
     if (siteSettings) {
       setHeroSettings({
+        heroTag: siteSettings.heroTag || "",
         heroTitle: siteSettings.heroTitle || "GROUPTHERAPY",
         heroSubtitle: siteSettings.heroSubtitle || "The sound of tomorrow, today. Discover the future of the music you love.",
         heroBackgroundImage: siteSettings.heroBackgroundImage || "",
@@ -131,19 +182,16 @@ export default function AdminStaticPages() {
 
   const saveSettingsMutation = useMutation({
     mutationFn: (settings: Partial<SiteSettings>) => {
-      console.log("Saving settings:", settings);
       return db.siteSettings.update(settings);
     },
-    onSuccess: (data) => {
-      console.log("Settings saved successfully:", data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["siteSettings"] });
       toast({
         title: "Success",
         description: "Homepage settings saved successfully",
       });
     },
-    onError: (error) => {
-      console.error("Error saving settings:", error);
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to save homepage settings",
@@ -201,8 +249,11 @@ export default function AdminStaticPages() {
 
   const updateMarqueeItem = (index: number, field: keyof MarqueeItem, value: string) => {
     const updated = [...marqueeItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setMarqueeItems(updated);
+    const existing = updated[index];
+    if (existing) {
+      updated[index] = { ...existing, [field]: value };
+      setMarqueeItems(updated);
+    }
   };
 
   const addStatItem = () => {
@@ -215,8 +266,11 @@ export default function AdminStaticPages() {
 
   const updateStatItem = (index: number, field: keyof StatItem, value: string | number) => {
     const updated = [...statsItems];
-    updated[index] = { ...updated[index], [field]: value };
-    setStatsItems(updated);
+    const existing = updated[index];
+    if (existing) {
+      updated[index] = { ...existing, [field]: value };
+      setStatsItems(updated);
+    }
   };
 
   if (isLoadingSettings) {
@@ -251,6 +305,15 @@ export default function AdminStaticPages() {
             <div className="space-y-4">
               <h3 className="font-semibold text-lg border-b pb-2">Hero Section</h3>
               <div className="space-y-4">
+                <div>
+                  <Label htmlFor="heroTag">Hero Tag</Label>
+                  <Input
+                    id="heroTag"
+                    value={heroSettings.heroTag}
+                    onChange={(e) => setHeroSettings({ ...heroSettings, heroTag: e.target.value })}
+                    placeholder="New Release"
+                  />
+                </div>
                 <div>
                   <Label htmlFor="heroTitle">Title</Label>
                   <Input
@@ -548,15 +611,15 @@ export default function AdminStaticPages() {
                 />
               </div>
               <div>
-                <Label htmlFor="content">Content (HTML/Markdown)</Label>
-                <Textarea
-                  id="content"
-                  rows={15}
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="font-mono text-sm"
-                  placeholder="Enter the page content..."
-                />
+                <Label>Content (Markdown)</Label>
+                <div className="mt-2">
+                  <MarkdownEditor
+                    value={formData.content}
+                    onChange={(value) => setFormData({ ...formData, content: value })}
+                    placeholder="Enter content using Markdown..."
+                    minHeight="350px"
+                  />
+                </div>
               </div>
               <div>
                 <Label htmlFor="metaTitle">SEO Title (Optional)</Label>

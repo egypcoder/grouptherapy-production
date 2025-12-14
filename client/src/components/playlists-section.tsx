@@ -56,7 +56,7 @@ const demoPlaylists: Partial<Playlist>[] = [
 function extractSpotifyId(url: string): string | null {
   if (!url) return null;
   const match = url.match(/playlist\/([a-zA-Z0-9]+)/);
-  return match ? match[1] : null;
+  return match ? match[1] || null : null;
 }
 
 export function PlaylistsSection({

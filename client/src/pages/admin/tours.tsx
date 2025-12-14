@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
@@ -25,6 +26,7 @@ export default function AdminTours() {
     imageUrl: "",
     startDate: "",
     endDate: "",
+    currency: "USD",
     published: true,
   });
 
@@ -90,6 +92,7 @@ export default function AdminTours() {
       imageUrl: tour.imageUrl || "",
       startDate: startDateStr,
       endDate: endDateStr,
+      currency: (tour as any).currency || "USD",
       published: tour.published ?? true,
     });
     setIsDialogOpen(true);
@@ -103,7 +106,7 @@ export default function AdminTours() {
 
   const handleSave = () => {
     const slug = formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const tourData: Partial<Tour> = {
+    const tourData: Partial<Tour> & { currency?: string } = {
       title: formData.title,
       slug,
       artistName: formData.artistName,
@@ -111,6 +114,7 @@ export default function AdminTours() {
       imageUrl: formData.imageUrl,
       startDate: formData.startDate,
       endDate: formData.endDate || undefined,
+      currency: formData.currency,
       published: formData.published,
     };
     
@@ -130,6 +134,7 @@ export default function AdminTours() {
       imageUrl: "",
       startDate: "",
       endDate: "",
+      currency: "USD",
       published: true,
     });
   };
@@ -150,7 +155,11 @@ export default function AdminTours() {
 
         <div className="grid gap-4">
           {tours.map((tour) => (
-            <Card key={tour.id}>
+            <Card 
+              key={tour.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => handleEdit(tour)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
@@ -172,13 +181,16 @@ export default function AdminTours() {
                       <Calendar className="h-3 w-3" />
                       {tour.startDate && new Date(tour.startDate).toLocaleDateString()}
                       {tour.endDate && ` - ${new Date(tour.endDate).toLocaleDateString()}`}
+                      {(tour as any).currency && (
+                        <Badge variant="outline" className="ml-2">{(tour as any).currency}</Badge>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(tour)}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(tour); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(tour.id)}>
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleDelete(tour.id); }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -245,6 +257,24 @@ export default function AdminTours() {
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                   />
                 </div>
+              </div>
+              <div>
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - US Dollar</SelectItem>
+                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                    <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                    <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="description">Description</Label>

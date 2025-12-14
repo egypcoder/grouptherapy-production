@@ -186,7 +186,6 @@ export function trackListener(): () => void {
 
 export function subscribeToListenerCount(callback: (count: number) => void): () => void {
   if (!database) {
-    console.log('subscribeToListenerCount: Firebase not initialized, using default');
     callback(127);
     return () => {};
   }
@@ -195,7 +194,6 @@ export function subscribeToListenerCount(callback: (count: number) => void): () 
   const unsubscribe = onValue(listenersRef, (snapshot) => {
     const data = snapshot.val();
     const count = data ? Object.keys(data).length : 0;
-    console.log('Listener count update:', count, 'raw data:', data);
     callback(Math.max(count, 1));
   });
 
@@ -239,23 +237,18 @@ export function subscribeToServerTimeOffset(callback: (offset: number) => void):
 
 export function subscribeToCurrentSession(callback: (session: RadioSession | null) => void): () => void {
   if (!database) {
-    console.log('subscribeToCurrentSession: Firebase not initialized');
     callback(null);
     return () => {};
   }
 
   const sessionRef = ref(database, 'radio/currentSession');
-  console.log('subscribeToCurrentSession: Setting up listener');
   
   const unsubscribe = onValue(sessionRef, (snapshot) => {
     const data = snapshot.val();
-    console.log('currentSession update:', data);
     
     if (data && data.isActive) {
-      console.log('Active session found:', data.id);
       callback(data);
     } else {
-      console.log('No active session or session data is null');
       callback(null);
     }
   });

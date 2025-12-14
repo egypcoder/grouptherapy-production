@@ -17,11 +17,29 @@ import {
   type Event,
   type Playlist,
   type Artist,
+  type Post,
   type SiteSettings,
   type MarqueeItem,
   type StatItem,
+  type AwardPeriod,
+  type AwardEntry,
 } from "@/lib/database";
-import { Users, Disc3, Radio, Headphones, Music2, Mic, Heart, Star, Globe, Calendar, Trophy, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Users,
+  Disc3,
+  Radio,
+  Headphones,
+  Music2,
+  Mic,
+  Heart,
+  Star,
+  Globe,
+  Calendar,
+  Trophy,
+  Play,
+  Vote,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -130,12 +148,12 @@ function StatsSection({ statsItems }: { statsItems: StatItem[] }) {
   );
 }
 
-function SectionHeader({ 
-  title, 
-  highlight, 
+function SectionHeader({
+  title,
+  highlight,
   description,
   action,
-}: { 
+}: {
   title: string;
   highlight: string;
   description?: string;
@@ -172,6 +190,105 @@ function SectionHeader({
   );
 }
 
+function AwardsSection({
+  entries,
+  hasActiveVoting,
+}: {
+  entries: AwardEntry[];
+  hasActiveVoting: boolean;
+}) {
+  if (!hasActiveVoting || entries.length === 0) return null;
+
+  return (
+    <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 via-background to-background">
+      <div className="max-w-7xl mx-auto px-6 md:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-6">
+            <Trophy className="w-6 h-6" />
+          </div>
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
+            Vote for Your <span className="gradient-text">Favorites</span>
+          </h2>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+            Cast your vote in the Therapy Awards
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+          {entries.map((entry, index) => {
+            const imageUrl = entry.artistImageUrl || entry.trackCoverUrl;
+            const title = entry.artistName || entry.trackTitle;
+            const subtitle = entry.trackArtist || entry.artistBio;
+
+            return (
+              <motion.div
+                key={entry.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, duration: 0.5 }}
+                className="group relative overflow-hidden rounded-2xl bg-card/50  hover:border-primary/30 transition-all duration-300"
+              >
+                <div className="aspect-square overflow-hidden">
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={title || "Entry"}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
+                      <Trophy className="h-16 w-16 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <h3 className="font-semibold text-lg text-white truncate">
+                    {title || "Unknown"}
+                  </h3>
+                  {subtitle && (
+                    <p className="text-sm text-white/70 line-clamp-1">
+                      {subtitle}
+                    </p>
+                  )}
+                  {entry.voteCount > 0 && (
+                    <p className="text-xs text-primary mt-2">
+                      {entry.voteCount} votes
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="text-center"
+        >
+          <Link href="/awards">
+            <Button size="lg" className="gap-2 rounded-full px-8">
+              <Vote className="w-4 h-4" />
+              Vote Now
+            </Button>
+          </Link>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
 const defaultMarqueeItems: MarqueeItem[] = [
   { text: "New Release: ECHOES EP", icon: "Disc3" },
   { text: "Live Radio 24/7", icon: "Radio" },
@@ -202,6 +319,11 @@ export default function HomePage() {
     queryFn: () => db.playlists.getAll(),
   });
 
+  const { data: posts } = useQuery<Post[]>({
+    queryKey: ["posts", "published"],
+    queryFn: () => db.posts.getPublished(),
+  });
+
   const { data: artists } = useQuery<Artist[]>({
     queryKey: ["artists", "featured"],
     queryFn: () => db.artists.getFeatured(),
@@ -212,19 +334,40 @@ export default function HomePage() {
     queryFn: () => db.siteSettings.get(),
   });
 
+  const { data: activeVotingPeriods = [] } = useQuery<AwardPeriod[]>({
+    queryKey: ["activeVotingPeriods"],
+    queryFn: () => db.awards.periods.getActiveVoting(),
+  });
+
+  const { data: featuredEntries = [] } = useQuery<AwardEntry[]>({
+    queryKey: ["featuredAwardEntries", activeVotingPeriods],
+    queryFn: async () => {
+      const firstPeriod = activeVotingPeriods[0];
+      if (!firstPeriod) return [];
+      const entries = await db.awards.entries.getByPeriodId(firstPeriod.id);
+      return entries.slice(0, 3);
+    },
+    enabled: activeVotingPeriods.length > 0,
+  });
+
   const heroTitle = siteSettings?.heroTitle || "GROUPTHERAPY";
-  const heroSubtitle = siteSettings?.heroSubtitle || "The future of music, curated for you.";
+  const heroSubtitle =
+    siteSettings?.heroSubtitle ||
+    "The future of electronic music, curated for you.";
   const heroBackgroundImage = siteSettings?.heroBackgroundImage || undefined;
   const heroCtaText = siteSettings?.heroCtaText || "Explore Releases";
   const heroCtaLink = siteSettings?.heroCtaLink || "/releases";
   const showHeroRadio = siteSettings?.showHeroRadio ?? true;
-  const statsItems = siteSettings?.statsItems?.length ? siteSettings.statsItems : defaultStatsItems;
+  const statsItems = siteSettings?.statsItems?.length
+    ? siteSettings.statsItems
+    : defaultStatsItems;
 
   const organizationSchema = generateStructuredData("Organization", {
     name: "GroupTherapy Records",
     url: "https://grouptherapy.com",
     logo: "https://grouptherapy.com/logo.png",
-    description: "Independent music record label pushing the boundaries of sound",
+    description:
+      "Independent electronic music record label pushing the boundaries of sound",
     sameAs: [
       "https://www.instagram.com/grouptherapyrecords",
       "https://twitter.com/grouptherapy",
@@ -235,10 +378,10 @@ export default function HomePage() {
   return (
     <div className="min-h-screen">
       <SEOHead
-        title="GroupTherapy Records | Record Label"
-        description="Discover the future of music with GroupTherapy Records. Stream new releases, find upcoming events, listen to 24/7 radio."
+        title="GroupTherapy Records | Electronic Music Label"
+        description="Discover the future of electronic music with GroupTherapy Records. Stream new releases, find upcoming events, listen to 24/7 radio."
         keywords={[
-          "Record label",
+          "electronic music label",
           "house music",
           "techno",
           "DJ events",
@@ -315,7 +458,71 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-6 md:px-8">
+          <SectionHeader
+            title="Latest"
+            highlight="News"
+            description="Stay updated with the latest from the label"
+            action={{ label: "View All News", href: "/news" }}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {(posts || []).slice(0, 4).map((post, index) => (
+              <motion.div
+                key={post.id}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, duration: 0.4 }}
+              >
+                <Link href={`/news/${post.slug}`}>
+                  <div className="group cursor-pointer bg-card/50  rounded-2xl overflow-hidden transition-all duration-300">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                      {post.coverUrl ? (
+                        <img
+                          src={post.coverUrl}
+                          alt={post.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
+                          <Radio className="h-10 w-10 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      {post.category && (
+                        <div className="absolute top-3 left-3">
+                          <span className="px-2 py-1 text-[10px] font-medium bg-primary/90 text-primary-foreground rounded-full uppercase tracking-wide">
+                            {post.category}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-medium text-lg/[1.2] line-clamp-2 group-hover:text-primary transition-colors mb-2">
+                        {post.title}
+                      </h3>
+                      {post.excerpt && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {post.excerpt}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <TestimonialsSection />
+
+      <AwardsSection
+        entries={featuredEntries}
+        hasActiveVoting={activeVotingPeriods.length > 0}
+      />
 
       <NewsletterSection />
 
@@ -334,7 +541,8 @@ export default function HomePage() {
               Stay in the <span className="gradient-text">loop</span>
             </h2>
             <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-              Get the latest news, interviews, and behind-the-scenes content from the label.
+              Get the latest news, interviews, and behind-the-scenes content
+              from the label.
             </p>
             <Link href="/news">
               <motion.span

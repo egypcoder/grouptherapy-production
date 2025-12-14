@@ -112,6 +112,7 @@ export interface RadioTrack {
   duration?: number;
   playedAt: string;
   showId?: string;
+  soundcloudUrl?: string;
   createdAt: string;
 }
 
@@ -389,6 +390,7 @@ export interface StatItem {
 
 export interface SiteSettings {
   id: string;
+  heroTag?: string;
   heroTitle: string;
   heroSubtitle: string;
   heroBackgroundImage: string;
@@ -1383,10 +1385,11 @@ export const db = {
       const releaseClickCounts: Record<string, { name: string; clicks: number }> = {};
       (releaseEventsResult.data || []).forEach(ev => {
         if (ev.entity_id) {
-          if (!releaseClickCounts[ev.entity_id]) {
-            releaseClickCounts[ev.entity_id] = { name: ev.entity_name || 'Unknown', clicks: 0 };
+          const entityId = ev.entity_id;
+          if (!releaseClickCounts[entityId]) {
+            releaseClickCounts[entityId] = { name: ev.entity_name || 'Unknown', clicks: 0 };
           }
-          releaseClickCounts[ev.entity_id].clicks++;
+          releaseClickCounts[entityId].clicks++;
         }
       });
       const topReleases = Object.entries(releaseClickCounts)
@@ -1440,7 +1443,9 @@ export const db = {
       const dailyCounts: Record<string, number> = {};
       (pageViewsByDayData.data || []).forEach(pv => {
         const date = new Date(pv.created_at).toISOString().split('T')[0];
-        dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+        if (date) {
+          dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+        }
       });
       const pageViewsByDay = Object.entries(dailyCounts)
         .map(([date, views]) => ({ date, views }))
