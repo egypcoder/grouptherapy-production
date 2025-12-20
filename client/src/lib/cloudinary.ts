@@ -62,6 +62,11 @@ export async function uploadToCloudinaryWithProgress(
     formData.append('file', file);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
     formData.append('folder', folder);
+    
+    // Add chunk upload support for large files (>100MB)
+    if (file.size > 100 * 1024 * 1024) {
+      formData.append('chunk_size', '6000000'); // 6MB chunks
+    }
 
     xhr.upload.addEventListener('progress', (event) => {
       if (event.lengthComputable && onProgress) {
@@ -72,14 +77,24 @@ export async function uploadToCloudinaryWithProgress(
 
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        const data = JSON.parse(xhr.responseText);
-        resolve(data.secure_url);
+        try {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data.secure_url);
+        } catch (e) {
+          reject(new Error('Failed to parse upload response'));
+        }
       } else {
-        reject(new Error('Upload failed'));
+        const errorMsg = xhr.responseText || 'Upload failed';
+        reject(new Error(errorMsg));
       }
     });
 
-    xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+    xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+    xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+    xhr.addEventListener('timeout', () => reject(new Error('Upload timeout')));
+
+    // Set timeout to 10 minutes for large files
+    xhr.timeout = 600000;
 
     xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`);
     xhr.send(formData);
