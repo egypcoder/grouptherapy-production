@@ -597,7 +597,7 @@ export function GlobalRadioPlayer() {
                             transition={{ delay: i * 0.05 }}
                             onClick={() => {
                               const stream = recentStreams[i];
-                              if (stream && track.showId) playStream(stream);
+                              if (stream) playStream(stream);
                             }}
                             className="flex items-center gap-2 flex-shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
                           >

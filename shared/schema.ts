@@ -289,6 +289,166 @@ export const radioListeners = pgTable("radio_listeners", {
   duration: integer("duration"),
 });
 
+// Tours
+export const tours = pgTable("tours", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  artistName: text("artist_name").notNull(),
+  description: text("description"),
+  imageUrl: text("image_url"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  currency: text("currency").default("USD"),
+  published: boolean("published").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Tour dates
+export const tourDates = pgTable("tour_dates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tourId: varchar("tour_id").references(() => tours.id),
+  venue: text("venue").notNull(),
+  city: text("city").notNull(),
+  country: text("country").notNull(),
+  date: timestamp("date").notNull(),
+  ticketUrl: text("ticket_url"),
+  ticketPrice: text("ticket_price"),
+  soldOut: boolean("sold_out").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Careers
+export const careers = pgTable("careers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  department: text("department").notNull(),
+  location: text("location").notNull(),
+  type: text("type").default("full-time"),
+  description: text("description"),
+  requirements: text("requirements"),
+  responsibilities: text("responsibilities"),
+  benefits: text("benefits"),
+  salary: text("salary"),
+  published: boolean("published").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Newsletter subscribers
+export const newsletterSubscribers = pgTable("newsletter_subscribers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  source: text("source"),
+  subscribedAt: timestamp("subscribed_at").defaultNow(),
+  unsubscribedAt: timestamp("unsubscribed_at"),
+  active: boolean("active").default(true),
+});
+
+// SEO Settings
+export const seoSettings = pgTable("seo_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  defaultTitle: text("default_title").notNull(),
+  defaultDescription: text("default_description").notNull(),
+  defaultKeywords: text("default_keywords").array(),
+  ogImage: text("og_image"),
+  twitterImage: text("twitter_image"),
+  twitterHandle: text("twitter_handle"),
+  organizationSchema: jsonb("organization_schema"),
+  websiteSchema: jsonb("website_schema"),
+  musicGroupSchema: jsonb("music_group_schema"),
+  headScripts: text("head_scripts"),
+  bodyScripts: text("body_scripts"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Award categories
+export const awardCategories = pgTable("award_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  description: text("description"),
+  type: text("type").notNull(),
+  period: text("period").notNull(),
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Award periods
+export const awardPeriods = pgTable("award_periods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  categoryId: varchar("category_id").references(() => awardCategories.id),
+  name: text("name").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  votingOpen: boolean("voting_open").default(false),
+  winnerId: varchar("winner_id"),
+  announcedAt: timestamp("announced_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Award entries
+export const awardEntries = pgTable("award_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  periodId: varchar("period_id").references(() => awardPeriods.id),
+  artistId: varchar("artist_id").references(() => artists.id),
+  artistName: text("artist_name"),
+  artistImageUrl: text("artist_image_url"),
+  artistBio: text("artist_bio"),
+  trackTitle: text("track_title"),
+  trackArtist: text("track_artist"),
+  trackCoverUrl: text("track_cover_url"),
+  trackAudioUrl: text("track_audio_url"),
+  trackDuration: integer("track_duration"),
+  spotifyUrl: text("spotify_url"),
+  appleMusicUrl: text("apple_music_url"),
+  soundcloudUrl: text("soundcloud_url"),
+  voteCount: integer("vote_count").default(0),
+  displayOrder: integer("display_order").default(0),
+  isWinner: boolean("is_winner").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Award votes
+export const awardVotes = pgTable("award_votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entryId: varchar("entry_id").references(() => awardEntries.id),
+  periodId: varchar("period_id").references(() => awardPeriods.id),
+  userId: varchar("user_id"),
+  voterIp: text("voter_ip"),
+  voterEmail: text("voter_email"),
+  fingerprint: text("fingerprint"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Static pages
+export const staticPages = pgTable("static_pages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  content: text("content"),
+  published: boolean("published").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Testimonials
+export const testimonials = pgTable("testimonials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  role: text("role"),
+  company: text("company"),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  rating: integer("rating").default(5),
+  featured: boolean("featured").default(false),
+  published: boolean("published").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertArtistSchema = createInsertSchema(artists).omit({ id: true, createdAt: true });
@@ -307,6 +467,17 @@ export const insertSessionSchema = createInsertSchema(sessions).omit({ createdAt
 export const insertPageViewSchema = createInsertSchema(pageViews).omit({ id: true, viewedAt: true });
 export const insertPlayCountSchema = createInsertSchema(playCounts).omit({ id: true, playedAt: true });
 export const insertRadioListenerSchema = createInsertSchema(radioListeners).omit({ id: true, startedAt: true });
+export const insertTourSchema = createInsertSchema(tours).omit({ id: true, createdAt: true });
+export const insertTourDateSchema = createInsertSchema(tourDates).omit({ id: true, createdAt: true });
+export const insertCareerSchema = createInsertSchema(careers).omit({ id: true, createdAt: true });
+export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, subscribedAt: true });
+export const insertSeoSettingsSchema = createInsertSchema(seoSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertAwardCategorySchema = createInsertSchema(awardCategories).omit({ id: true, createdAt: true });
+export const insertAwardPeriodSchema = createInsertSchema(awardPeriods).omit({ id: true, createdAt: true });
+export const insertAwardEntrySchema = createInsertSchema(awardEntries).omit({ id: true, createdAt: true });
+export const insertAwardVoteSchema = createInsertSchema(awardVotes).omit({ id: true, createdAt: true });
+export const insertStaticPageSchema = createInsertSchema(staticPages).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
 
 // Admin user insert and select schemas
 export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({ id: true, createdAt: true, updatedAt: true });
@@ -372,3 +543,36 @@ export type PlayCount = typeof playCounts.$inferSelect;
 
 export type InsertRadioListener = z.infer<typeof insertRadioListenerSchema>;
 export type RadioListener = typeof radioListeners.$inferSelect;
+
+export type InsertTour = z.infer<typeof insertTourSchema>;
+export type Tour = typeof tours.$inferSelect;
+
+export type InsertTourDate = z.infer<typeof insertTourDateSchema>;
+export type TourDate = typeof tourDates.$inferSelect;
+
+export type InsertCareer = z.infer<typeof insertCareerSchema>;
+export type Career = typeof careers.$inferSelect;
+
+export type InsertNewsletterSubscriber = z.infer<typeof insertNewsletterSubscriberSchema>;
+export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+
+export type InsertSeoSettings = z.infer<typeof insertSeoSettingsSchema>;
+export type SeoSettings = typeof seoSettings.$inferSelect;
+
+export type InsertAwardCategory = z.infer<typeof insertAwardCategorySchema>;
+export type AwardCategory = typeof awardCategories.$inferSelect;
+
+export type InsertAwardPeriod = z.infer<typeof insertAwardPeriodSchema>;
+export type AwardPeriod = typeof awardPeriods.$inferSelect;
+
+export type InsertAwardEntry = z.infer<typeof insertAwardEntrySchema>;
+export type AwardEntry = typeof awardEntries.$inferSelect;
+
+export type InsertAwardVote = z.infer<typeof insertAwardVoteSchema>;
+export type AwardVote = typeof awardVotes.$inferSelect;
+
+export type InsertStaticPage = z.infer<typeof insertStaticPageSchema>;
+export type StaticPage = typeof staticPages.$inferSelect;
+
+export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+export type Testimonial = typeof testimonials.$inferSelect;

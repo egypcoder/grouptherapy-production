@@ -63,6 +63,7 @@ const sidebarLinks = [
   { href: "/admin/testimonials", icon: MessageSquareQuote, label: "Testimonials" },
   { href: "/admin/awards", icon: Trophy, label: "Awards" },
   { href: "/admin/careers", icon: Heart, label: "Careers" },
+  { href: "/admin/newsletters", icon: Send, label: "Newsletter" },
   { href: "/admin/press-kit", icon: Play, label: "Press Kit" },
   { href: "/admin/static-pages", icon: FileText, label: "Static Pages" },
   { href: "/admin/contacts", icon: Mail, label: "Messages" },

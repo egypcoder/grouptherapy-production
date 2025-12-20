@@ -228,75 +228,75 @@ function EventCard({
   const isPast = event.date ? new Date(event.date) < new Date() : false;
 
   return (
-    <Card className={cn("overflow-hidden group", isPast && "opacity-70")} data-testid={`card-event-${event.id}`}>
-      <div className="relative aspect-[16/9] overflow-hidden">
-        {event.imageUrl ? (
-          <img
-            src={event.imageUrl}
-            alt={event.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
-        )}
+    <Link href={`/events/${event.slug || event.id}`}>
+      <Card className={cn("overflow-hidden group cursor-pointer hover:shadow-lg transition-all", isPast && "opacity-70")} data-testid={`card-event-${event.id}`}>
+        <div className="relative aspect-[16/9] overflow-hidden">
+          {event.imageUrl ? (
+            <img
+              src={event.imageUrl}
+              alt={event.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
+          )}
 
-        <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 text-center">
-          <div className="text-xs font-medium text-muted-foreground uppercase">
-            {new Date(event.date!).toLocaleDateString("en-US", { month: "short" })}
+          <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 text-center">
+            <div className="text-xs font-medium text-muted-foreground uppercase">
+              {new Date(event.date!).toLocaleDateString("en-US", { month: "short" })}
+            </div>
+            <div className="text-xl font-bold">
+              {new Date(event.date!).getDate()}
+            </div>
           </div>
-          <div className="text-xl font-bold">
-            {new Date(event.date!).getDate()}
-          </div>
+
+          {event.featured && !isPast && (
+            <Badge className="absolute top-3 right-3">Featured</Badge>
+          )}
+          {isPast && (
+            <Badge variant="secondary" className="absolute top-3 right-3">Past</Badge>
+          )}
         </div>
 
-        {event.featured && !isPast && (
-          <Badge className="absolute top-3 right-3">Featured</Badge>
-        )}
-        {isPast && (
-          <Badge variant="secondary" className="absolute top-3 right-3">Past</Badge>
-        )}
-      </div>
+        <CardContent className="p-4">
+          <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+            {event.title}
+          </h3>
 
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
-          {event.title}
-        </h3>
-
-        <div className="space-y-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{event.venue}, {event.city}</span>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">{event.venue}, {event.city}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 flex-shrink-0" />
+              <span>{formatDate(event.date)}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 flex-shrink-0" />
-            <span>{formatDate(event.date)}</span>
-          </div>
-        </div>
 
-        {event.date && (
-          <div className="mt-3">
-            <EventCountdown targetDate={event.date} variant="compact" />
-          </div>
-        )}
+          {event.date && (
+            <div className="mt-3">
+              <EventCountdown targetDate={event.date} variant="compact" />
+            </div>
+          )}
 
-        {!isPast && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t">
-            {event.ticketPrice && (
-              <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
-            )}
-            {event.ticketUrl && (
-              <Button size="sm" asChild>
-                <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer">
+          {!isPast && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              {event.ticketPrice && (
+                <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
+              )}
+              {event.ticketUrl && (
+                <Button size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(event.ticketUrl, '_blank'); }}>
                   <Ticket className="h-4 w-4 mr-2" />
                   Tickets
-                </a>
-              </Button>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -312,72 +312,72 @@ function EventListCard({
   const isPast = event.date ? new Date(event.date) < new Date() : false;
 
   return (
-    <Card className={cn("overflow-hidden", isPast && "opacity-70")} data-testid={`card-event-list-${event.id}`}>
-      <div className="flex flex-col sm:flex-row">
-        <div className="relative w-full sm:w-48 aspect-video sm:aspect-square flex-shrink-0">
-          {event.imageUrl ? (
-            <img
-              src={event.imageUrl}
-              alt={event.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
-          )}
-          
-          <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm rounded px-2 py-1 text-center">
-            <div className="text-xs font-bold">
-              {new Date(event.date!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-            </div>
-          </div>
-        </div>
-
-        <CardContent className="flex-1 p-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <h3 className="font-semibold text-lg">{event.title}</h3>
-              {event.featured && !isPast && <Badge>Featured</Badge>}
-              {isPast && <Badge variant="secondary">Past</Badge>}
-            </div>
+    <Link href={`/events/${event.slug || event.id}`}>
+      <Card className={cn("overflow-hidden cursor-pointer hover:shadow-lg transition-all group", isPast && "opacity-70")} data-testid={`card-event-list-${event.id}`}>
+        <div className="flex flex-col sm:flex-row">
+          <div className="relative w-full sm:w-48 aspect-video sm:aspect-square flex-shrink-0 overflow-hidden">
+            {event.imageUrl ? (
+              <img
+                src={event.imageUrl}
+                alt={event.title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
+            )}
             
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-              {event.description}
-            </p>
-
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                {event.venue}, {event.city}
+            <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm rounded px-2 py-1 text-center">
+              <div className="text-xs font-bold">
+                {new Date(event.date!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
               </div>
-              <div className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
-                {formatDate(event.date)}
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                {formatTime(event.date)}
-              </div>
-              {event.date && (
-                <EventCountdown targetDate={event.date} variant="compact" />
-              )}
             </div>
           </div>
 
-          {!isPast && event.ticketUrl && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              {event.ticketPrice && (
-                <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
-              )}
-              <Button size="sm" asChild>
-                <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer">
+          <CardContent className="flex-1 p-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-start justify-between gap-4 mb-2">
+                <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">{event.title}</h3>
+                {event.featured && !isPast && <Badge>Featured</Badge>}
+                {isPast && <Badge variant="secondary">Past</Badge>}
+              </div>
+              
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                {event.description}
+              </p>
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  {event.venue}, {event.city}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  {formatDate(event.date)}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  {formatTime(event.date)}
+                </div>
+                {event.date && (
+                  <EventCountdown targetDate={event.date} variant="compact" />
+                )}
+              </div>
+            </div>
+
+            {!isPast && event.ticketUrl && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                {event.ticketPrice && (
+                  <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
+                )}
+                <Button size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(event.ticketUrl, '_blank'); }}>
                   <Ticket className="h-4 w-4 mr-2" />
                   Get Tickets
-                </a>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </div>
-    </Card>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </div>
+      </Card>
+    </Link>
   );
 }

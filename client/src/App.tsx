@@ -51,6 +51,7 @@ import AdminStaticPages from "@/pages/admin/static-pages";
 import AdminTestimonials from "@/pages/admin/testimonials";
 import AdminAwards from "@/pages/admin/awards";
 import AdminSeoSettings from "@/pages/admin/seo-settings";
+import AdminNewsletters from "@/pages/admin/newsletters";
 
 import NotFound from "@/pages/not-found";
 
@@ -296,6 +297,11 @@ function Router() {
       <Route path="/admin/seo-settings">
         <ProtectedRoute>
           <AdminSeoSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/newsletters">
+        <ProtectedRoute>
+          <AdminNewsletters />
         </ProtectedRoute>
       </Route>
 

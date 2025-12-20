@@ -537,7 +537,7 @@ export const db = {
     },
     async getUpcoming(): Promise<Event[]> {
       if (!supabase) return [];
-      const { data, error } = await supabase.from('events').select('*').eq('published', true).gte('date', new Date().toISOString()).order('date', { ascending: true });
+      const { data, error } = await supabase.from('events').select('*').eq('published', true).gte('date', new Date().toISOString()).order('featured', { ascending: false }).order('date', { ascending: true });
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },

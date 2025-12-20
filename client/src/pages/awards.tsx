@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown, ExternalLink } from "lucide-react";
+import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown, ExternalLink, Play, Pause } from "lucide-react";
+import { FaSpotify, FaSoundcloud } from "react-icons/fa";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
@@ -385,12 +386,48 @@ function EntryCard({
   hasVoted: boolean;
   isVoting: boolean;
 }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.src = "";
+      }
+    };
+  }, [audio]);
+
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!entry.trackAudioUrl) return;
+
+    if (isPlaying && audio) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      if (!audio) {
+        const newAudio = new Audio(entry.trackAudioUrl);
+        newAudio.addEventListener("ended", () => setIsPlaying(false));
+        newAudio.addEventListener("error", () => {
+          setIsPlaying(false);
+          console.error("Audio playback error");
+        });
+        setAudio(newAudio);
+        newAudio.play().then(() => setIsPlaying(true)).catch(console.error);
+      } else {
+        audio.play().then(() => setIsPlaying(true)).catch(console.error);
+      }
+    }
+  };
+
   const imageUrl = categoryType === "artist" ? entry.artistImageUrl : entry.trackCoverUrl;
   const title = categoryType === "artist" ? entry.artistName : entry.trackTitle;
   const subtitle = categoryType === "track" ? entry.trackArtist : entry.artistBio;
 
   return (
-    <Card className="group overflow-hidden bg-card/50 hover:bg-card transition-all duration-300 border-border/50 hover:border-primary/30">
+    <Card className="group overflow-hidden bg-card/50 hover:bg-card transition-all duration-300 border-border/50 hover:border-primary/30 hover:shadow-lg">
       <div className="relative aspect-square overflow-hidden">
         {imageUrl ? (
           <img
@@ -415,30 +452,56 @@ function EntryCard({
             {entry.voteCount} votes
           </Badge>
         )}
+
+        {categoryType === "track" && entry.trackAudioUrl && (
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute top-3 left-3 h-10 w-10 rounded-full bg-background/90 hover:bg-primary hover:text-primary-foreground"
+            onClick={handlePlayPause}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+          </Button>
+        )}
       </div>
 
       <CardContent className="p-4 space-y-3">
         <div>
-          <h3 className="font-semibold text-lg truncate">{title || "Unknown"}</h3>
+          <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">{title || "Unknown"}</h3>
           {subtitle && (
             <p className="text-sm text-muted-foreground line-clamp-2">{subtitle}</p>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          {(entry.spotifyUrl || entry.appleMusicUrl || entry.soundcloudUrl) && (
+          {(entry.spotifyUrl || entry.soundcloudUrl) && (
             <div className="flex items-center gap-1">
               {entry.spotifyUrl && (
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8"
+                  className="h-8 w-8 hover:text-[#1DB954]"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(entry.spotifyUrl!, "_blank");
                   }}
+                  title="Listen on Spotify"
                 >
-                  <ExternalLink className="h-3.5 w-3.5" />
+                  <FaSpotify className="h-4 w-4" />
+                </Button>
+              )}
+              {entry.soundcloudUrl && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 hover:text-[#ff5500]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(entry.soundcloudUrl!, "_blank");
+                  }}
+                  title="Listen on SoundCloud"
+                >
+                  <FaSoundcloud className="h-4 w-4" />
                 </Button>
               )}
             </div>
