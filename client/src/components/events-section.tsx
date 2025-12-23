@@ -54,7 +54,16 @@ export function EventsSection({
   title = "",
   showViewAll = true,
 }: EventsSectionProps) {
-  const displayEvents = events.length > 0 ? events : demoEvents;
+  const displayEvents = events.length > 0 
+    ? [...events].sort((a, b) => {
+        // Sort by featured first, then by date
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateA - dateB;
+      })
+    : demoEvents;
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return { month: "", day: "" };

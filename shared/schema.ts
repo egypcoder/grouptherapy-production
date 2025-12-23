@@ -139,6 +139,7 @@ export const radioShows = pgTable("radio_shows", {
   startTime: text("start_time"),
   endTime: text("end_time"),
   timezone: text("timezone").default("UTC"),
+  repeat24h: boolean("repeat_24h").default(false),
   isLive: boolean("is_live").default(false),
   published: boolean("published").default(false),
   createdAt: timestamp("created_at").defaultNow(),

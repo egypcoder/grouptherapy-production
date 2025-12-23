@@ -260,12 +260,31 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const liveShow = todayShows.find((show) => {
-          if (!show.startTime || !show.endTime) return false;
-          const startMinutes = parseTimeToMinutes(show.startTime);
-          const endMinutes = parseTimeToMinutes(show.endTime);
-          return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-        });
+        // Check if today has 24-hour repeat enabled
+        const is24hRepeatDay = todayShows.length > 0 && todayShows.every(show => show.repeat24h);
+
+        let liveShow = null;
+        
+        if (is24hRepeatDay) {
+          // For 24-hour repeat days, rotate through shows based on current time
+          const publishedShows = todayShows.filter(show => show.published);
+          if (publishedShows.length > 0) {
+            // Calculate which show should be "current" based on time of day
+            const totalMinutesInDay = 24 * 60;
+            const currentMinutes = getCurrentMinutes();
+            const minutesPerShow = Math.floor(totalMinutesInDay / publishedShows.length);
+            const currentShowIndex = Math.floor(currentMinutes / minutesPerShow) % publishedShows.length;
+            liveShow = publishedShows[currentShowIndex];
+          }
+        } else {
+          // Normal scheduling logic
+          liveShow = todayShows.find((show) => {
+            if (!show.startTime || !show.endTime) return false;
+            const startMinutes = parseTimeToMinutes(show.startTime);
+            const endMinutes = parseTimeToMinutes(show.endTime);
+            return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+          });
+        }
 
         if (liveShow) {
           setHasScheduledShow(true);
@@ -287,7 +306,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const upcomingShows = todayShows
+        const upcomingShows = is24hRepeatDay ? [] : todayShows
           .filter((show) => {
             if (!show.startTime) return false;
             const startMinutes = parseTimeToMinutes(show.startTime);
@@ -416,7 +435,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
               title: currentSession.showName,
               artist: currentSession.hostName || "Unknown",
               coverUrl: currentSession.coverUrl,
-              audioUrl: currentSession.audioUrl,
               duration: currentSession.duration,
               playedAt: new Date().toISOString(),
               showId: currentSession.showId,
@@ -726,7 +744,16 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   }, [serverTimeOffset, currentSession]);
 
   const playStream = useCallback((stream: DbRadioTrack) => {
-    if (!stream) return;
+    if (!stream) {
+      console.warn("No stream provided to playStream");
+      return;
+    }
+
+    // Handle SoundCloud URLs - open in new tab since they can't be played directly
+    if (stream.soundcloudUrl) {
+      window.open(stream.soundcloudUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
 
     // Mark this as NOT a live session
     isLiveSessionRef.current = false;
@@ -755,9 +782,14 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         hostName?: string;
       },
     ) => {
+      if (!url) {
+        console.warn("No audio URL provided for playback");
+        return;
+      }
+
       const track = trackInfo || {
         title: stream.title,
-        artist: stream.artist,
+        artist: stream.artist || "",
         coverUrl: stream.coverUrl,
       };
 
@@ -777,40 +809,51 @@ export function RadioProvider({ children }: { children: ReactNode }) {
             })
             .catch((err) => {
               console.error("Playback failed:", err);
+              // If playback fails, try to open URL in new tab as fallback
+              if (url.startsWith('http')) {
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }
             });
         }
       }, 200);
     };
 
-    if (stream.audioUrl) {
-      startPlayback(stream.audioUrl);
+    // Check if stream has a direct audio URL (not in the interface but might be added)
+    const audioUrl = (stream as any).audioUrl;
+    if (audioUrl) {
+      startPlayback(audioUrl);
       return;
     }
 
-    if (!stream.showId) {
-      console.warn("No audio URL or show ID for stream:", stream.title);
-      return;
-    }
-
-    db.radioShows
-      .getById(stream.showId)
-      .then((show) => {
-        if (show) {
-          const url = show.recordedUrl || show.streamUrl;
-          if (url) {
-            startPlayback(url, {
-              title: show.title,
-              artist: show.hostName,
-              coverUrl: show.coverUrl || stream.coverUrl,
-              showName: show.title,
-              hostName: show.hostName,
-            });
+    // Try to get audio from associated show
+    if (stream.showId) {
+      db.radioShows
+        .getById(stream.showId)
+        .then((show) => {
+          if (show) {
+            const url = show.recordedUrl || show.streamUrl;
+            if (url) {
+              startPlayback(url, {
+                title: stream.title || show.title,
+                artist: stream.artist || show.hostName,
+                coverUrl: stream.coverUrl || show.coverUrl,
+                showName: show.title,
+                hostName: show.hostName,
+              });
+            } else {
+              console.warn("No audio URL found for show:", show.title);
+            }
           } else {
-            console.warn("No audio URL found for show:", show.title);
+            console.warn("Show not found for stream:", stream.title);
           }
-        }
-      })
-      .catch(console.error);
+        })
+        .catch((err) => {
+          console.error("Error fetching show for stream:", err);
+        });
+      return;
+    }
+
+    console.warn("No audio URL, show ID, or SoundCloud URL for stream:", stream.title);
   }, []);
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Ticket, Clock, Filter, Grid, List as ListIcon, Map } from "lucide-react";
+import { MapPin, Calendar, Ticket, Clock, Filter, Grid, List as ListIcon, Map, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
@@ -226,11 +226,20 @@ function EventCard({
   formatTime: (date: Date | string | null) => string;
 }) {
   const isPast = event.date ? new Date(event.date) < new Date() : false;
+  const dateObj = event.date ? new Date(event.date) : null;
+  const month = dateObj ? dateObj.toLocaleDateString("en-US", { month: "short" }) : "";
+  const day = dateObj ? dateObj.getDate().toString() : "";
 
   return (
     <Link href={`/events/${event.slug || event.id}`}>
-      <Card className={cn("overflow-hidden group cursor-pointer hover:shadow-lg transition-all", isPast && "opacity-70")} data-testid={`card-event-${event.id}`}>
-        <div className="relative aspect-[16/9] overflow-hidden">
+      <div 
+        className={cn(
+          "group cursor-pointer rounded-2xl overflow-hidden bg-card border border-border/50 hover:border-border hover:shadow-lg transition-all",
+          isPast && "opacity-70"
+        )} 
+        data-testid={`card-event-${event.id}`}
+      >
+        <div className="relative aspect-[16/10] overflow-hidden">
           {event.imageUrl ? (
             <img
               src={event.imageUrl}
@@ -241,37 +250,45 @@ function EventCard({
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
           )}
-
-          <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-sm rounded-md px-3 py-2 text-center">
-            <div className="text-xs font-medium text-muted-foreground uppercase">
-              {new Date(event.date!).toLocaleDateString("en-US", { month: "short" })}
+          
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          
+          <div className="absolute top-4 left-4 bg-card border border-border rounded-xl px-3 py-2 text-center min-w-[52px]">
+            <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {month}
             </div>
-            <div className="text-xl font-bold">
-              {new Date(event.date!).getDate()}
+            <div className="text-xl font-bold text-card-foreground leading-none">
+              {day}
             </div>
           </div>
 
           {event.featured && !isPast && (
-            <Badge className="absolute top-3 right-3">Featured</Badge>
+            <Badge className="absolute top-4 right-4 rounded-full" variant="default">
+              Featured
+            </Badge>
           )}
           {isPast && (
-            <Badge variant="secondary" className="absolute top-3 right-3">Past</Badge>
+            <Badge variant="secondary" className="absolute top-4 right-4 rounded-full">Past</Badge>
           )}
         </div>
 
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+        <div className="p-5">
+          <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors" data-testid={`text-event-title-${event.id}`}>
             {event.title}
           </h3>
 
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{event.venue}, {event.city}</span>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4" />
+              <span className="truncate" data-testid={`text-event-location-${event.id}`}>
+                {event.city}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 flex-shrink-0" />
-              <span>{formatDate(event.date)}</span>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-4 w-4" />
+              <span data-testid={`text-event-date-${event.id}`}>
+                {event.venue}
+              </span>
             </div>
           </div>
 
@@ -281,21 +298,33 @@ function EventCard({
             </div>
           )}
 
-          {!isPast && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t">
-              {event.ticketPrice && (
-                <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
-              )}
-              {event.ticketUrl && (
-                <Button size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(event.ticketUrl, '_blank'); }}>
-                  <Ticket className="h-4 w-4 mr-2" />
-                  Tickets
-                </Button>
+          {event.ticketPrice && !isPast && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
+              <span className="font-semibold text-primary" data-testid={`text-event-price-${event.id}`}>
+                From ${event.ticketPrice}
+              </span>
+              {event.ticketUrl ? (
+                <span 
+                  className="text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(event.ticketUrl, '_blank');
+                  }}
+                >
+                  Get Tickets
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                  Get Tickets
+                  <ArrowRight className="h-4 w-4" />
+                </span>
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </Link>
   );
 }
@@ -310,10 +339,17 @@ function EventListCard({
   formatTime: (date: Date | string | null) => string;
 }) {
   const isPast = event.date ? new Date(event.date) < new Date() : false;
+  const dateObj = event.date ? new Date(event.date) : null;
 
   return (
     <Link href={`/events/${event.slug || event.id}`}>
-      <Card className={cn("overflow-hidden cursor-pointer hover:shadow-lg transition-all group", isPast && "opacity-70")} data-testid={`card-event-list-${event.id}`}>
+      <div 
+        className={cn(
+          "overflow-hidden cursor-pointer rounded-2xl bg-card border border-border/50 hover:border-border hover:shadow-lg transition-all group",
+          isPast && "opacity-70"
+        )} 
+        data-testid={`card-event-list-${event.id}`}
+      >
         <div className="flex flex-col sm:flex-row">
           <div className="relative w-full sm:w-48 aspect-video sm:aspect-square flex-shrink-0 overflow-hidden">
             {event.imageUrl ? (
@@ -326,58 +362,76 @@ function EventListCard({
               <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
             )}
             
-            <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm rounded px-2 py-1 text-center">
-              <div className="text-xs font-bold">
-                {new Date(event.date!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            
+            <div className="absolute top-2 left-2 bg-card border border-border rounded-lg px-2 py-1 text-center">
+              <div className="text-xs font-bold text-card-foreground">
+                {dateObj ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
               </div>
             </div>
           </div>
 
-          <CardContent className="flex-1 p-4 flex flex-col justify-between">
+          <div className="flex-1 p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-start justify-between gap-4 mb-2">
                 <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">{event.title}</h3>
-                {event.featured && !isPast && <Badge>Featured</Badge>}
-                {isPast && <Badge variant="secondary">Past</Badge>}
+                {event.featured && !isPast && <Badge className="rounded-full">Featured</Badge>}
+                {isPast && <Badge variant="secondary" className="rounded-full">Past</Badge>}
               </div>
               
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                {event.description}
-              </p>
+              {event.description && (
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                  {event.description}
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
-                  {event.venue}, {event.city}
+                  <span className="truncate">{event.city}</span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
-                  {formatDate(event.date)}
+                  <span>{formatDate(event.date)}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  {formatTime(event.date)}
-                </div>
+                {event.date && formatTime(event.date) && (
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" />
+                    <span>{formatTime(event.date)}</span>
+                  </div>
+                )}
                 {event.date && (
                   <EventCountdown targetDate={event.date} variant="compact" />
                 )}
               </div>
             </div>
 
-            {!isPast && event.ticketUrl && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                {event.ticketPrice && (
-                  <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
+            {!isPast && event.ticketPrice && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
+                <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
+                {event.ticketUrl ? (
+                  <span 
+                    className="text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.open(event.ticketUrl, '_blank');
+                    }}
+                  >
+                    Get Tickets
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                ) : (
+                  <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
+                    Get Tickets
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
                 )}
-                <Button size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(event.ticketUrl, '_blank'); }}>
-                  <Ticket className="h-4 w-4 mr-2" />
-                  Get Tickets
-                </Button>
               </div>
             )}
-          </CardContent>
+          </div>
         </div>
-      </Card>
+      </div>
     </Link>
   );
 }

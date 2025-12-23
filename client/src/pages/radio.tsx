@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Volume2, Radio, Clock, Calendar, Users, ChevronRight, Music, ExternalLink } from "lucide-react";
+import { RadioTrack } from "@/lib/database";
 import { PageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { RadioChat } from "@/components/radio-chat";
 import { useRadio } from "@/lib/radio-context";
-import { db, RadioShow, RadioTrack } from "@/lib/database";
+import { db, RadioShow} from "@/lib/database";
 import { cn } from "@/lib/utils";
 
 const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -25,13 +26,13 @@ function getCurrentMinutes(): number {
 }
 
 export default function RadioPage() {
-  const { isPlaying, volume, currentTrack, isLive, togglePlay, setVolume, listenerCount, hasAudioUrl, recentStreams, playStream, countdownSeconds, currentShow } = useRadio();
+  const { isPlaying, volume, currentTrack, isLive, togglePlay, setVolume, listenerCount, hasAudioUrl, hasScheduledShow, recentStreams, playStream, countdownSeconds, currentShow } = useRadio();
   const [selectedDay, setSelectedDay] = useState(new Date().getDay());
   const [shows, setShows] = useState<RadioShow[]>([]);
   const [loading, setLoading] = useState(true);
   
   const isUpcoming = !isLive && currentShow && countdownSeconds !== null && countdownSeconds > 0;
-  const canPlay = hasAudioUrl && !isUpcoming;
+  const canPlay = (isLive || hasScheduledShow) && hasAudioUrl && !isUpcoming;
 
   useEffect(() => {
     async function fetchShows() {
@@ -51,7 +52,23 @@ export default function RadioPage() {
   const showsForSelectedDay = shows
     .filter(show => show.dayOfWeek === selectedDay)
     .map(show => {
+      // Check if this day has 24-hour repeat enabled
+      const dayShows = shows.filter(s => s.dayOfWeek === selectedDay && s.published);
+      const is24hRepeatDay = dayShows.length > 0 && dayShows.every(s => s.repeat24h);
+      
       if (!show.startTime || !show.endTime) return { ...show, isLive: false };
+      
+      // For 24-hour repeat days, determine which show is currently playing
+      if (is24hRepeatDay && show.published && selectedDay === new Date().getDay()) {
+        const totalMinutesInDay = 24 * 60;
+        const currentMinutes = getCurrentMinutes();
+        const minutesPerShow = Math.floor(totalMinutesInDay / dayShows.length);
+        const currentShowIndex = Math.floor(currentMinutes / minutesPerShow) % dayShows.length;
+        const currentShow = dayShows[currentShowIndex];
+        
+        return { ...show, isLive: currentShow ? currentShow.id === show.id : false };
+      }
+      
       const currentMinutes = getCurrentMinutes();
       const startMinutes = parseTimeToMinutes(show.startTime);
       const endMinutes = parseTimeToMinutes(show.endTime);
@@ -227,7 +244,7 @@ export default function RadioPage() {
                     <p className="text-muted-foreground text-center py-8">Loading shows...</p>
                   ) : showsForSelectedDay.length > 0 ? (
                     showsForSelectedDay.map((show) => (
-                      <ShowCard key={show.id} show={show} />
+                      <ShowCard key={show.id} show={show} isSchedule={true} />
                     ))
                   ) : (
                     <p className="text-muted-foreground text-center py-8">
@@ -272,14 +289,34 @@ export default function RadioPage() {
   );
 }
 
-function ShowCard({ show }: { show: RadioShow }) {
+function ShowCard({ show, isSchedule = false }: { show: RadioShow; isSchedule?: boolean }) {
+  const { playStream } = useRadio();
+  
+  const handlePlay = useCallback(() => {
+    if (show.recordedUrl) {
+      // Create a temporary track object for playback
+      const track: RadioTrack = {
+        id: show.id,
+        title: show.title,
+        artist: show.hostName || '',
+        coverUrl: show.coverUrl,
+        playedAt: new Date().toISOString(),
+        createdAt: show.createdAt || new Date().toISOString(),
+        showId: show.id,
+      };
+      playStream(track as any);
+    }
+  }, [show, playStream]);
+
   return (
     <div
       className={cn(
         "flex items-start gap-4 p-4 rounded-md border transition-colors",
+        isSchedule ? "cursor-default" : "cursor-pointer",
         show.isLive ? "border-primary bg-primary/5" : "hover:bg-muted/50"
       )}
       data-testid={`card-show-${show.id}`}
+      onClick={isSchedule ? undefined : handlePlay}
     >
       {/* Host Image */}
       <div className="relative flex-shrink-0">
@@ -323,10 +360,20 @@ function ShowCard({ show }: { show: RadioShow }) {
         <p className="text-xs text-muted-foreground">{show.timezone}</p>
       </div>
 
-      {/* Arrow */}
-      <Button size="icon" variant="ghost" className="flex-shrink-0">
-        <ChevronRight className="h-4 w-4" />
-      </Button>
+      {/* Play Button - only show if not in schedule */}
+      {!isSchedule && (
+        <Button 
+          size="icon" 
+          variant="ghost" 
+          className="flex-shrink-0"
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePlay();
+          }}
+        >
+          <Play className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
@@ -352,7 +399,7 @@ function useSoundCloudMetadata(soundcloudUrl?: string) {
       setLoading(true);
       try {
         const response = await fetch(
-          `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(soundcloudUrl)}`
+          `https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(soundcloudUrl || '')}`
         );
         if (response.ok) {
           const data = await response.json();

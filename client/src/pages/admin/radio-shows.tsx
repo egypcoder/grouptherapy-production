@@ -11,7 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronUp, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/image-upload";
 import { AudioUpload } from "@/components/audio-upload";
@@ -34,11 +37,30 @@ function parseTimeToMinutes(time: string): number {
   return (hours || 0) * 60 + (minutes || 0);
 }
 
-function getShowStatus(show: RadioShow): { status: 'live' | 'scheduled' | 'recorded'; label: string } {
+function getShowStatus(show: RadioShow, allShows: RadioShow[] = []): { status: 'live' | 'scheduled' | 'recorded'; label: string } {
   const now = new Date();
   const currentDay = now.getDay();
 
-  if (show.dayOfWeek !== undefined && show.startTime && show.endTime) {
+  // Check if this show is part of a 24-hour repeat day
+  const dayShows = allShows.filter((s) => s.dayOfWeek === show.dayOfWeek && s.published);
+  const is24hRepeatDay = dayShows.length > 0 && dayShows.every((s) => s.repeat24h);
+
+  // For 24-hour repeat days, determine which show is currently playing
+  if (is24hRepeatDay && currentDay === show.dayOfWeek && show.published) {
+    const totalMinutesInDay = 24 * 60;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const minutesPerShow = Math.floor(totalMinutesInDay / dayShows.length);
+    const currentShowIndex = Math.floor(currentMinutes / minutesPerShow) % dayShows.length;
+    const currentShow = dayShows[currentShowIndex];
+    
+    if (currentShow && currentShow.id === show.id) {
+      return { status: 'live', label: 'Live' };
+    } else {
+      return { status: 'scheduled', label: 'Upcoming' };
+    }
+  }
+
+  if (show.dayOfWeek !== undefined && show.startTime && show.endTime && !is24hRepeatDay) {
     const startMins = parseTimeToMinutes(show.startTime);
     const endMins = parseTimeToMinutes(show.endTime);
     const nowMins = now.getHours() * 60 + now.getMinutes();
@@ -69,8 +91,8 @@ function getShowStatus(show: RadioShow): { status: 'live' | 'scheduled' | 'recor
   return { status: 'scheduled', label: 'Scheduled' };
 }
 
-function StatusBadge({ show }: { show: RadioShow }) {
-  const { status, label } = getShowStatus(show);
+function StatusBadge({ show, shows }: { show: RadioShow; shows: RadioShow[] }) {
+  const { status, label } = getShowStatus(show, shows);
 
   const variants: Record<string, string> = {
     live: 'bg-green-500/10 text-green-600 border-green-500/20',
@@ -106,6 +128,7 @@ export default function AdminRadioShows() {
     startTime: "00:00",
     endTime: "00:00",
     timezone: "UTC",
+    repeat24h: false,
   });
   const [trackFormData, setTrackFormData] = useState({
     title: "",
@@ -139,6 +162,31 @@ export default function AdminRadioShows() {
       } catch {
         return [];
       }
+    },
+  });
+
+  const toggleDayRepeat24hMutation = useMutation({
+    mutationFn: async ({ day, enabled }: { day: number; enabled: boolean }) => {
+      const dayShows = shows.filter((show) => show.dayOfWeek === day);
+      const updates = dayShows.map(show => 
+        db.radioShows.update(show.id, { repeat24h: enabled })
+      );
+      await Promise.all(updates);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["radioShows"] });
+      const dayLabel = daysOfWeek.find(d => d.value === variables.day)?.label || '';
+      toast({
+        title: "24h Repeat Updated",
+        description: `24-hour repeat mode ${variables.enabled ? 'enabled' : 'disabled'} for ${dayLabel}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update 24h repeat mode",
+        variant: "destructive",
+      });
     },
   });
 
@@ -376,6 +424,7 @@ export default function AdminRadioShows() {
       startTime: show.startTime || "00:00",
       endTime: show.endTime || "00:00",
       timezone: show.timezone || "UTC",
+      repeat24h: false, // Not used in form anymore
     });
     setIsDialogOpen(true);
   };
@@ -426,6 +475,7 @@ export default function AdminRadioShows() {
       startTime: "00:00",
       endTime: "00:00",
       timezone: "UTC",
+      repeat24h: false,
     });
   };
 
@@ -463,57 +513,132 @@ export default function AdminRadioShows() {
             <TabsTrigger value="recent">Recent Streams</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="shows" className="space-y-2">
-            <div className="grid gap-2">
-              {shows.map((show) => (
-                <Card 
-                  key={show.id} 
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => handleEdit(show)}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-muted rounded-full overflow-hidden flex-shrink-0">
-                        {show.hostImageUrl ? (
-                          <img src={show.hostImageUrl} alt={show.hostName} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Radio className="h-4 w-4 text-muted-foreground" />
+          <TabsContent value="shows" className="space-y-4">
+            {daysOfWeek.map((day) => {
+              const dayShows = shows.filter((show) => show.dayOfWeek === day.value);
+              const dayRepeat24h = dayShows.length > 0 && dayShows.every((show) => show.repeat24h);
+              
+              return (
+                <Collapsible key={day.value} defaultOpen={dayShows.length > 0}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <CardContent className="p-4 cursor-pointer hover:bg-muted/50 transition-colors group">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h3 className="font-semibold text-base">{day.label}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              {dayShows.length} {dayShows.length === 1 ? 'show' : 'shows'}
+                            </Badge>
+                            {dayRepeat24h && (
+                              <Badge variant="default" className="text-xs gap-1">
+                                <Repeat className="h-3 w-3" />
+                                24h Repeat
+                              </Badge>
+                            )}
+                          </div>
+                          <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </div>
+                      </CardContent>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-4 pb-4 space-y-3">
+                        {/* 24h Repeat Switch for the Day */}
+                        {dayShows.length > 0 && (
+                          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                            <div className="space-y-0.5">
+                              <Label htmlFor={`repeat24h-${day.value}`} className="text-sm font-medium cursor-pointer">
+                                <div className="flex items-center gap-2">
+                                  <Repeat className="h-4 w-4" />
+                                  24-Hour Repeat Mode
+                                </div>
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                Play all shows for {day.label} continuously in a loop for 24 hours
+                              </p>
+                            </div>
+                            <Switch
+                              id={`repeat24h-${day.value}`}
+                              checked={dayRepeat24h}
+                              onCheckedChange={(checked) => toggleDayRepeat24hMutation.mutate({ day: day.value, enabled: checked })}
+                              disabled={toggleDayRepeat24hMutation.isPending}
+                            />
                           </div>
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-sm truncate">{show.title}</h3>
-                          <StatusBadge show={show} />
+                        
+                        <div className="space-y-2">
+                          {dayShows.length === 0 ? (
+                            <p className="text-sm text-muted-foreground py-4 text-center">
+                              No shows scheduled for {day.label}
+                            </p>
+                          ) : (
+                            dayShows
+                              .sort((a, b) => {
+                                if (!a.startTime) return 1;
+                                if (!b.startTime) return -1;
+                                return parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime);
+                              })
+                              .map((show) => (
+                                <Card 
+                                  key={show.id} 
+                                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                  onClick={() => handleEdit(show)}
+                                >
+                                  <CardContent className="p-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 bg-muted rounded-full overflow-hidden flex-shrink-0">
+                                        {show.hostImageUrl ? (
+                                          <img src={show.hostImageUrl} alt={show.hostName} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center">
+                                            <Radio className="h-4 w-4 text-muted-foreground" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <h4 className="font-medium text-sm truncate">{show.title}</h4>
+                                          <StatusBadge show={show} shows={shows} />
+                                          {show.repeat24h && (
+                                            <Badge variant="secondary" className="text-[10px] gap-1">
+                                              <Repeat className="h-2.5 w-2.5" />
+                                              24h
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                          {show.hostName} • {show.startTime}-{show.endTime}
+                                        </p>
+                                      </div>
+                                      <div className="flex gap-1">
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-7 w-7" 
+                                          onClick={(e) => { e.stopPropagation(); handleEdit(show); }}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="h-7 w-7" 
+                                          onClick={(e) => handleDelete(show.id, e)}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {show.hostName} • {daysOfWeek.find(d => d.value === show.dayOfWeek)?.label} {show.startTime}-{show.endTime}
-                        </p>
                       </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7" 
-                          onClick={(e) => { e.stopPropagation(); handleEdit(show); }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7" 
-                          onClick={(e) => handleDelete(show.id, e)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              );
+            })}
           </TabsContent>
 
           <TabsContent value="recent" className="space-y-2">
@@ -759,12 +884,26 @@ export default function AdminRadioShows() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="timezone">Timezone</Label>
-                    <Input
-                      id="timezone"
-                      placeholder="e.g., UTC, America/New_York"
-                      value={formData.timezone}
-                      onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                    />
+                    <Select 
+                      value={formData.timezone} 
+                      onValueChange={(value) => setFormData({ ...formData, timezone: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
+                        <SelectItem value="America/New_York">EST/EDT (Eastern Time)</SelectItem>
+                        <SelectItem value="America/Chicago">CST/CDT (Central Time)</SelectItem>
+                        <SelectItem value="America/Denver">MST/MDT (Mountain Time)</SelectItem>
+                        <SelectItem value="America/Los_Angeles">PST/PDT (Pacific Time)</SelectItem>
+                        <SelectItem value="Europe/London">GMT/BST (London)</SelectItem>
+                        <SelectItem value="Europe/Paris">CET/CEST (Paris)</SelectItem>
+                        <SelectItem value="Europe/Berlin">CET/CEST (Berlin)</SelectItem>
+                        <SelectItem value="Asia/Tokyo">JST (Tokyo)</SelectItem>
+                        <SelectItem value="Australia/Sydney">AEST/AEDT (Sydney)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

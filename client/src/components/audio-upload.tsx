@@ -72,10 +72,16 @@ export function AudioUpload({
       toast({ title: "Audio uploaded successfully" });
     } catch (error) {
       console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const isLargeFile = file.size > 100 * 1024 * 1024;
+      
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : "Please try again",
-        variant: "destructive"
+        description: isLargeFile 
+          ? `${errorMessage}. Large files may take longer to upload. Please ensure you have a stable internet connection and try again.`
+          : errorMessage,
+        variant: "destructive",
+        duration: 8000,
       });
       setAudioUrl(null);
       setFileName("");

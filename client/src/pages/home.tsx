@@ -1,14 +1,14 @@
 import { motion, useInView, useMotionValue, useSpring } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HeroSection } from "@/components/hero-section";
 import { ReleasesCarousel } from "@/components/releases-carousel";
-import { EventsSection } from "@/components/events-section";
+import { EventsCarousel } from "@/components/events-carousel";
 import { PlaylistsSection } from "@/components/playlists-section";
 import { FeaturedArtists } from "@/components/featured-artists";
 import { NewsletterSection } from "@/components/newsletter-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import {
@@ -25,6 +25,8 @@ import {
   type AwardEntry,
 } from "@/lib/database";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import {
   Users,
   Disc3,
@@ -39,6 +41,8 @@ import {
   Trophy,
   Play,
   Vote,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -193,10 +197,93 @@ function SectionHeader({
 function AwardsSection({
   entries,
   hasActiveVoting,
+  periodId,
 }: {
   entries: AwardEntry[];
   hasActiveVoting: boolean;
+  periodId?: string;
 }) {
+  const { toast } = useToast();
+  const [votedEntries, setVotedEntries] = useState<Set<string>>(new Set());
+  const [fingerprint, setFingerprint] = useState<string>("");
+
+  useEffect(() => {
+    // Generate fingerprint for duplicate vote prevention
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillText("fingerprint", 2, 2);
+    }
+    const nav = navigator;
+    const data = [
+      nav.userAgent,
+      nav.language,
+      screen.width,
+      screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset(),
+      nav.platform,
+    ].join("|");
+    setFingerprint(btoa(data));
+    
+    const stored = localStorage.getItem("voted_entries_home");
+    if (stored) {
+      try {
+        setVotedEntries(new Set(JSON.parse(stored)));
+      } catch {}
+    }
+  }, []);
+
+  const voteMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      if (!periodId) throw new Error("No voting period available");
+      return db.awards.votes.submit(entryId, periodId, undefined, fingerprint);
+    },
+    onSuccess: (_, entryId) => {
+      const newVoted = new Set(votedEntries);
+      newVoted.add(entryId);
+      setVotedEntries(newVoted);
+      localStorage.setItem("voted_entries_home", JSON.stringify([...newVoted]));
+      queryClient.invalidateQueries({ queryKey: ["featuredAwardEntries"] });
+      toast({
+        title: "Vote Submitted!",
+        description: "Thank you for voting. Your voice matters!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Vote Failed",
+        description: error.message || "Unable to submit vote. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleVote = (entryId: string) => {
+    if (!periodId) {
+      toast({
+        title: "No Active Voting",
+        description: "There is no active voting period.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (votedEntries.has(entryId)) {
+      toast({
+        title: "Already Voted",
+        description: "You have already voted for this entry.",
+        variant: "destructive",
+      });
+      return;
+    }
+    voteMutation.mutate(entryId);
+  };
+
+  // Calculate total votes for percentage
+  const totalVotes = entries.reduce((sum, entry) => sum + (entry.voteCount || 0), 0);
+
   if (!hasActiveVoting || entries.length === 0) return null;
 
   return (
@@ -259,11 +346,46 @@ function AwardsSection({
                       {subtitle}
                     </p>
                   )}
-                  {entry.voteCount > 0 && (
-                    <p className="text-xs text-primary mt-2">
-                      {entry.voteCount} votes
-                    </p>
-                  )}
+                  <div className="flex items-center justify-between mt-3">
+                    <div>
+                      {entry.voteCount > 0 && (
+                        <p className="text-xs text-primary">
+                          {entry.voteCount} {entry.voteCount === 1 ? 'vote' : 'votes'}
+                          {totalVotes > 0 && ` • ${Math.round((entry.voteCount / totalVotes) * 100)}%`}
+                        </p>
+                      )}
+                      {votedEntries.has(entry.id) && (
+                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          You voted
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={votedEntries.has(entry.id) ? "secondary" : "default"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVote(entry.id);
+                      }}
+                      disabled={votedEntries.has(entry.id) || voteMutation.isPending}
+                      className="gap-1"
+                    >
+                      {voteMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : votedEntries.has(entry.id) ? (
+                        <>
+                          <CheckCircle className="h-3 w-3" />
+                          Voted
+                        </>
+                      ) : (
+                        <>
+                          <Vote className="h-3 w-3" />
+                          Vote
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -420,20 +542,23 @@ export default function HomePage() {
         />
       </section>
 
-      <section className="py-16 md:py-24 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <SectionHeader
-            title="Our"
-            highlight="Artists"
-            description="The creative minds behind the sound"
-            action={{ label: "Meet The Artists", href: "/artists" }}
+      {/* Only show artists section if there are featured artists */}
+      {artists && artists.filter((a) => a.featured).length > 0 && (
+        <section className="py-16 md:py-24 bg-muted/30">
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
+            <SectionHeader
+              title="Our"
+              highlight="Artists"
+              description="The creative minds behind the sound"
+              action={{ label: "Meet The Artists", href: "/artists" }}
+            />
+          </div>
+          <FeaturedArtists
+            artists={artists?.filter((a) => a.featured) || []}
+            title=""
           />
-        </div>
-        <FeaturedArtists
-          artists={artists?.filter((a) => a.featured) || []}
-          title=""
-        />
-      </section>
+        </section>
+      )}
 
       <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
@@ -443,7 +568,7 @@ export default function HomePage() {
             description="Experience the music live"
             action={{ label: "View All Events", href: "/events" }}
           />
-          <EventsSection events={events || []} title="" showViewAll={false} />
+          <EventsCarousel events={events || []} title="" showViewAll={false} />
         </div>
       </section>
 
@@ -522,6 +647,7 @@ export default function HomePage() {
       <AwardsSection
         entries={featuredEntries}
         hasActiveVoting={activeVotingPeriods.length > 0}
+        periodId={activeVotingPeriods[0]?.id}
       />
 
       <NewsletterSection />

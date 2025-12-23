@@ -92,7 +92,7 @@ export default function AdminTours() {
       imageUrl: tour.imageUrl || "",
       startDate: startDateStr,
       endDate: endDateStr,
-      currency: (tour as any).currency || "USD",
+      currency: tour.currency || "USD",
       published: tour.published ?? true,
     });
     setIsDialogOpen(true);
@@ -106,7 +106,7 @@ export default function AdminTours() {
 
   const handleSave = () => {
     const slug = formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const tourData: Partial<Tour> & { currency?: string } = {
+    const tourData: Partial<Tour> = {
       title: formData.title,
       slug,
       artistName: formData.artistName,
@@ -114,7 +114,7 @@ export default function AdminTours() {
       imageUrl: formData.imageUrl,
       startDate: formData.startDate,
       endDate: formData.endDate || undefined,
-      currency: formData.currency,
+      currency: formData.currency || "USD",
       published: formData.published,
     };
     
@@ -181,8 +181,8 @@ export default function AdminTours() {
                       <Calendar className="h-3 w-3" />
                       {tour.startDate && new Date(tour.startDate).toLocaleDateString()}
                       {tour.endDate && ` - ${new Date(tour.endDate).toLocaleDateString()}`}
-                      {(tour as any).currency && (
-                        <Badge variant="outline" className="ml-2">{(tour as any).currency}</Badge>
+                      {tour.currency && (
+                        <Badge variant="outline" className="ml-2">{tour.currency}</Badge>
                       )}
                     </div>
                   </div>

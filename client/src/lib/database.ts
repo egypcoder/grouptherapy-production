@@ -98,6 +98,7 @@ export interface RadioShow {
   startTime?: string;
   endTime?: string;
   timezone: string;
+  repeat24h?: boolean;
   isLive: boolean;
   published: boolean;
   createdAt: string;
@@ -199,6 +200,7 @@ export interface Tour {
   imageUrl?: string;
   startDate: string;
   endDate?: string;
+  currency?: string;
   published: boolean;
   createdAt: string;
 }
@@ -389,19 +391,20 @@ export interface StatItem {
 }
 
 export interface SiteSettings {
-  id: string;
+  id?: string;
+  emailServiceConfig?: string; // JSON string of email service configuration
   heroTag?: string;
   heroTitle: string;
   heroSubtitle: string;
-  heroBackgroundImage: string;
-  heroBackgroundVideo: string;
-  heroBackgroundType: 'image' | 'video';
-  heroCtaText: string;
-  heroCtaLink: string;
-  showHeroRadio: boolean;
-  marqueeItems: MarqueeItem[];
-  marqueeSpeed: number;
-  statsItems: StatItem[];
+  heroBackgroundImage?: string;
+  heroBackgroundVideo?: string;
+  heroBackgroundType?: 'image' | 'video';
+  heroCtaText?: string;
+  heroCtaLink?: string;
+  showHeroRadio?: boolean;
+  marqueeItems?: MarqueeItem[];
+  marqueeSpeed?: number;
+  statsItems?: StatItem[];
   updatedAt: string;
 }
 

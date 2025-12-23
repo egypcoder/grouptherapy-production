@@ -595,9 +595,14 @@ export function GlobalRadioPlayer() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.05 }}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               const stream = recentStreams[i];
-                              if (stream) playStream(stream);
+                              if (stream) {
+                                playStream(stream);
+                              } else {
+                                console.warn("No stream found at index:", i);
+                              }
                             }}
                             className="flex items-center gap-2 flex-shrink-0 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer group"
                           >

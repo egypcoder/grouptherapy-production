@@ -91,44 +91,74 @@ async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | n
   }
 }
 
-async function getSpotifyAccessToken(): Promise<string | null> {
+async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
   const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
   
   if (!clientId || !clientSecret) {
-    console.error('Spotify credentials not configured');
+    console.error('Spotify credentials not configured. Please add VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET to your environment variables.');
     return null;
   }
   
-  try {
-    const response = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`),
-      },
-      body: 'grant_type=client_credentials',
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to get Spotify access token');
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`),
+        },
+        body: 'grant_type=client_credentials',
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        const errorData = errorText ? JSON.parse(errorText).catch(() => ({})) : {};
+        const errorMessage = errorData.error_description || errorData.error || `HTTP ${response.status}`;
+        
+        if (attempt < retries) {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          continue;
+        }
+        
+        throw new Error(`Failed to get Spotify access token: ${errorMessage}`);
+      }
+      
+      const data = await response.json();
+      if (!data.access_token) {
+        throw new Error('No access token in response');
+      }
+      
+      return data.access_token;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (attempt === retries) {
+        console.error(`Error getting Spotify access token after ${retries} attempts:`, errorMessage);
+        // Check for specific error types
+        if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
+          console.error('Network error - check your internet connection and CORS settings');
+        }
+        return null;
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
-    
-    const data = await response.json();
-    return data.access_token;
-  } catch (error) {
-    console.error('Error getting Spotify access token:', error);
-    return null;
   }
+  
+  return null;
 }
 
 function extractSpotifyIdAndType(url: string): { id: string; type: 'track' | 'album' } | null {
-  const trackMatch = url.match(/spotify\.com\/track\/([a-zA-Z0-9]+)/);
+  // Handle both spotify.com and open.spotify.com URLs
+  const trackMatch = url.match(/(?:open\.)?spotify\.com\/track\/([a-zA-Z0-9]+)/);
   if (trackMatch && trackMatch[1]) {
     return { id: trackMatch[1], type: 'track' };
   }
   
-  const albumMatch = url.match(/spotify\.com\/album\/([a-zA-Z0-9]+)/);
+  const albumMatch = url.match(/(?:open\.)?spotify\.com\/album\/([a-zA-Z0-9]+)/);
   if (albumMatch && albumMatch[1]) {
     return { id: albumMatch[1], type: 'album' };
   }
@@ -140,13 +170,13 @@ async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null
   try {
     const extracted = extractSpotifyIdAndType(url);
     if (!extracted) {
-      console.error('Could not extract Spotify ID from URL');
+      console.error('Could not extract Spotify ID from URL. Please ensure the URL is a valid Spotify track or album link.');
       return null;
     }
 
     const accessToken = await getSpotifyAccessToken();
     if (!accessToken) {
-      console.error('Could not get Spotify access token');
+      console.error('Could not get Spotify access token. Please check your Spotify API credentials.');
       return null;
     }
 
@@ -161,7 +191,15 @@ async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch Spotify ${extracted.type}`);
+      const errorText = await response.text();
+      let errorMessage = `Failed to fetch Spotify ${extracted.type}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorMessage;
+      } catch {
+        // If parsing fails, use default message
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -188,7 +226,8 @@ async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null
       source: 'spotify',
     };
   } catch (error) {
-    console.error('Spotify fetch error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('Spotify fetch error:', errorMessage);
     return null;
   }
 }
@@ -316,9 +355,12 @@ export default function AdminReleases() {
           description: `Successfully imported from ${linkType === 'soundcloud' ? 'SoundCloud' : 'Spotify'}`,
         });
       } else {
+        const errorMsg = linkType === 'spotify' 
+          ? "Could not fetch metadata from Spotify. Please check your Spotify API credentials (VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET) or enter details manually."
+          : "Could not fetch metadata. Please enter the details manually.";
         toast({
           title: "Could not fetch metadata",
-          description: "Please enter the details manually.",
+          description: errorMsg,
           variant: "destructive",
         });
       }
@@ -698,7 +740,6 @@ export default function AdminReleases() {
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Release title"
-                disabled={metadataFetched}
               />
             </div>
 
@@ -711,7 +752,6 @@ export default function AdminReleases() {
                 value={formData.artistName}
                 onChange={(e) => setFormData({ ...formData, artistName: e.target.value })}
                 placeholder="Artist name"
-                disabled={metadataFetched}
               />
             </div>
 

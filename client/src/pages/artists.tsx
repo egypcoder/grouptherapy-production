@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
@@ -10,76 +10,20 @@ import { SiSpotify, SiInstagram, SiSoundcloud } from "react-icons/si";
 import { useQuery } from "@tanstack/react-query";
 import { db, type Artist } from "@/lib/database";
 
-const demoArtists: Partial<Artist>[] = [
-  {
-    id: "1",
-    name: "Luna Wave",
-    slug: "luna-wave",
-    bio: "Electronic producer known for atmospheric soundscapes and driving beats that transport listeners to otherworldly dimensions.",
-    imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=500&fit=crop",
-    featured: true,
-    socialLinks: { instagram: "#", spotify: "#", soundcloud: "#" },
-  },
-  {
-    id: "2",
-    name: "Neon Pulse",
-    slug: "neon-pulse",
-    bio: "Techno artist pushing the boundaries of electronic music with innovative sound design and relentless energy.",
-    imageUrl: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=500&fit=crop",
-    featured: true,
-    socialLinks: { instagram: "#", spotify: "#" },
-  },
-  {
-    id: "3",
-    name: "Circuit Breaker",
-    slug: "circuit-breaker",
-    bio: "Drum and bass pioneer with a unique fusion of genres that has earned him a dedicated following worldwide.",
-    imageUrl: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=400&h=500&fit=crop",
-    featured: true,
-    socialLinks: { spotify: "#", soundcloud: "#" },
-  },
-  {
-    id: "4",
-    name: "Aqua Dreams",
-    slug: "aqua-dreams",
-    bio: "Deep house specialist creating waves of emotion through carefully crafted productions.",
-    imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=500&fit=crop",
-    socialLinks: { instagram: "#", spotify: "#" },
-  },
-  {
-    id: "5",
-    name: "Cosmic Ray",
-    slug: "cosmic-ray",
-    bio: "Progressive house producer taking listeners on cosmic journeys through sound.",
-    imageUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=500&fit=crop",
-    socialLinks: { spotify: "#" },
-  },
-  {
-    id: "6",
-    name: "Street Beat",
-    slug: "street-beat",
-    bio: "UK Garage revivalist bringing the classic sound to a new generation.",
-    imageUrl: "https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=500&fit=crop",
-    socialLinks: { instagram: "#", soundcloud: "#" },
-  },
-];
-
 export default function ArtistsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: artists } = useQuery<Artist[]>({
+  const { data: artists = [], isLoading } = useQuery<Artist[]>({
     queryKey: ["artists"],
     queryFn: () => db.artists.getAll(),
   });
 
-  const displayArtists = artists?.length ? artists : demoArtists;
-
-  const filteredArtists = displayArtists.filter((artist) =>
+  const filteredArtists = artists.filter((artist) =>
     artist.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const artistsSchema = generateStructuredData("ItemList", {
-    itemListElement: displayArtists.slice(0, 20).map((artist, index) => ({
+    itemListElement: artists.slice(0, 20).map((artist, index) => ({
       "@type": "ListItem",
       position: index + 1,
       item: {
@@ -125,48 +69,66 @@ export default function ArtistsPage() {
           </div>
         </div>
 
-        {/* Featured Artists */}
-        {filteredArtists.some((a) => a.featured) && (
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold mb-6">Featured Artists</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredArtists
-                .filter((a) => a.featured)
-                .map((artist, index) => (
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-80 bg-muted rounded-lg animate-pulse" />
+            ))}
+          </div>
+        ) : artists.length === 0 ? (
+          <div className="text-center py-16">
+            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">No Artists Announced</h2>
+            <p className="text-muted-foreground">
+              Stay tuned for upcoming artist announcements!
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Featured Artists */}
+            {filteredArtists.some((a) => a.featured) && (
+              <section className="mb-16">
+                <h2 className="text-2xl font-bold mb-6">Featured Artists</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredArtists
+                    .filter((a) => a.featured)
+                    .map((artist, index) => (
+                      <motion.div
+                        key={artist.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <ArtistCard artist={artist} featured />
+                      </motion.div>
+                    ))}
+                </div>
+              </section>
+            )}
+
+            {/* All Artists */}
+            <section>
+              <h2 className="text-2xl font-bold mb-6">All Artists</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+                {filteredArtists.map((artist, index) => (
                   <motion.div
                     key={artist.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.03 }}
                   >
-                    <ArtistCard artist={artist as Artist} featured />
+                    <ArtistCard artist={artist} />
                   </motion.div>
                 ))}
-            </div>
-          </section>
-        )}
+              </div>
+            </section>
 
-        {/* All Artists */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6">All Artists</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-            {filteredArtists.map((artist, index) => (
-              <motion.div
-                key={artist.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <ArtistCard artist={artist as Artist} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {filteredArtists.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No artists found</p>
-          </div>
+            {filteredArtists.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No artists found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -55,6 +55,7 @@ import AdminNewsletters from "@/pages/admin/newsletters";
 
 import NotFound from "@/pages/not-found";
 
+
 function ScrollToTop() {
   const [location] = useLocation();
 

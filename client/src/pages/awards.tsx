@@ -297,6 +297,8 @@ function VotingPeriodSection({
   onVote: (entryId: string, periodId: string) => void;
   isVoting: boolean;
 }) {
+  // Calculate total votes for percentage
+  const totalVotes = period.entries.reduce((sum, entry) => sum + (entry.voteCount || 0), 0);
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("en-US", {
       month: "short",
@@ -364,6 +366,7 @@ function VotingPeriodSection({
                 onVote={() => onVote(entry.id, period.id)}
                 hasVoted={hasVoted}
                 isVoting={isVoting}
+                totalVotes={totalVotes}
               />
             </motion.div>
           ))}
@@ -379,13 +382,18 @@ function EntryCard({
   onVote,
   hasVoted,
   isVoting,
+  totalVotes = 0,
 }: {
   entry: AwardEntry;
   categoryType: "artist" | "track";
   onVote: () => void;
   hasVoted: boolean;
   isVoting: boolean;
+  totalVotes?: number;
 }) {
+  const votePercentage = totalVotes > 0 && entry.voteCount > 0 
+    ? Math.round((entry.voteCount / totalVotes) * 100) 
+    : 0;
   const [isPlaying, setIsPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
 
@@ -448,85 +456,102 @@ function EntryCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         
         {entry.voteCount > 0 && (
-          <Badge className="absolute top-3 right-3 bg-background/90 text-foreground">
-            {entry.voteCount} votes
+          <Badge className="absolute top-3 right-3 bg-background/90 text-foreground z-10">
+            {entry.voteCount} {entry.voteCount === 1 ? 'vote' : 'votes'}
+            {votePercentage > 0 && ` (${votePercentage}%)`}
           </Badge>
         )}
 
-        {categoryType === "track" && entry.trackAudioUrl && (
-          <Button
-            size="icon"
-            variant="secondary"
-            className="absolute top-3 left-3 h-10 w-10 rounded-full bg-background/90 hover:bg-primary hover:text-primary-foreground"
-            onClick={handlePlayPause}
+        {/* Play button overlay - centered like fresh drops */}
+        {entry.trackAudioUrl && (
+          <motion.div
+            initial={false}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-black/50 flex items-center justify-center"
           >
-            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-          </Button>
+            <Button
+              size="icon"
+              className="h-14 w-14 rounded-full bg-white text-black hover:bg-white/90"
+              onClick={handlePlayPause}
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
+            </Button>
+          </motion.div>
         )}
       </div>
 
       <CardContent className="p-4 space-y-3">
         <div>
-          <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">{title || "Unknown"}</h3>
+          <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors mb-1">{title || "Unknown"}</h3>
           {subtitle && (
             <p className="text-sm text-muted-foreground line-clamp-2">{subtitle}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-2">
           {(entry.spotifyUrl || entry.soundcloudUrl) && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {entry.spotifyUrl && (
                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 hover:text-[#1DB954]"
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 gap-2 hover:bg-[#1DB954]/10 hover:text-[#1DB954] hover:border-[#1DB954]"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(entry.spotifyUrl!, "_blank");
                   }}
-                  title="Listen on Spotify"
                 >
                   <FaSpotify className="h-4 w-4" />
+                  <span className="text-xs">Spotify</span>
                 </Button>
               )}
               {entry.soundcloudUrl && (
                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 hover:text-[#ff5500]"
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 gap-2 hover:bg-[#ff5500]/10 hover:text-[#ff5500] hover:border-[#ff5500]"
                   onClick={(e) => {
                     e.stopPropagation();
                     window.open(entry.soundcloudUrl!, "_blank");
                   }}
-                  title="Listen on SoundCloud"
                 >
                   <FaSoundcloud className="h-4 w-4" />
+                  <span className="text-xs">SoundCloud</span>
                 </Button>
               )}
             </div>
           )}
           
-          <Button
-            className="flex-1 gap-2"
-            onClick={onVote}
-            disabled={hasVoted || isVoting}
-            variant={hasVoted ? "secondary" : "default"}
-          >
-            {isVoting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : hasVoted ? (
-              <>
-                <CheckCircle className="h-4 w-4" />
-                Voted
-              </>
-            ) : (
-              <>
-                <Vote className="h-4 w-4" />
-                Vote
-              </>
+          <div className="space-y-2">
+            <Button
+              className="w-full gap-2"
+              onClick={onVote}
+              disabled={hasVoted || isVoting}
+              variant={hasVoted ? "secondary" : "default"}
+              size="sm"
+            >
+              {isVoting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : hasVoted ? (
+                <>
+                  <CheckCircle className="h-4 w-4" />
+                  Voted
+                </>
+              ) : (
+                <>
+                  <Vote className="h-4 w-4" />
+                  Vote
+                </>
+              )}
+            </Button>
+            {hasVoted && entry.voteCount > 0 && (
+              <div className="text-xs text-center text-muted-foreground">
+                {entry.voteCount} {entry.voteCount === 1 ? 'vote' : 'votes'}
+                {votePercentage > 0 && ` • ${votePercentage}%`}
+              </div>
             )}
-          </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

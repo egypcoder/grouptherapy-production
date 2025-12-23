@@ -9,57 +9,20 @@ interface FeaturedArtistsProps {
   title?: string;
 }
 
-const demoArtists: Partial<Artist>[] = [
-  {
-    id: "1",
-    name: "Luna Wave",
-    slug: "luna-wave",
-    bio: "Electronic producer known for atmospheric soundscapes",
-    imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
-    featured: true,
-    socialLinks: {
-      instagram: "#",
-      spotify: "#",
-      soundcloud: "#",
-    },
-  },
-  {
-    id: "2",
-    name: "Neon Pulse",
-    slug: "neon-pulse",
-    bio: "Techno artist pushing boundaries",
-    imageUrl: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400&h=400&fit=crop",
-    featured: true,
-    socialLinks: {
-      instagram: "#",
-      spotify: "#",
-    },
-  },
-  {
-    id: "3",
-    name: "Circuit Breaker",
-    slug: "circuit-breaker",
-    bio: "Drum and bass pioneer",
-    imageUrl: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=400&h=400&fit=crop",
-    featured: true,
-    socialLinks: {
-      spotify: "#",
-      soundcloud: "#",
-    },
-  },
-];
-
 export function FeaturedArtists({
   artists = [],
   title = "",
 }: FeaturedArtistsProps) {
-  const displayArtists = artists.length > 0 ? artists : demoArtists;
+  // Don't render anything if there are no real artists
+  if (artists.length === 0) {
+    return null;
+  }
 
   return (
     <section>
       <div className="max-w-7xl mx-auto px-6 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-          {displayArtists.slice(0, 3).map((artist, index) => (
+          {artists.slice(0, 3).map((artist, index) => (
             <motion.div
               key={artist.id || index}
               initial={{ opacity: 0, y: 30 }}

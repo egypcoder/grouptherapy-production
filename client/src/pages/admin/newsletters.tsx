@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, Send, Loader2, Trash2, Download, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, Send, Loader2, Trash2, Download, Sparkles, Settings, CheckCircle2, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,16 +22,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, NewsletterSubscriber } from "@/lib/database";
+import { db, NewsletterSubscriber, SiteSettings } from "@/lib/database";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
+import { sendEmail, isEmailServiceConfigured, getEmailConfigInstructions } from "@/lib/email-service";
+
+interface EmailServiceConfig {
+  service: string;
+  apiKey?: string;
+  apiUrl?: string;
+  fromEmail: string;
+}
 
 export default function AdminNewsletters() {
   const { toast } = useToast();
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [emailData, setEmailData] = useState({
     subject: "",
@@ -44,7 +61,55 @@ export default function AdminNewsletters() {
     queryFn: queryFunctions.newsletterSubscribers,
   });
 
+  const { data: siteSettings } = useQuery<SiteSettings | null>({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
   const activeSubscribers = subscribers.filter((s) => s.active);
+
+  // Parse email service config from site settings
+  const emailConfig: EmailServiceConfig = siteSettings?.emailServiceConfig 
+    ? (typeof siteSettings.emailServiceConfig === 'string' 
+        ? JSON.parse(siteSettings.emailServiceConfig) 
+        : siteSettings.emailServiceConfig)
+    : { service: "none", fromEmail: "" };
+
+  const [emailSettings, setEmailSettings] = useState<EmailServiceConfig>(emailConfig);
+
+  // Update email service config when settings change
+  useEffect(() => {
+    if (emailConfig.service && emailConfig.service !== "none") {
+      setEmailConfig(emailConfig);
+    }
+  }, [emailConfig]);
+
+  const saveEmailSettingsMutation = useMutation({
+    mutationFn: async (config: EmailServiceConfig) => {
+      const updatedSettings: Partial<SiteSettings> = {
+        emailServiceConfig: JSON.stringify(config) as any,
+      };
+      const result = await db.siteSettings.update(updatedSettings);
+      // Update the email service with new config
+      setEmailConfig(config);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["siteSettings"] });
+      toast({
+        title: "Settings Saved",
+        description: "Email service configuration has been updated.",
+      });
+      setIsSettingsOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save settings.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -61,10 +126,26 @@ export default function AdminNewsletters() {
 
   const sendEmailMutation = useMutation({
     mutationFn: async (data: { subject: string; content: string; recipients: string[] }) => {
-      // This would integrate with an email service like SendGrid, AWS SES, etc.
-      // For now, we'll just simulate the send
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return { success: true };
+      if (!isEmailServiceConfigured()) {
+        throw new Error("Email service is not configured. Please configure it in Settings.");
+      }
+
+      if (data.recipients.length === 0) {
+        throw new Error("No recipients to send to.");
+      }
+
+      const result = await sendEmail({
+        to: data.recipients,
+        subject: data.subject,
+        html: data.content,
+        from: emailConfig.fromEmail || undefined,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to send email");
+      }
+
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -74,10 +155,10 @@ export default function AdminNewsletters() {
       setIsComposeOpen(false);
       setEmailData({ subject: "", content: "", prompt: "" });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to send newsletter.",
+        description: error.message || "Failed to send newsletter.",
         variant: "destructive",
       });
     },
@@ -198,13 +279,58 @@ SUBJECT: [subject line here]
     URL.revokeObjectURL(url);
   };
 
+  const handleSaveEmailSettings = () => {
+    if (!emailSettings.service || emailSettings.service === "none") {
+      toast({
+        title: "Error",
+        description: "Please select an email service.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!emailSettings.fromEmail) {
+      toast({
+        title: "Error",
+        description: "Please provide a 'From' email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((emailSettings.service === "resend" || emailSettings.service === "sendgrid") && !emailSettings.apiKey) {
+      toast({
+        title: "Error",
+        description: "Please provide an API key.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((emailSettings.service === "ses" || emailSettings.service === "smtp") && !emailSettings.apiUrl) {
+      toast({
+        title: "Error",
+        description: "Please provide an API URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    saveEmailSettingsMutation.mutate(emailSettings);
+  };
+
+  const isConfigured = emailConfig.service && emailConfig.service !== "none" && 
+    ((emailConfig.service === "resend" || emailConfig.service === "sendgrid") ? !!emailConfig.apiKey : true) &&
+    ((emailConfig.service === "ses" || emailConfig.service === "smtp") ? !!emailConfig.apiUrl : true) &&
+    !!emailConfig.fromEmail;
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Newsletter Management</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Newsletter Management</h1>
+            <p className="text-muted-foreground text-sm mt-1">
               Manage subscribers and send newsletters
             </p>
           </div>
@@ -213,52 +339,103 @@ SUBJECT: [subject line here]
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
-            <Button onClick={() => setIsComposeOpen(true)}>
+            <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
+              <Settings className="h-4 w-4 mr-2" />
+              Email Settings
+            </Button>
+            <Button onClick={() => setIsComposeOpen(true)} disabled={!isConfigured}>
               <Mail className="h-4 w-4 mr-2" />
               Compose Newsletter
             </Button>
           </div>
         </div>
 
+        {/* Email Service Status */}
+        {!isConfigured && (
+          <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                    Email service not configured
+                  </p>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                    Please configure your email service settings to send newsletters.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setIsSettingsOpen(true)}>
+                  Configure
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {isConfigured && (
+          <Card className="border-green-500/20 bg-green-500/5">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                    Email service configured: {emailConfig.service}
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
+                    From: {emailConfig.fromEmail}
+                  </p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)}>
+                  Edit
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
+          <Card className="border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Subscribers</CardTitle>
               <Mail className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{subscribers.length}</div>
+              <div className="text-2xl font-semibold tracking-tight">{subscribers.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">All time</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active</CardTitle>
               <Badge variant="default">{activeSubscribers.length}</Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-semibold tracking-tight text-green-600 dark:text-green-400">
                 {activeSubscribers.length}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Ready to receive</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-border/50">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Unsubscribed</CardTitle>
               <Badge variant="secondary">{subscribers.length - activeSubscribers.length}</Badge>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">
+              <div className="text-2xl font-semibold tracking-tight text-muted-foreground">
                 {subscribers.length - activeSubscribers.length}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Opted out</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Subscribers Table */}
-        <Card>
+        <Card className="border-border/50">
           <CardHeader>
             <CardTitle>Subscribers</CardTitle>
+            <CardDescription>Manage your newsletter subscriber list</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -308,6 +485,113 @@ SUBJECT: [subject line here]
           </CardContent>
         </Card>
       </div>
+
+      {/* Email Settings Dialog */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Email Service Configuration</DialogTitle>
+            <DialogDescription>
+              Configure your email service to send newsletters to subscribers
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="service">Email Service</Label>
+              <Select
+                value={emailSettings.service}
+                onValueChange={(value) => setEmailSettings({ ...emailSettings, service: value, apiKey: "", apiUrl: "" })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select email service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (Not Configured)</SelectItem>
+                  <SelectItem value="resend">Resend (Recommended)</SelectItem>
+                  <SelectItem value="sendgrid">SendGrid</SelectItem>
+                  <SelectItem value="ses">AWS SES</SelectItem>
+                  <SelectItem value="smtp">SMTP (via Backend)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {emailSettings.service === "resend" && "Sign up at resend.com - Easy setup, great deliverability"}
+                {emailSettings.service === "sendgrid" && "Sign up at sendgrid.com - Popular email service"}
+                {emailSettings.service === "ses" && "AWS Simple Email Service - Requires API Gateway endpoint"}
+                {emailSettings.service === "smtp" && "Custom SMTP server - Requires backend endpoint"}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="fromEmail">From Email Address</Label>
+              <Input
+                id="fromEmail"
+                type="email"
+                placeholder="noreply@yourdomain.com"
+                value={emailSettings.fromEmail}
+                onChange={(e) => setEmailSettings({ ...emailSettings, fromEmail: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                This email address will appear as the sender. Must be verified with your email service.
+              </p>
+            </div>
+
+            {(emailSettings.service === "resend" || emailSettings.service === "sendgrid") && (
+              <div className="space-y-2">
+                <Label htmlFor="apiKey">API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  placeholder="Enter your API key"
+                  value={emailSettings.apiKey || ""}
+                  onChange={(e) => setEmailSettings({ ...emailSettings, apiKey: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your API key will be stored securely in the database.
+                </p>
+              </div>
+            )}
+
+            {(emailSettings.service === "ses" || emailSettings.service === "smtp") && (
+              <div className="space-y-2">
+                <Label htmlFor="apiUrl">API URL</Label>
+                <Input
+                  id="apiUrl"
+                  type="url"
+                  placeholder="https://api.example.com/send-email"
+                  value={emailSettings.apiUrl || ""}
+                  onChange={(e) => setEmailSettings({ ...emailSettings, apiUrl: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The endpoint URL for your email service API.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEmailSettings}
+              disabled={saveEmailSettingsMutation.isPending}
+            >
+              {saveEmailSettingsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Save Settings
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Compose Dialog */}
       <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
@@ -400,7 +684,7 @@ SUBJECT: [subject line here]
             </Button>
             <Button
               onClick={handleSendNewsletter}
-              disabled={sendEmailMutation.isPending}
+              disabled={sendEmailMutation.isPending || !isConfigured}
             >
               {sendEmailMutation.isPending ? (
                 <>
