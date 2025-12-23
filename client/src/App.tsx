@@ -317,7 +317,7 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="joyjam-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="Group Therapy-theme">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <RadioProvider>

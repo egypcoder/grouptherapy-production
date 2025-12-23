@@ -75,7 +75,7 @@ export function subscribeToChat(callback: (messages: ChatMessage[]) => void): ()
     callback([{
       id: 'welcome',
       username: 'System',
-      message: 'Welcome to JoyJam Radio! Chat will be available once Firebase is configured.',
+      message: 'Welcome to Group Therapy Radio! Chat will be available once Firebase is configured.',
       timestamp: Date.now(),
       isSystem: true
     }]);
@@ -97,7 +97,7 @@ export function subscribeToChat(callback: (messages: ChatMessage[]) => void): ()
       callback([{
         id: 'welcome',
         username: 'System',
-        message: 'Welcome to JoyJam Radio chat!',
+        message: 'Welcome to Group Therapy Radio chat!',
         timestamp: Date.now(),
         isSystem: true
       }]);
@@ -125,7 +125,7 @@ export async function sendChatMessage(username: string, message: string): Promis
 export function subscribeToRadioMetadata(callback: (metadata: RadioMetadata) => void): () => void {
   if (!database) {
     callback({
-      title: 'JoyJam Radio',
+      title: 'Group Therapy Radio',
       artist: 'Live Stream',
       isLive: true,
       listenerCount: 127,
@@ -141,7 +141,7 @@ export function subscribeToRadioMetadata(callback: (metadata: RadioMetadata) => 
       callback(data);
     } else {
       callback({
-        title: 'JoyJam Radio',
+        title: 'Group Therapy Radio',
         artist: 'Live Stream',
         isLive: true,
         listenerCount: 127,
