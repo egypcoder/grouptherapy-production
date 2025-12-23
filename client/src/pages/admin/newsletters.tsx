@@ -36,7 +36,7 @@ import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, NewsletterSubscriber, SiteSettings } from "@/lib/database";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
-import { sendEmail, isEmailServiceConfigured, getEmailConfigInstructions } from "@/lib/email-service";
+import { sendEmail, isEmailServiceConfigured, getEmailConfigInstructions, setEmailConfig } from "@/lib/email-service";
 
 interface EmailServiceConfig {
   service: string;
@@ -207,8 +207,8 @@ SUBJECT: [subject line here]
       // Parse the result
       const parts = result.split("---");
       if (parts.length >= 2) {
-        const subjectLine = parts[0].replace("SUBJECT:", "").trim();
-        const htmlContent = parts[1].trim();
+        const subjectLine = (parts[0] || "").replace("SUBJECT:", "").trim();
+        const htmlContent = parts[1] || "";
         
         setEmailData((prev) => ({
           ...prev,
