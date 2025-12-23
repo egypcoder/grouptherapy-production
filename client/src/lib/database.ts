@@ -55,6 +55,7 @@ export interface Event {
   imageUrl?: string;
   ticketUrl?: string;
   ticketPrice?: string;
+  currency?: string;
   capacity?: number;
   rsvpCount: number;
   artistIds?: string[];

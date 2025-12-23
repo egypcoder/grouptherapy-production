@@ -7,6 +7,18 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 
+// Helper function to get currency symbol
+function getCurrencySymbol(currency?: string): string {
+  const symbols: Record<string, string> = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    CAD: "C$",
+    AUD: "A$",
+  };
+  return symbols[currency || "USD"] || "$";
+}
+
 interface EventsCarouselProps {
   events: Event[];
   title?: string;
@@ -180,7 +192,7 @@ export function EventsCarousel({
                       {event.ticketPrice && !isPast && (
                         <div className="flex items-center justify-between pt-4 border-t border-border/50">
                           <span className="font-semibold text-primary">
-                            From ${event.ticketPrice}
+                            From {getCurrencySymbol(event.currency)}{event.ticketPrice}
                           </span>
                           <span className="text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1">
                             Get Tickets

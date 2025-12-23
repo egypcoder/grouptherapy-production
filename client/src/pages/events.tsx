@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { MapPin, Calendar, Ticket, Clock, Filter, Grid, List as ListIcon, Map, ArrowRight } from "lucide-react";
+import { MapPin, Calendar, Ticket, Clock, Filter, Grid, List as ListIcon, Map, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
@@ -9,9 +10,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useRoute, useLocation } from "wouter";
+import { queryFunctions } from "@/lib/queryClient";
 import { db, type Event } from "@/lib/database";
+
+// Helper function to get currency symbol
+function getCurrencySymbol(currency?: string): string {
+  const symbols: Record<string, string> = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    CAD: "C$",
+    AUD: "A$",
+  };
+  return symbols[currency || "USD"] || "$";
+}
 import { EventCountdown } from "@/components/event-countdown";
 
 const demoEvents: Partial<Event>[] = [
@@ -82,14 +96,12 @@ export default function EventsPage() {
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("upcoming");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: events } = useQuery<Event[]>({
+  const { data: events = [], isLoading } = useQuery<Event[]>({
     queryKey: ["events"],
     queryFn: () => db.events.getAll(),
   });
 
-  const displayEvents = events?.length ? events : demoEvents;
-
-  const filteredEvents = displayEvents.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     const matchesSearch =
       event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.city?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -178,38 +190,56 @@ export default function EventsPage() {
         </p>
 
         {/* Events Display */}
-        {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedEvents.map((event, index) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <EventCard event={event as Event} formatDate={formatDate} formatTime={formatTime} />
-              </motion.div>
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-96 bg-muted rounded-lg animate-pulse" />
             ))}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-16">
+            <CalendarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">No Events Announced</h2>
+            <p className="text-muted-foreground">
+              Stay tuned for upcoming event announcements!
+            </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {sortedEvents.map((event, index) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <EventListCard event={event as Event} formatDate={formatDate} formatTime={formatTime} />
-              </motion.div>
-            ))}
-          </div>
-        )}
+          <>
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedEvents.map((event, index) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <EventCard event={event as Event} formatDate={formatDate} formatTime={formatTime} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {sortedEvents.map((event, index) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <EventListCard event={event as Event} formatDate={formatDate} formatTime={formatTime} />
+                  </motion.div>
+                ))}
+              </div>
+            )}
 
-        {sortedEvents.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No events found</p>
-          </div>
+            {sortedEvents.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No events found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -301,7 +331,7 @@ function EventCard({
           {event.ticketPrice && !isPast && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
               <span className="font-semibold text-primary" data-testid={`text-event-price-${event.id}`}>
-                From ${event.ticketPrice}
+                From {getCurrencySymbol(event.currency)}{event.ticketPrice}
               </span>
               {event.ticketUrl ? (
                 <span 
@@ -408,7 +438,7 @@ function EventListCard({
 
             {!isPast && event.ticketPrice && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
-                <span className="font-semibold text-primary">From ${event.ticketPrice}</span>
+                <span className="font-semibold text-primary">From {getCurrencySymbol(event.currency)}{event.ticketPrice}</span>
                 {event.ticketUrl ? (
                   <span 
                     className="text-sm text-muted-foreground group-hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"

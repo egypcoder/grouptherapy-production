@@ -48,6 +48,18 @@ import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Event } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper function to get currency symbol
+function getCurrencySymbol(currency?: string): string {
+  const symbols: Record<string, string> = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    CAD: "C$",
+    AUD: "A$",
+  };
+  return symbols[currency || "USD"] || "$";
+}
+
 interface EventFormData {
   title: string;
   description: string;
@@ -59,6 +71,7 @@ interface EventFormData {
   endDate: string;
   ticketUrl: string;
   ticketPrice: string;
+  currency: string;
   capacity: string;
   imageUrl: string;
   featured: boolean;
@@ -76,6 +89,7 @@ const defaultFormData: EventFormData = {
   endDate: "",
   ticketUrl: "",
   ticketPrice: "",
+  currency: "USD",
   capacity: "",
   imageUrl: "",
   featured: false,
@@ -141,6 +155,7 @@ export default function AdminEvents() {
       endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "",
       ticketUrl: event.ticketUrl || "",
       ticketPrice: event.ticketPrice || "",
+      currency: event.currency || "USD",
       capacity: event.capacity?.toString() || "",
       imageUrl: event.imageUrl || "",
       featured: event.featured || false,
@@ -229,6 +244,7 @@ export default function AdminEvents() {
       endDate: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
       ticketUrl: formData.ticketUrl || undefined,
       ticketPrice: formData.ticketPrice || undefined,
+      currency: formData.currency || undefined,
       capacity: formData.capacity ? parseInt(formData.capacity) : undefined,
       imageUrl: formData.imageUrl || undefined,
       featured: formData.featured,
@@ -348,7 +364,7 @@ export default function AdminEvents() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {event.ticketPrice ? `$${event.ticketPrice}` : "-"}
+                        {event.ticketPrice ? `${getCurrencySymbol(event.currency)}${event.ticketPrice}` : "-"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={event.published ? "default" : "secondary"}>
@@ -551,6 +567,27 @@ export default function AdminEvents() {
                 />
               </div>
               <div className="grid gap-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - US Dollar</SelectItem>
+                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                    <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                    <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
                 <Label htmlFor="capacity">Capacity</Label>
                 <Input
                   id="capacity"
@@ -559,6 +596,9 @@ export default function AdminEvents() {
                   onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                   placeholder="e.g., 500"
                 />
+              </div>
+              <div className="grid gap-2">
+                {/* Empty cell for grid alignment */}
               </div>
             </div>
 
