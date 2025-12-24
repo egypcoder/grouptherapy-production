@@ -66,7 +66,10 @@ interface RadioContextType {
 const RadioContext = createContext<RadioContextType | undefined>(undefined);
 
 const FALLBACK_STREAM_URL = "https://stream.zeno.fm/ra1s8tn1kkzuv";
-const SYNC_THRESHOLD_SECONDS = 2;
+const SYNC_THRESHOLD_SECONDS = 0.5;
+const SYNC_SOFT_THRESHOLD_SECONDS = 0.12;
+const SYNC_INTERVAL_MS = 1000;
+const MAX_PLAYBACK_RATE_ADJUST = 0.03;
 
 function parseTimeToMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(":").map(Number);
@@ -503,6 +506,9 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         clearInterval(syncIntervalRef.current);
         syncIntervalRef.current = null;
       }
+      if (audioRef.current && audioRef.current.playbackRate !== 1) {
+        audioRef.current.playbackRate = 1;
+      }
       return;
     }
 
@@ -527,7 +533,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
 
       // Check if we're drifting
       const currentPosition = audioRef.current.currentTime;
-      const drift = Math.abs(currentPosition - expectedPosition);
+      const signedDrift = currentPosition - expectedPosition;
+      const drift = Math.abs(signedDrift);
 
       if (drift > SYNC_THRESHOLD_SECONDS && expectedPosition >= 0) {
         const audioDuration = audioRef.current.duration;
@@ -542,14 +549,27 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         } else {
           audioRef.current.currentTime = expectedPosition;
         }
-        setIsSynced(true);
-      } else if (!isSynced && drift <= SYNC_THRESHOLD_SECONDS) {
-        setIsSynced(true);
+        audioRef.current.playbackRate = 1;
+        setIsSynced(false);
+      } else {
+        if (drift > SYNC_SOFT_THRESHOLD_SECONDS) {
+          const adjust = Math.max(
+            -MAX_PLAYBACK_RATE_ADJUST,
+            Math.min(MAX_PLAYBACK_RATE_ADJUST, -signedDrift * 0.15),
+          );
+          audioRef.current.playbackRate = 1 + adjust;
+          setIsSynced(false);
+        } else {
+          audioRef.current.playbackRate = 1;
+          if (!isSynced) {
+            setIsSynced(true);
+          }
+        }
       }
     };
 
     performSync();
-    syncIntervalRef.current = setInterval(performSync, 5000);
+    syncIntervalRef.current = setInterval(performSync, SYNC_INTERVAL_MS);
 
     return () => {
       if (syncIntervalRef.current) {
@@ -598,9 +618,9 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     if (
       isLiveSessionRef.current &&
       currentSession &&
-      currentSession.isActive &&
-      !isSynced
+      currentSession.isActive
     ) {
+      setIsSynced(false);
       const now = Date.now() + serverTimeOffset;
       const elapsed = now - currentSession.startedAt;
       let expectedPosition = elapsed / 1000;
@@ -623,6 +643,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           audioRef.current.currentTime = expectedPosition;
         }
       }
+      audioRef.current.playbackRate = 1;
     } else if (
       !currentSession &&
       isLive &&
@@ -657,7 +678,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
     audioUrl,
     currentSession,
     serverTimeOffset,
-    isSynced,
     isLive,
     currentShow,
   ]);
