@@ -41,6 +41,7 @@ export function EventsCarousel({
   });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -53,14 +54,26 @@ export function EventsCarousel({
   };
 
   useEffect(() => {
-    checkScrollability();
+    const schedule = () => {
+      if (scrollRafRef.current !== null) return;
+      scrollRafRef.current = requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        checkScrollability();
+      });
+    };
+
+    schedule();
     const scrollElement = scrollRef.current;
     if (scrollElement) {
-      scrollElement.addEventListener("scroll", checkScrollability);
-      window.addEventListener("resize", checkScrollability);
+      scrollElement.addEventListener("scroll", schedule, { passive: true });
+      window.addEventListener("resize", schedule, { passive: true });
       return () => {
-        scrollElement.removeEventListener("scroll", checkScrollability);
-        window.removeEventListener("resize", checkScrollability);
+        scrollElement.removeEventListener("scroll", schedule);
+        window.removeEventListener("resize", schedule);
+        if (scrollRafRef.current !== null) {
+          cancelAnimationFrame(scrollRafRef.current);
+          scrollRafRef.current = null;
+        }
       };
     }
   }, [sortedEvents]);

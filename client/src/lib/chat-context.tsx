@@ -54,10 +54,38 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [username]);
 
   React.useEffect(() => {
-    const unsubscribe = subscribeToChat((newMessages) => {
-      setMessages(newMessages);
-    });
-    return () => unsubscribe();
+    const shouldLazyInitFirebase = String(import.meta.env.VITE_FIREBASE_LAZY_INIT || '').toLowerCase() === 'true';
+    let unsubscribe: (() => void) | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+    const g: any = globalThis as any;
+
+    const start = () => {
+      if (unsubscribe) return;
+      unsubscribe = subscribeToChat((newMessages) => {
+        setMessages(newMessages);
+      });
+    };
+
+    if (shouldLazyInitFirebase && typeof g.requestIdleCallback === 'function') {
+      idleId = g.requestIdleCallback(start, { timeout: 2000 });
+    } else if (shouldLazyInitFirebase) {
+      timeoutId = setTimeout(start, 1200);
+    } else {
+      start();
+    }
+
+    return () => {
+      if (idleId !== null && typeof g.cancelIdleCallback === 'function') {
+        g.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   React.useEffect(() => {

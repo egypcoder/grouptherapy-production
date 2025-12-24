@@ -342,6 +342,8 @@ export function GlobalRadioPlayer() {
             onClick={togglePlay}
             className="h-10 w-10 rounded-full"
             disabled={!canPlay}
+            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-pressed={isPlaying}
           >
             {isPlaying ? (
               <Pause className="h-4 w-4" />
@@ -358,6 +360,7 @@ export function GlobalRadioPlayer() {
             variant="ghost"
             onClick={() => setIsMiniMode(false)}
             className="h-8 w-8"
+            aria-label="Exit mini mode"
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
@@ -407,6 +410,8 @@ export function GlobalRadioPlayer() {
                     src={currentTrack.coverUrl}
                     alt={currentTrack.title}
                     className="w-full h-full object-cover"
+                    loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <Radio
@@ -518,6 +523,8 @@ export function GlobalRadioPlayer() {
                 className="h-11 w-11 rounded-full shadow-lg"
                 disabled={!canPlay}
                 data-testid="button-radio-play"
+                aria-label={isPlaying ? "Pause" : "Play"}
+                aria-pressed={isPlaying}
               >
                 {isPlaying ? (
                   <Pause className="h-5 w-5" />
@@ -534,6 +541,8 @@ export function GlobalRadioPlayer() {
                   disabled={!canPlay}
                   className="h-8 w-8"
                   data-testid="button-radio-mute"
+                  aria-label={volume === 0 ? "Unmute" : "Mute"}
+                  aria-pressed={volume === 0}
                 >
                   {volume === 0 ? (
                     <VolumeX className="h-4 w-4" />
@@ -561,6 +570,7 @@ export function GlobalRadioPlayer() {
                   onClick={() => setIsMiniMode(true)}
                   className="h-8 w-8 hidden sm:flex"
                   title="Mini mode"
+                  aria-label="Mini mode"
                 >
                   <Minimize2 className="h-4 w-4" />
                 </Button>
@@ -571,6 +581,8 @@ export function GlobalRadioPlayer() {
                   onClick={() => setExpanded(!isExpanded)}
                   className="h-8 w-8"
                   data-testid="button-radio-expand"
+                  aria-label={isExpanded ? "Collapse player" : "Expand player"}
+                  aria-pressed={isExpanded}
                 >
                   {isExpanded ? (
                     <ChevronDown className="h-4 w-4" />
@@ -682,6 +694,8 @@ export function GlobalRadioPlayer() {
                                   src={track.coverUrl}
                                   alt=""
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  decoding="async"
                                 />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center">

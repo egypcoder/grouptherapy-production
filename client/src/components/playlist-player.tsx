@@ -216,6 +216,8 @@ export function PlaylistPlayer({
                   src={currentTrack?.coverUrl || playlistCover}
                   alt={currentTrack?.title || playlistTitle}
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-muted">
@@ -232,7 +234,7 @@ export function PlaylistPlayer({
               <p className="text-xs text-primary mt-1">{playlistTitle}</p>
             </div>
             {onClose && (
-              <Button size="icon" variant="ghost" onClick={onClose}>
+              <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close player">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -259,16 +261,20 @@ export function PlaylistPlayer({
                 variant="ghost"
                 onClick={() => setIsShuffle(!isShuffle)}
                 className={cn(isShuffle && "text-primary")}
+                aria-label={isShuffle ? "Disable shuffle" : "Enable shuffle"}
+                aria-pressed={isShuffle}
               >
                 <Shuffle className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" onClick={handlePrevious}>
+              <Button size="icon" variant="ghost" onClick={handlePrevious} aria-label="Previous track">
                 <SkipBack className="h-5 w-5" />
               </Button>
               <Button
                 size="icon"
                 className="h-14 w-14 rounded-full"
                 onClick={togglePlay}
+                aria-label={isPlaying ? "Pause" : "Play"}
+                aria-pressed={isPlaying}
               >
                 {isPlaying ? (
                   <Pause className="h-6 w-6" />
@@ -276,7 +282,7 @@ export function PlaylistPlayer({
                   <Play className="h-6 w-6 ml-0.5" />
                 )}
               </Button>
-              <Button size="icon" variant="ghost" onClick={handleNext}>
+              <Button size="icon" variant="ghost" onClick={handleNext} aria-label="Next track">
                 <SkipForward className="h-5 w-5" />
               </Button>
               <Button
@@ -284,6 +290,8 @@ export function PlaylistPlayer({
                 variant="ghost"
                 onClick={() => setIsRepeat(!isRepeat)}
                 className={cn(isRepeat && "text-primary")}
+                aria-label={isRepeat ? "Disable repeat" : "Enable repeat"}
+                aria-pressed={isRepeat}
               >
                 <Repeat className="h-4 w-4" />
               </Button>
@@ -294,6 +302,8 @@ export function PlaylistPlayer({
                 size="icon"
                 variant="ghost"
                 onClick={() => setVolume(volume > 0 ? 0 : 0.7)}
+                aria-label={volume === 0 ? "Unmute" : "Mute"}
+                aria-pressed={volume === 0}
               >
                 {volume === 0 ? (
                   <VolumeX className="h-4 w-4" />
@@ -344,6 +354,8 @@ export function PlaylistPlayer({
                           src={track.coverUrl}
                           alt={track.title}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">

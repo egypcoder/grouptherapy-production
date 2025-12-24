@@ -356,6 +356,35 @@ const defaultStatsItems: StatItem[] = [
 ];
 
 export default function HomePage() {
+  const shouldDeferHomeQueries = String(import.meta.env.VITE_DEFER_HOME_QUERIES || '').toLowerCase() === 'true';
+  const [enableNonCriticalQueries, setEnableNonCriticalQueries] = useState(!shouldDeferHomeQueries);
+
+  useEffect(() => {
+    if (!shouldDeferHomeQueries) return;
+    if (enableNonCriticalQueries) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+    const g: any = globalThis as any;
+
+    const enable = () => setEnableNonCriticalQueries(true);
+
+    if (typeof g.requestIdleCallback === 'function') {
+      idleId = g.requestIdleCallback(enable, { timeout: 2500 });
+    } else {
+      timeoutId = setTimeout(enable, 1500);
+    }
+
+    return () => {
+      if (idleId !== null && typeof g.cancelIdleCallback === 'function') {
+        g.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [enableNonCriticalQueries, shouldDeferHomeQueries]);
+
   const { data: releases } = useQuery<Release[]>({
     queryKey: ["releases"],
     queryFn: () => db.releases.getPublished(),
@@ -364,21 +393,25 @@ export default function HomePage() {
   const { data: events } = useQuery<Event[]>({
     queryKey: ["events"],
     queryFn: () => db.events.getUpcoming(),
+    enabled: enableNonCriticalQueries,
   });
 
   const { data: playlists } = useQuery<Playlist[]>({
     queryKey: ["playlists"],
     queryFn: () => db.playlists.getAll(),
+    enabled: enableNonCriticalQueries,
   });
 
   const { data: posts } = useQuery<Post[]>({
     queryKey: ["posts", "published"],
     queryFn: () => db.posts.getPublished(),
+    enabled: enableNonCriticalQueries,
   });
 
   const { data: artists } = useQuery<Artist[]>({
     queryKey: ["artists", "featured"],
     queryFn: () => db.artists.getFeatured(),
+    enabled: enableNonCriticalQueries,
   });
 
   const { data: siteSettings } = useQuery<SiteSettings | null>({
@@ -389,6 +422,7 @@ export default function HomePage() {
   const { data: activeVotingPeriods = [] } = useQuery<AwardPeriod[]>({
     queryKey: ["activeVotingPeriods"],
     queryFn: () => db.awards.periods.getActiveVoting(),
+    enabled: enableNonCriticalQueries,
   });
 
   const { data: featuredEntries = [] } = useQuery<AwardEntry[]>({
@@ -399,7 +433,7 @@ export default function HomePage() {
       const entries = await db.awards.entries.getByPeriodId(firstPeriod.id);
       return entries.slice(0, 3);
     },
-    enabled: activeVotingPeriods.length > 0,
+    enabled: enableNonCriticalQueries && activeVotingPeriods.length > 0,
   });
 
   const heroTitle = siteSettings?.heroTitle || "GROUPTHERAPY";

@@ -234,6 +234,8 @@ export function Navigation() {
                 className="lg:hidden rounded-full h-8 w-8"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 data-testid="button-mobile-menu"
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-pressed={isMobileMenuOpen}
               >
                 <motion.div
                   initial={false}

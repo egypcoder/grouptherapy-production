@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import type React from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -36,25 +37,25 @@ import StaticPageView from "@/pages/static-page";
 import PlaylistsPage from "@/pages/playlists";
 import AwardsPage from "@/pages/awards";
 
-import AdminLogin from "@/pages/admin/login";
-import AdminDashboard from "@/pages/admin/index";
-import AdminReleases from "@/pages/admin/releases";
-import AdminEvents from "@/pages/admin/events";
-import AdminPosts from "@/pages/admin/posts";
-import AdminContacts from "@/pages/admin/contacts";
-import AdminSettings from "@/pages/admin/settings";
-import AdminVideos from "@/pages/admin/videos";
-import AdminPlaylists from "@/pages/admin/playlists";
-import AdminRadioShows from "@/pages/admin/radio-shows";
-import AdminArtists from "@/pages/admin/artists";
-import AdminCareers from "@/pages/admin/careers";
-import AdminTours from "@/pages/admin/tours";
-import AdminPressKit from "@/pages/admin/press-kit";
-import AdminStaticPages from "@/pages/admin/static-pages";
-import AdminTestimonials from "@/pages/admin/testimonials";
-import AdminAwards from "@/pages/admin/awards";
-import AdminSeoSettings from "@/pages/admin/seo-settings";
-import AdminNewsletters from "@/pages/admin/newsletters";
+const AdminLogin = lazy(() => import("@/pages/admin/login"));
+const AdminDashboard = lazy(() => import("@/pages/admin/index"));
+const AdminReleases = lazy(() => import("@/pages/admin/releases"));
+const AdminEvents = lazy(() => import("@/pages/admin/events"));
+const AdminPosts = lazy(() => import("@/pages/admin/posts"));
+const AdminContacts = lazy(() => import("@/pages/admin/contacts"));
+const AdminSettings = lazy(() => import("@/pages/admin/settings"));
+const AdminVideos = lazy(() => import("@/pages/admin/videos"));
+const AdminPlaylists = lazy(() => import("@/pages/admin/playlists"));
+const AdminRadioShows = lazy(() => import("@/pages/admin/radio-shows"));
+const AdminArtists = lazy(() => import("@/pages/admin/artists"));
+const AdminCareers = lazy(() => import("@/pages/admin/careers"));
+const AdminTours = lazy(() => import("@/pages/admin/tours"));
+const AdminPressKit = lazy(() => import("@/pages/admin/press-kit"));
+const AdminStaticPages = lazy(() => import("@/pages/admin/static-pages"));
+const AdminTestimonials = lazy(() => import("@/pages/admin/testimonials"));
+const AdminAwards = lazy(() => import("@/pages/admin/awards"));
+const AdminSeoSettings = lazy(() => import("@/pages/admin/seo-settings"));
+const AdminNewsletters = lazy(() => import("@/pages/admin/newsletters"));
 
 import NotFound from "@/pages/not-found";
 
@@ -205,111 +206,157 @@ function Router() {
         </PublicLayout>
       </Route>
 
-      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin/login">
+        <Suspense fallback={null}>
+          <AdminLogin />
+        </Suspense>
+      </Route>
 
       <Route path="/admin">
         <ProtectedRoute>
-          <AdminDashboard />
+          <Suspense fallback={null}>
+            <AdminDashboard />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/releases">
         <ProtectedRoute>
-          <AdminReleases />
+          <Suspense fallback={null}>
+            <AdminReleases />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/releases/:id">
         <ProtectedRoute>
-          <AdminReleases />
+          <Suspense fallback={null}>
+            <AdminReleases />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/events">
         <ProtectedRoute>
-          <AdminEvents />
+          <Suspense fallback={null}>
+            <AdminEvents />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/events/:id">
         <ProtectedRoute>
-          <AdminEvents />
+          <Suspense fallback={null}>
+            <AdminEvents />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/posts">
         <ProtectedRoute>
-          <AdminPosts />
+          <Suspense fallback={null}>
+            <AdminPosts />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/posts/:id">
         <ProtectedRoute>
-          <AdminPosts />
+          <Suspense fallback={null}>
+            <AdminPosts />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/contacts">
         <ProtectedRoute>
-          <AdminContacts />
+          <Suspense fallback={null}>
+            <AdminContacts />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/settings">
         <ProtectedRoute>
-          <AdminSettings />
+          <Suspense fallback={null}>
+            <AdminSettings />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/videos">
         <ProtectedRoute>
-          <AdminVideos />
+          <Suspense fallback={null}>
+            <AdminVideos />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/playlists">
         <ProtectedRoute>
-          <AdminPlaylists />
+          <Suspense fallback={null}>
+            <AdminPlaylists />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/radio">
         <ProtectedRoute>
-          <AdminRadioShows />
+          <Suspense fallback={null}>
+            <AdminRadioShows />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/artists">
         <ProtectedRoute>
-          <AdminArtists />
+          <Suspense fallback={null}>
+            <AdminArtists />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/careers">
         <ProtectedRoute>
-          <AdminCareers />
+          <Suspense fallback={null}>
+            <AdminCareers />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/tours">
         <ProtectedRoute>
-          <AdminTours />
+          <Suspense fallback={null}>
+            <AdminTours />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/press-kit">
         <ProtectedRoute>
-          <AdminPressKit />
+          <Suspense fallback={null}>
+            <AdminPressKit />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/static-pages">
         <ProtectedRoute>
-          <AdminStaticPages />
+          <Suspense fallback={null}>
+            <AdminStaticPages />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/testimonials">
         <ProtectedRoute>
-          <AdminTestimonials />
+          <Suspense fallback={null}>
+            <AdminTestimonials />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/awards">
         <ProtectedRoute>
-          <AdminAwards />
+          <Suspense fallback={null}>
+            <AdminAwards />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/seo-settings">
         <ProtectedRoute>
-          <AdminSeoSettings />
+          <Suspense fallback={null}>
+            <AdminSeoSettings />
+          </Suspense>
         </ProtectedRoute>
       </Route>
       <Route path="/admin/newsletters">
         <ProtectedRoute>
-          <AdminNewsletters />
+          <Suspense fallback={null}>
+            <AdminNewsletters />
+          </Suspense>
         </ProtectedRoute>
       </Route>
 

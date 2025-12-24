@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { cloudinaryImageSrcSet, cloudinaryTransformImageUrl } from "@/lib/cloudinary";
 import type { Release } from "@/lib/database";
 
 interface ReleasesCarouselProps {
@@ -81,6 +82,7 @@ export function ReleasesCarousel({
 }: ReleasesCarouselProps) {
   const displayReleases = releases.length > 0 ? releases : demoReleases;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -95,9 +97,24 @@ export function ReleasesCarousel({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) {
-      el.addEventListener("scroll", checkScroll, { passive: true });
-      checkScroll();
-      return () => el.removeEventListener("scroll", checkScroll);
+      const schedule = () => {
+        if (scrollRafRef.current !== null) return;
+        scrollRafRef.current = requestAnimationFrame(() => {
+          scrollRafRef.current = null;
+          checkScroll();
+        });
+      };
+
+      el.addEventListener("scroll", schedule, { passive: true });
+      schedule();
+
+      return () => {
+        el.removeEventListener("scroll", schedule);
+        if (scrollRafRef.current !== null) {
+          cancelAnimationFrame(scrollRafRef.current);
+          scrollRafRef.current = null;
+        }
+      };
     }
   }, []);
 
@@ -190,6 +207,8 @@ export function ReleasesCarousel({
 
 function ReleaseCard({ release }: { release: Release }) {
   const [isHovered, setIsHovered] = useState(false);
+  const srcSet = cloudinaryImageSrcSet(release.coverUrl, [220, 260, 440, 520], { crop: 'fill' });
+  const src = srcSet ? cloudinaryTransformImageUrl(release.coverUrl, { width: 520, crop: 'fill' }) : release.coverUrl;
 
   return (
     <Link href={`/releases/${release.slug || release.id}`}>
@@ -202,10 +221,13 @@ function ReleaseCard({ release }: { release: Release }) {
         <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted mb-4">
           {release.coverUrl ? (
             <img
-              src={release.coverUrl}
+              src={src}
+              srcSet={srcSet}
+              sizes="(min-width: 768px) 260px, 220px"
               alt={release.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              decoding="async"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/20 flex items-center justify-center">
