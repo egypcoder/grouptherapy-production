@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -6,6 +6,7 @@ import {
   Volume2,
   VolumeX,
   Radio,
+  MessageCircle,
   ChevronUp,
   ChevronDown,
   Clock,
@@ -254,6 +255,7 @@ export function GlobalRadioPlayer() {
   } = useRadio();
 
   const [isMiniMode, setIsMiniMode] = useState(false);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
 
   const isShowLive = isLive && currentShow;
   const isUpcoming =
@@ -271,6 +273,40 @@ export function GlobalRadioPlayer() {
     }));
   }, [recentStreams]);
 
+  useEffect(() => {
+    if (!hasScheduledShow) {
+      document.documentElement.style.setProperty("--gt-radio-player-offset", "24px");
+      return;
+    }
+
+    const el = playerContainerRef.current;
+    if (!el) {
+      document.documentElement.style.setProperty(
+        "--gt-radio-player-offset",
+        isMiniMode ? "96px" : "80px",
+      );
+      return;
+    }
+
+    const update = () => {
+      const height = el.getBoundingClientRect().height;
+      const extraBottom = isMiniMode ? 16 : 0;
+      document.documentElement.style.setProperty(
+        "--gt-radio-player-offset",
+        `${Math.max(0, Math.round(height + extraBottom))}px`,
+      );
+    };
+
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+
+    return () => {
+      ro.disconnect();
+    };
+  }, [hasScheduledShow, isMiniMode, isExpanded]);
+
   if (!hasScheduledShow) {
     return null;
   }
@@ -282,6 +318,7 @@ export function GlobalRadioPlayer() {
         animate={{ y: 0 }}
         exit={{ y: 100 }}
         className="fixed bottom-4 right-4 z-50"
+        ref={playerContainerRef}
       >
         <motion.div
           className={cn(
@@ -290,6 +327,15 @@ export function GlobalRadioPlayer() {
           )}
           whileHover={{ scale: 1.05 }}
         >
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => window.dispatchEvent(new Event("gt:open-chat"))}
+            className="h-11 w-11 rounded-full"
+            aria-label="Open chat"
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
           <Button
             size="icon"
             variant={isPlaying ? "default" : "secondary"}
@@ -328,8 +374,11 @@ export function GlobalRadioPlayer() {
         exit={{ y: 100 }}
         className={cn(
           "fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border transition-all duration-300",
-          isExpanded ? "h-auto" : "h-20",
+          isExpanded
+            ? "h-auto pb-[env(safe-area-inset-bottom)]"
+            : "h-[calc(5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)]",
         )}
+        ref={playerContainerRef}
       >
         {!isLive && canSeek && (
           <ProgressBar
@@ -342,11 +391,11 @@ export function GlobalRadioPlayer() {
         )}
 
         <div className="max-w-7xl mx-auto px-4 h-full">
-          <div className="flex items-center justify-between py-3 gap-4">
+          <div className="flex items-center justify-between py-2 sm:py-3 gap-3 sm:gap-4 h-full">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <motion.div
                 className={cn(
-                  "relative w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0",
+                  "relative w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0",
                   isPlaying &&
                     "ring-2 ring-primary shadow-lg shadow-primary/20",
                 )}
@@ -371,19 +420,29 @@ export function GlobalRadioPlayer() {
                     transition={{ duration: 2, repeat: Infinity }}
                   />
                 )}
+                {isUpcoming && (
+                  <div className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-amber-500 shadow-sm sm:hidden" />
+                )}
               </motion.div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 min-w-0">
+                  {isShowLive && (
+                    <span
+                      className="h-2 w-2 rounded-full bg-red-500 shadow-sm animate-pulse sm:hidden flex-shrink-0"
+                      aria-label="Live"
+                      title="Live"
+                    />
+                  )}
                   <p
-                    className="text-sm font-semibold truncate"
+                    className="text-[13px] sm:text-sm font-semibold truncate"
                     data-testid="text-radio-title"
                   >
                     {currentTrack?.title || currentShow?.title || "Radio Show"}
                   </p>
                   {isShowLive && (
                     <motion.span
-                      className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase bg-red-500 text-white rounded-sm"
+                      className="hidden sm:flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase bg-red-500 text-white rounded-sm"
                       animate={{ opacity: [1, 0.7, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     >
@@ -392,7 +451,7 @@ export function GlobalRadioPlayer() {
                     </motion.span>
                   )}
                   {isUpcoming && (
-                    <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500 text-white rounded-sm">
+                    <span className="hidden sm:flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase bg-amber-500 text-white rounded-sm">
                       <Clock className="w-2.5 h-2.5" />
                       Upcoming
                     </span>
@@ -440,6 +499,17 @@ export function GlobalRadioPlayer() {
                   />
                 </Button>
               )}
+
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => window.dispatchEvent(new Event("gt:open-chat"))}
+                className="h-11 w-11 rounded-full"
+                title="Open chat"
+                aria-label="Open chat"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </Button>
 
               <Button
                 size="icon"

@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, User, MessageCircle } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { MessageCircle, Send, User, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { subscribeToChat, sendChatMessage, ChatMessage } from "@/lib/firebase";
+import { useChat } from "@/lib/chat-context";
 
 const chatColors = [
   {
@@ -62,10 +63,22 @@ function getUserColor(username: string): {
   );
 }
 
-export function RadioChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+type RadioChatProps = {
+  className?: string;
+  showHeader?: boolean;
+  variant?: "card" | "flat";
+};
+
+export function RadioChat({
+  className,
+  showHeader = true,
+  variant = "card",
+}: RadioChatProps) {
+  const shouldReduceMotion = useReducedMotion();
+  const { messages, username, setUsername, sendMessage } = useChat();
   const [inputMessage, setInputMessage] = useState("");
-  const [username] = useState(`Listener${Math.floor(Math.random() * 1000)}`);
+  const [usernameDraft, setUsernameDraft] = useState(username);
+  const [isUsernameOpen, setIsUsernameOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -105,12 +118,10 @@ export function RadioChat() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = subscribeToChat((newMessages) => {
-      setMessages(newMessages);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    if (isUsernameOpen) {
+      setUsernameDraft(username);
+    }
+  }, [isUsernameOpen, username]);
 
   useEffect(() => {
     if (isAtBottomRef.current) {
@@ -121,7 +132,7 @@ export function RadioChat() {
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
 
-    await sendChatMessage(username, inputMessage);
+    await sendMessage(inputMessage);
     setInputMessage("");
   };
 
@@ -132,16 +143,77 @@ export function RadioChat() {
     }
   };
 
+  const cardClassName = useMemo(() => {
+    if (variant === "flat") {
+      return cn(
+        "h-full min-h-0 flex flex-col overflow-hidden border-0 bg-transparent shadow-none hover:shadow-none",
+        className,
+      );
+    }
+    return cn("h-full min-h-0 flex flex-col overflow-hidden border-border", className);
+  }, [className, variant]);
+
   return (
-    <Card className="h-full flex flex-col overflow-hidden border-border">
-      <CardHeader className="pb-3 flex-shrink-0 border-b border-border bg-card">
-        <CardTitle className="flex items-center gap-2 text-foreground">
-          <MessageCircle className="h-5 w-5 text-primary" />
-          Live Chat
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        <ScrollArea className="flex-1 px-4 py-4" ref={scrollAreaRef}>
+    <Card className={cardClassName}>
+      {showHeader && (
+        <CardHeader className="pb-3 flex-shrink-0 border-b border-border bg-card">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              Live Chat
+            </CardTitle>
+
+            <Popover open={isUsernameOpen} onOpenChange={setIsUsernameOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-10 px-3 rounded-xl"
+                  aria-label="Edit chat username"
+                >
+                  <Pencil className="h-4 w-4" />
+                  <span className="max-w-[120px] truncate text-sm">{username}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={8} className="w-72 p-3">
+                <div className="space-y-2">
+                  <p className="text-xs font-medium tracking-wider text-muted-foreground">
+                    Edit your username
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={usernameDraft}
+                      onChange={(e) => setUsernameDraft(e.target.value)}
+                      className="h-10"
+                      aria-label="Chat username"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          setUsername(usernameDraft);
+                          setIsUsernameOpen(false);
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      className="h-10"
+                      onClick={() => {
+                        setUsername(usernameDraft);
+                        setIsUsernameOpen(false);
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardHeader>
+      )}
+
+      <CardContent className="flex-1 min-h-0 flex flex-col p-0 overflow-hidden">
+        <ScrollArea className="flex-1 min-h-0 px-4 py-4" ref={scrollAreaRef}>
           <div className="space-y-3 pb-4">
             <AnimatePresence>
               {messages.map((msg) => {
@@ -149,8 +221,8 @@ export function RadioChat() {
                 return (
                   <motion.div
                     key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+                    animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
                     className={cn(
                       "flex gap-3",
                       msg.isSystem && "justify-center",
@@ -222,13 +294,13 @@ export function RadioChat() {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="bg-background border-input text-foreground placeholder:text-muted-foreground"
+            className="h-11 bg-background border-input text-foreground placeholder:text-muted-foreground"
             data-testid="input-chat-message"
           />
           <Button
             onClick={handleSendMessage}
             size="icon"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
+            className="h-11 w-11 bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
             data-testid="button-send-message"
           >
             <Send className="h-4 w-4" />

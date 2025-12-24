@@ -11,6 +11,9 @@ import { ProtectedRoute } from "@/components/protected-route";
 import { Navigation } from "@/components/navigation";
 import { GlobalRadioPlayer } from "@/components/radio-player";
 import { Footer } from "@/components/footer";
+import { ChatProvider } from "@/lib/chat-context";
+import { ChatMiniNotification } from "@/components/chat-mini-notification";
+import { ChatFullMode } from "@/components/chat-full-mode";
 import { db } from "@/lib/database";
 
 import HomePage from "@/pages/home";
@@ -82,9 +85,13 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navigation />
-      <main className="min-h-screen">{children}</main>
+      <ChatProvider>
+        <main className="min-h-screen">{children}</main>
+        <ChatFullMode />
+        <ChatMiniNotification />
+        <GlobalRadioPlayer />
+      </ChatProvider>
       <Footer />
-      <GlobalRadioPlayer />
     </>
   );
 }
