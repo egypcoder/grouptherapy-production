@@ -305,7 +305,7 @@ function AwardsSection({
               Voting is <span className="gradient-text">live</span>
             </h2>
             <p className="text-muted-foreground max-w-xl">
-              Vote for your favorites. You’ll see the live results after you vote.
+              Vote for your favorites, make them win the battle.
             </p>
           </div>
 
