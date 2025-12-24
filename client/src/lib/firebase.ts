@@ -16,29 +16,13 @@ const isFirebaseConfigured: boolean = Object.values(firebaseConfig).every(v => v
 let app: ReturnType<typeof initializeApp> | null = null;
 let database: ReturnType<typeof getDatabase> | null = null;
 
-const shouldLazyInitFirebase = String(import.meta.env.VITE_FIREBASE_LAZY_INIT || '').toLowerCase() === 'true';
-let initAttempted = false;
-
-function ensureFirebaseInitialized(): void {
-  if (database || initAttempted) return;
-  initAttempted = true;
-
-  if (!isFirebaseConfigured) return;
-
+if (isFirebaseConfigured) {
   try {
     app = initializeApp(firebaseConfig);
     database = getDatabase(app);
   } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn('Firebase initialization failed:', error);
-    }
-    app = null;
-    database = null;
+    console.warn('Firebase initialization failed:', error);
   }
-}
-
-if (isFirebaseConfigured && !shouldLazyInitFirebase) {
-  ensureFirebaseInitialized();
 }
 
 export { database, ref, push, onValue, set, serverTimestamp, off, onDisconnect, increment };
@@ -87,7 +71,6 @@ export interface RecentlyPlayedTrack {
 }
 
 export function subscribeToChat(callback: (messages: ChatMessage[]) => void): () => void {
-  ensureFirebaseInitialized();
   if (!database) {
     callback([{
       id: 'welcome',
@@ -125,11 +108,8 @@ export function subscribeToChat(callback: (messages: ChatMessage[]) => void): ()
 }
 
 export async function sendChatMessage(username: string, message: string): Promise<void> {
-  ensureFirebaseInitialized();
   if (!database) {
-    if (import.meta.env.DEV) {
-      console.warn('Firebase not configured, message not sent');
-    }
+    console.warn('Firebase not configured, message not sent');
     return;
   }
 
@@ -143,7 +123,6 @@ export async function sendChatMessage(username: string, message: string): Promis
 }
 
 export function subscribeToRadioMetadata(callback: (metadata: RadioMetadata) => void): () => void {
-  ensureFirebaseInitialized();
   if (!database) {
     callback({
       title: 'Group Therapy Radio',
@@ -175,11 +154,8 @@ export function subscribeToRadioMetadata(callback: (metadata: RadioMetadata) => 
 }
 
 export async function updateRadioMetadata(metadata: Partial<RadioMetadata>): Promise<void> {
-  ensureFirebaseInitialized();
   if (!database) {
-    if (import.meta.env.DEV) {
-      console.warn('Firebase not configured');
-    }
+    console.warn('Firebase not configured');
     return;
   }
 
@@ -191,7 +167,6 @@ export async function updateRadioMetadata(metadata: Partial<RadioMetadata>): Pro
 }
 
 export function trackListener(): () => void {
-  ensureFirebaseInitialized();
   if (!database) return () => {};
 
   const listenersRef = ref(database, 'radio/listeners');
@@ -210,7 +185,6 @@ export function trackListener(): () => void {
 }
 
 export function subscribeToListenerCount(callback: (count: number) => void): () => void {
-  ensureFirebaseInitialized();
   if (!database) {
     callback(0);
     return () => {};
@@ -231,7 +205,6 @@ export const isFirebaseConnected = () => isFirebaseConfigured && !!database;
 export { isFirebaseConfigured };
 
 export async function calculateServerTimeOffset(): Promise<number> {
-  ensureFirebaseInitialized();
   if (!database) {
     return 0;
   }
@@ -248,7 +221,6 @@ export async function calculateServerTimeOffset(): Promise<number> {
 }
 
 export function subscribeToServerTimeOffset(callback: (offset: number) => void): () => void {
-  ensureFirebaseInitialized();
   if (!database) {
     callback(0);
     return () => {};
@@ -264,7 +236,6 @@ export function subscribeToServerTimeOffset(callback: (offset: number) => void):
 }
 
 export function subscribeToCurrentSession(callback: (session: RadioSession | null) => void): () => void {
-  ensureFirebaseInitialized();
   if (!database) {
     callback(null);
     return () => {};
@@ -294,7 +265,6 @@ export async function startRadioSession(params: {
   duration: number;
   replayEnabled?: boolean;
 }): Promise<string> {
-  ensureFirebaseInitialized();
   if (!database) {
     return '';
   }
@@ -331,7 +301,6 @@ export async function startRadioSession(params: {
 }
 
 export async function updateSessionReplayEnabled(replayEnabled: boolean): Promise<void> {
-  ensureFirebaseInitialized();
   if (!database) {
     return;
   }
@@ -349,7 +318,6 @@ export async function updateSessionReplayEnabled(replayEnabled: boolean): Promis
 }
 
 export async function restartSession(): Promise<void> {
-  ensureFirebaseInitialized();
   if (!database) {
     return;
   }
@@ -375,7 +343,6 @@ export async function restartSession(): Promise<void> {
 }
 
 export async function endRadioSession(): Promise<void> {
-  ensureFirebaseInitialized();
   if (!database) {
     return;
   }
@@ -401,7 +368,6 @@ export async function endRadioSession(): Promise<void> {
 }
 
 export function subscribeToRecentlyPlayed(callback: (tracks: RecentlyPlayedTrack[]) => void): () => void {
-  ensureFirebaseInitialized();
   if (!database) {
     callback([]);
     return () => {};
@@ -428,7 +394,6 @@ export function subscribeToRecentlyPlayed(callback: (tracks: RecentlyPlayedTrack
 }
 
 export async function addToRecentlyPlayed(track: Omit<RecentlyPlayedTrack, 'id'>): Promise<void> {
-  ensureFirebaseInitialized();
   if (!database) {
     return;
   }
@@ -453,9 +418,7 @@ export async function addToRecentlyPlayed(track: Omit<RecentlyPlayedTrack, 'id'>
 
 export async function requestNotificationPermission(): Promise<boolean> {
   if (!('Notification' in window)) {
-    if (import.meta.env.DEV) {
-      console.warn('Browser does not support notifications');
-    }
+    console.warn('Browser does not support notifications');
     return false;
   }
 

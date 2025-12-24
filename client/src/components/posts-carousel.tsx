@@ -12,7 +12,6 @@ interface PostsCarouselProps {
 
 export function PostsCarousel({ posts = [], autoPlay = true }: PostsCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollRafRef = useRef<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -27,24 +26,9 @@ export function PostsCarousel({ posts = [], autoPlay = true }: PostsCarouselProp
   useEffect(() => {
     const el = scrollRef.current;
     if (el) {
-      const schedule = () => {
-        if (scrollRafRef.current !== null) return;
-        scrollRafRef.current = requestAnimationFrame(() => {
-          scrollRafRef.current = null;
-          checkScroll();
-        });
-      };
-
-      el.addEventListener("scroll", schedule, { passive: true });
-      schedule();
-
-      return () => {
-        el.removeEventListener("scroll", schedule);
-        if (scrollRafRef.current !== null) {
-          cancelAnimationFrame(scrollRafRef.current);
-          scrollRafRef.current = null;
-        }
-      };
+      el.addEventListener("scroll", checkScroll, { passive: true });
+      checkScroll();
+      return () => el.removeEventListener("scroll", checkScroll);
     }
   }, []);
 
@@ -119,7 +103,6 @@ function PostCard({ post }: { post: Post }) {
               alt={post.title}
               className="w-full h-full object-cover"
               loading="lazy"
-              decoding="async"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">

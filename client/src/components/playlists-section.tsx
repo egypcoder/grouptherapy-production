@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SiSpotify } from "react-icons/si";
 import { SpotifyEmbed } from "@/components/playlist-player";
-import { cloudinaryImageSrcSet, cloudinaryTransformImageUrl } from "@/lib/cloudinary";
 import type { Playlist } from "@/lib/database";
 
 interface PlaylistsSectionProps {
@@ -69,7 +68,6 @@ export function PlaylistsSection({
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollRafRef = useRef<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
@@ -95,24 +93,9 @@ export function PlaylistsSection({
   useEffect(() => {
     const el = scrollRef.current;
     if (el) {
-      const schedule = () => {
-        if (scrollRafRef.current !== null) return;
-        scrollRafRef.current = requestAnimationFrame(() => {
-          scrollRafRef.current = null;
-          checkScroll();
-        });
-      };
-
-      el.addEventListener("scroll", schedule, { passive: true });
-      schedule();
-
-      return () => {
-        el.removeEventListener("scroll", schedule);
-        if (scrollRafRef.current !== null) {
-          cancelAnimationFrame(scrollRafRef.current);
-          scrollRafRef.current = null;
-        }
-      };
+      el.addEventListener("scroll", checkScroll, { passive: true });
+      checkScroll();
+      return () => el.removeEventListener("scroll", checkScroll);
     }
   }, []);
 
@@ -250,8 +233,6 @@ export function PlaylistsSection({
 
 function PlaylistCard({ playlist, onPlay }: { playlist: Playlist; onPlay: () => void }) {
   const hasSpotifyEmbed = playlist.spotifyPlaylistId || extractSpotifyId(playlist.spotifyUrl || "");
-  const srcSet = cloudinaryImageSrcSet(playlist.coverUrl, [220, 260, 440, 520], { crop: 'fill' });
-  const src = srcSet ? cloudinaryTransformImageUrl(playlist.coverUrl, { width: 520, crop: 'fill' }) : playlist.coverUrl;
 
   return (
     <div 
@@ -262,13 +243,10 @@ function PlaylistCard({ playlist, onPlay }: { playlist: Playlist; onPlay: () => 
       <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted mb-3">
         {playlist.coverUrl ? (
           <img
-            src={src}
-            srcSet={srcSet}
-            sizes="(min-width: 768px) 260px, 220px"
+            src={playlist.coverUrl}
             alt={playlist.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
-            decoding="async"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-primary/30 to-muted flex items-center justify-center">

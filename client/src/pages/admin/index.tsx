@@ -99,8 +99,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="rounded-full"
           data-testid="button-admin-menu"
-          aria-label={sidebarOpen ? "Close admin menu" : "Open admin menu"}
-          aria-pressed={sidebarOpen}
         >
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>

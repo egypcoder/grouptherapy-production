@@ -59,9 +59,6 @@ export function HeroSection({
             src={backgroundImage}
             alt=""
             className="w-full h-full object-cover"
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
             initial={{ scale: 1.1 }}
             animate={{ scale: 1 }}
             transition={{ duration: 1.5, ease: [0.25, 0.1, 0.25, 1] }}
