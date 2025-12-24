@@ -261,7 +261,8 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         }
 
         // Check if today has 24-hour repeat enabled
-        const is24hRepeatDay = todayShows.length > 0 && todayShows.every(show => show.repeat24h);
+        const is24hRepeatDay =
+          todayShows.length > 0 && todayShows.every(show => show.repeat24h);
 
         let liveShow = null;
         
@@ -793,7 +794,10 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         coverUrl: stream.coverUrl,
       };
 
-      setCurrentTrack(track);
+      setCurrentTrack({
+        ...track,
+        artist: track.artist ?? "",
+      });
       setAudioUrl(url);
       setHasScheduledShow(true);
       setProgress(0);
