@@ -1,248 +1,339 @@
 # GroupTherapy Records - Production Website
 
-A modern, full-featured website for GroupTherapy Records built with React, TypeScript, and Supabase.
+# GroupTherapy — Music Platform + Admin CMS
 
-## Features
+A modern music label platform built with **React + TypeScript + Vite**, backed by **Supabase (Postgres + Auth + Storage)** and optional real-time radio features via **Firebase Realtime Database**.
 
-### Public Features
-- 🎵 **Releases Management** - Display latest music releases with Spotify integration
-- 🎤 **Artist Profiles** - Showcase artists with bios, social links, and releases
-- 📅 **Events** - Event listing with ticketing, countdowns, and featured events
-- 📝 **Blog & News** - News articles and blog posts with SEO optimization
-- 📻 **Radio Shows** - Live and recorded radio shows with schedule
-- 🎬 **Videos** - Video gallery with YouTube integration
-- 🎼 **Playlists** - Curated music playlists
-- 🏆 **Awards** - Voting system for best artists and tracks
-- 💼 **Careers** - Job listings and applications
-- 🎫 **Tours** - Tour dates and ticket information
-- ✉️ **Newsletter** - Email subscription system
-- 📧 **Contact** - Contact form with spam protection
+This repo includes:
 
-### Admin Features
-- 🔐 **Secure Authentication** - Login system with rate limiting
-- 📊 **Dashboard** - Analytics and overview of all content
-- ✨ **AI Content Generation** - Generate blog posts and newsletters with Gemini AI
-- 🖼️ **Media Management** - Image and audio upload via Cloudinary
-- 📈 **Analytics** - Track page views and user engagement
-- 🎯 **SEO Management** - Control meta tags and structured data
-- 🎨 **Theme Customization** - Dark/light mode support
+- A public website (releases, artists, events, radio, news, etc.)
+- A full admin dashboard (content management + analytics)
+- Real-time radio UX primitives (listener count, chat, sessions) when Firebase is configured
+- Built-in analytics tracking stored in Supabase
+- Optional AI content generation (Gemini) + Spotify metadata fetch
+
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Tech Stack](#tech-stack)
+- [Architecture (How it works)](#architecture-how-it-works)
+- [Features](#features)
+- [Routes](#routes)
+- [Getting Started (Local Dev)](#getting-started-local-dev)
+- [Environment Variables](#environment-variables)
+- [Database Setup](#database-setup)
+- [Admin Access](#admin-access)
+- [Deployment](#deployment)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+
+## Highlights
+
+- Modern UI/UX
+  - TailwindCSS + shadcn/ui
+  - Framer Motion animations
+  - Mobile-first admin (responsive grids + mobile-friendly dialogs)
+
+- Production-minded
+  - Strongly typed domain models (`db` layer)
+  - TanStack Query for caching and async workflows
+  - Centralized analytics tracking (`db.analytics.*`)
+
+- Integrated platform features
+  - Spotify metadata fetch for releases/playlists
+  - Pluggable email providers for newsletters
+  - Optional Cloudinary uploader utilities
 
 ## Tech Stack
 
 ### Frontend
-- **React** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **TailwindCSS** - Styling
-- **shadcn/ui** - UI components
-- **React Query** - Data fetching
-- **Wouter** - Routing
-- **Framer Motion** - Animations
 
-### Backend
-- **Supabase** - Database and authentication
-- **Firebase** - Real-time features
-- **Cloudinary** - Media storage
-- **Gemini AI** - Content generation
-- **Spotify API** - Music metadata
+- React 18 + TypeScript
+- Vite 5
+- TailwindCSS
+- shadcn/ui (Radix UI primitives)
+- TanStack Query
+- Wouter
+- Framer Motion
 
-## Setup Instructions
+### Backend / Services
+
+- Supabase
+  - Postgres database
+  - Authentication (admin login)
+  - Storage helpers (upload image/audio/video)
+- Firebase Realtime Database (optional)
+  - Live listener count
+  - Live chat
+  - Current radio session metadata
+- Google Gemini API (optional)
+  - AI generation for admin posts/newsletters
+- Spotify API (optional)
+  - Metadata fetch from URLs
+- Cloudinary (optional)
+  - Upload helpers with progress + large file handling
+
+## Architecture (How it works)
+
+- UI lives in `client/src`.
+- Routing is handled via `wouter` in `client/src/App.tsx`.
+- Data access is centralized in `client/src/lib/database.ts` (`db.*`).
+  - The app maps database columns between `snake_case` and `camelCase`.
+- Server state uses TanStack Query (`client/src/lib/queryClient.ts`).
+- Admin protection uses Supabase auth session (`ProtectedRoute`).
+- Analytics:
+  - Public routes automatically call `db.analytics.trackPageView()`.
+  - Key actions call `db.analytics.trackEvent()`.
+- Radio:
+  - Public radio uses `RadioProvider`.
+  - If Firebase is not configured, the UI falls back gracefully.
+
+## Features
+
+### Public Website
+
+- Home
+  - Hero content + marquee + stats driven from Site Settings
+- Releases
+  - Index + detail pages
+  - Outbound clicks tracked (analytics)
+- Artists
+  - Index + detail pages
+- Events
+  - Index + detail pages
+  - Ticket click tracking
+- News / Posts
+  - Index + post detail
+- Radio
+  - Global player + show schedule
+  - Live chat + listener tracking (when Firebase configured)
+- Videos / Playlists / Tours / Careers / Press
+- Static legal pages: `/terms`, `/privacy`, `/cookies`
+
+### Admin Dashboard
+
+Accessible under `/admin` (requires Supabase authentication).
+
+- Dashboard
+  - KPIs + charts + quick actions
+  - Recent activity snapshot
+- Content management
+  - Artists
+  - Releases (with Spotify metadata fetch)
+  - Events
+  - Posts (with optional AI generation)
+  - Videos
+  - Playlists (with Spotify metadata fetch)
+  - Tours
+  - Press Kit assets
+  - Testimonials
+  - Awards (categories, periods, nominees)
+  - Static pages (Markdown editor)
+- Operations
+  - Contacts inbox
+  - Newsletters
+    - Email provider configuration
+    - Compose + send to active subscribers
+    - Optional AI generation
+- SEO
+  - SEO settings for global meta + structured data
+
+## Routes
+
+### Public
+
+- `/` — Home
+- `/releases` — Releases index
+- `/releases/:slug` — Release detail
+- `/artists` — Artists index
+- `/artists/:slug` — Artist detail
+- `/events` — Events index
+- `/events/:slug` — Event detail
+- `/news` — News/posts index
+- `/news/:slug` — Post detail
+- `/radio` — Radio
+- `/videos` — Videos
+- `/playlists` — Playlists
+- `/tours` — Tours
+- `/careers` — Careers
+- `/press` — Press
+- `/terms`, `/privacy`, `/cookies` — Static pages
+
+### Admin
+
+- `/admin/login`
+- `/admin` — Dashboard
+- `/admin/artists`
+- `/admin/releases` (and `/admin/releases/:id`)
+- `/admin/events` (and `/admin/events/:id`)
+- `/admin/posts` (and `/admin/posts/:id`)
+- `/admin/videos`
+- `/admin/playlists`
+- `/admin/radio`
+- `/admin/tours`
+- `/admin/press-kit`
+- `/admin/static-pages`
+- `/admin/testimonials`
+- `/admin/awards`
+- `/admin/seo-settings`
+- `/admin/contacts`
+- `/admin/newsletters`
+- `/admin/settings`
+
+## Getting Started (Local Dev)
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Supabase account
-- Cloudinary account
-- Spotify Developer account
-- Google Gemini API key
 
-### Environment Variables
+- Node.js 18+
+- A Supabase project (required)
+- Firebase project (optional, for radio real-time)
 
-Create a `.env` file in the root directory with the following variables:
+### Install
 
-```env
-# Spotify API
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-VITE_SPOTIFY_CLIENT_ID=your_spotify_client_id
-VITE_SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
-
-# Gemini AI
-VITE_GEMINI_API_KEY=your_gemini_api_key
-VITE_GEMINI_PROJECT_ID=your_gemini_project_id
-
-# Cloudinary
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
-VITE_CLOUDINARY_UPLOAD_PRESET=your_upload_preset
-
-# Firebase
-DATABASE_URL=your_firebase_database_url
-VITE_FIREBASE_API_KEY=your_firebase_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
-VITE_FIREBASE_DATABASE_URL=your_firebase_database_url
-VITE_FIREBASE_PROJECT_ID=your_firebase_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-VITE_FIREBASE_APP_ID=your_firebase_app_id
-
-# Security
-MAX_LOGIN_ATTEMPTS=5
-LOCKOUT_DURATION_MINUTES=15
-
-# Admin Credentials
-ADMIN_PASSWORD=your_secure_password
-ADMIN_EMAIL=admin@yourdomain.com
-
-# Supabase
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/egypcoder/grouptherapy-production.git
-cd grouptherapy-production
-```
-
-2. **Install dependencies**
 ```bash
 npm install
 ```
 
-3. **Setup Database**
+### Configure env
 
-Run the SQL migration files in your Supabase SQL editor in this order:
-```bash
-# 1. Main schema
-docs/db-schema-fixed.sql
+Create a `.env` file at repo root.
 
-# 2. New tables (tours, awards, etc.)
-docs/migration-new-tables.sql
+See: [Environment Variables](#environment-variables)
 
-# 3. Seed data (optional)
-docs/seed-data.sql
-```
+### Run
 
-4. **Configure Cloudinary**
-- Create an unsigned upload preset in your Cloudinary dashboard
-- Set the preset name in `VITE_CLOUDINARY_UPLOAD_PRESET`
-
-5. **Configure Spotify API**
-- Create an app at https://developer.spotify.com/dashboard
-- Add your Client ID and Secret to the environment variables
-
-6. **Configure Gemini AI**
-- Get an API key from https://ai.google.dev/
-- Add the key to `VITE_GEMINI_API_KEY`
-
-7. **Start development server**
 ```bash
 npm run dev
 ```
 
-The app will be available at http://localhost:5000
+Vite is configured to start on port `5000`, but if it’s already in use it will automatically try another port.
 
-### Build for Production
+### Typecheck
+
+```bash
+npm run check
+```
+
+## Environment Variables
+
+This project is a Vite app, so client-side config must be prefixed with `VITE_`.
+
+### Required
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+### Optional (feature-gated)
+
+#### Firebase (Radio real-time)
+
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_DATABASE_URL`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+#### Gemini (AI generation)
+
+- `VITE_GEMINI_API_KEY`
+
+#### Spotify (metadata fetch)
+
+- `VITE_SPOTIFY_CLIENT_ID`
+- `VITE_SPOTIFY_CLIENT_SECRET`
+
+#### Cloudinary (uploads)
+
+- `VITE_CLOUDINARY_CLOUD_NAME`
+- `VITE_CLOUDINARY_UPLOAD_PRESET`
+
+#### Email providers (Newsletters)
+
+Email can be configured via the Admin UI (stored in Site Settings) or via environment variables.
+
+- `VITE_EMAIL_SERVICE` = `resend` | `sendgrid` | `ses` | `smtp`
+- `VITE_EMAIL_FROM`
+
+Provider-specific:
+
+- Resend: `VITE_RESEND_API_KEY`
+- SendGrid: `VITE_SENDGRID_API_KEY`
+- SES: `VITE_SES_API_URL`
+- SMTP: `VITE_EMAIL_API_URL`
+
+## Database Setup
+
+There are two schema sources in the repo:
+
+- `client/src/lib/supabase-schema.sql`
+- `docs/*.sql` migrations
+
+Recommended path:
+
+1. Start with `docs/db-schema-fixed.sql`
+2. Apply `docs/migration-new-tables.sql`
+3. Apply `docs/migration-email-service-config.sql` (if using newsletters)
+4. Optionally seed with `docs/seed-data.sql`
+
+For deeper setup notes (RLS policies, Firebase rules, etc.) see `SETUP.md`.
+
+## Admin Access
+
+- Admin pages are guarded by `ProtectedRoute`.
+- Authentication uses Supabase Auth.
+
+Important implementation detail:
+
+- The current auth layer treats any authenticated Supabase user as admin in the UI.
+- For production security, enforce Row Level Security (RLS) in Supabase (see `SETUP.md`).
+
+## Deployment
+
+This is a static SPA built by Vite.
+
+Build:
 
 ```bash
 npm run build
 ```
 
-The built files will be in the `dist` directory.
+Preview:
 
-## Database Schema
+```bash
+npm run preview
+```
 
-The application uses the following main tables:
-- `releases` - Music releases
-- `artists` - Artist profiles
-- `events` - Event listings
-- `tours` - Tour dates
-- `posts` - Blog posts and news
-- `radio_shows` - Radio show schedules
-- `radio_tracks` - Radio playlist
-- `videos` - Video content
-- `playlists` - Music playlists
-- `careers` - Job listings
-- `award_categories` - Award categories
-- `award_periods` - Voting periods
-- `award_entries` - Award nominees
-- `award_votes` - User votes
-- `newsletter_subscribers` - Email subscribers
-- `contacts` - Contact form submissions
-- `testimonials` - User testimonials
-- `static_pages` - Custom pages
-- `seo_settings` - SEO configuration
+See `DEPLOYMENT.md` for Vercel/Netlify/self-hosted guidance.
 
-See `docs/migration-new-tables.sql` for detailed schema.
+## Project Structure
 
-## Admin Access
-
-Default admin credentials are set in the environment variables:
-- Email: Set in `ADMIN_EMAIL`
-- Password: Set in `ADMIN_PASSWORD`
-
-Admin panel is accessible at `/admin`
-
-## Features Guide
-
-### Spotify Integration
-- Paste a Spotify track URL in admin releases
-- Metadata is automatically fetched and populated
-
-### AI Content Generation
-- Available in blog/news and newsletter sections
-- Provide a prompt and AI generates the content
-- Uses Google Gemini 1.5 Flash model
-
-### Audio Upload
-- Supports files up to 500MB
-- Automatic chunked upload for files >100MB
-- Progress tracking during upload
-
-### Awards System
-- Create categories (artist or track)
-- Set voting periods
-- Users can vote once per period
-- Automatic vote counting
-- Display winners
-
-### Newsletter System
-- Collect email subscribers
-- Send newsletters to all active subscribers
-- AI-powered content generation
-- HTML email support
-- Export subscribers to CSV
+- `client/src/App.tsx` — Route map + layouts
+- `client/src/pages/*` — Public pages
+- `client/src/pages/admin/*` — Admin pages
+- `client/src/components/*` — Feature components
+- `client/src/components/ui/*` — shadcn/ui primitives
+- `client/src/lib/database.ts` — Supabase data layer
+- `client/src/lib/queryClient.ts` — TanStack Query config
+- `client/src/lib/radio-context.tsx` — Radio playback + realtime wiring
+- `docs/*` — SQL migrations + setup notes
 
 ## Troubleshooting
 
-### Audio Upload Fails
-- Check Cloudinary upload preset is configured correctly
-- Ensure file size is under 500MB
-- Verify internet connection is stable
+### "Supabase is not configured"
 
-### Spotify Metadata Not Loading
-- Verify Spotify API credentials are correct
-- Check if the Spotify URL is valid
-- Ensure CORS is properly configured
+- Ensure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set.
 
-### AI Generation Errors
-- Verify Gemini API key is valid
-- Check API quota limits
-- Ensure internet connectivity
+### Firebase features not working
 
-## Contributing
+- The UI will fall back if Firebase is missing.
+- If you need real-time features, set all `VITE_FIREBASE_*` vars.
 
-This is a production project for GroupTherapy Records. For any issues or feature requests, please contact the development team.
+### AI generation not available
 
-## License
+- Add `VITE_GEMINI_API_KEY`.
 
-Proprietary - All rights reserved by GroupTherapy Records
+### Spotify metadata fetch fails
 
-## Support
-
-For technical support, contact: osama@grouptherapyeg.com
+- Add `VITE_SPOTIFY_CLIENT_ID` and `VITE_SPOTIFY_CLIENT_SECRET`.
