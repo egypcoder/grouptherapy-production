@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Radio, Users, Loader2, CloudDownload, ExternalLink, Music } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,8 @@ import { ImageUpload } from "@/components/image-upload";
 import { AudioUpload } from "@/components/audio-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, RadioShow, RadioSettings, RadioTrack } from "@/lib/database";
+import { db, RadioShow, RadioTrack } from "@/lib/database";
+import { subscribeToListenerCount } from "@/lib/firebase";
 
 const daysOfWeek = [
   { value: 0, label: "Sunday" },
@@ -37,8 +38,11 @@ function parseTimeToMinutes(time: string): number {
   return (hours || 0) * 60 + (minutes || 0);
 }
 
-function getShowStatus(show: RadioShow, allShows: RadioShow[] = []): { status: 'live' | 'scheduled' | 'recorded'; label: string } {
-  const now = new Date();
+function getShowStatus(
+  show: RadioShow,
+  allShows: RadioShow[] = [],
+  now: Date = new Date(),
+): { status: "live" | "scheduled" | "recorded"; label: string } {
   const currentDay = now.getDay();
 
   // Check if this show is part of a 24-hour repeat day
@@ -91,8 +95,16 @@ function getShowStatus(show: RadioShow, allShows: RadioShow[] = []): { status: '
   return { status: 'scheduled', label: 'Scheduled' };
 }
 
-function StatusBadge({ show, shows }: { show: RadioShow; shows: RadioShow[] }) {
-  const { status, label } = getShowStatus(show, shows);
+function StatusBadge({
+  show,
+  shows,
+  now,
+}: {
+  show: RadioShow;
+  shows: RadioShow[];
+  now: Date;
+}) {
+  const { status, label } = getShowStatus(show, shows, now);
 
   const variants: Record<string, string> = {
     live: 'bg-green-500/10 text-green-600 border-green-500/20',
@@ -141,17 +153,6 @@ export default function AdminRadioShows() {
   const { data: shows = [] } = useQuery<RadioShow[]>({
     queryKey: ["radioShows"],
     queryFn: queryFunctions.radioShows,
-  });
-
-  const { data: radioSettings } = useQuery<RadioSettings | null>({
-    queryKey: ["radioSettings"],
-    queryFn: async () => {
-      try {
-        return await db.radioSettings.get();
-      } catch {
-        return null;
-      }
-    },
   });
 
   const { data: recentTracks = [] } = useQuery<RadioTrack[]>({
@@ -484,23 +485,44 @@ export default function AdminRadioShows() {
     setIsDialogOpen(true);
   };
 
-  const listenerCount = radioSettings?.listenerCount;
+  // Force periodic rerenders so Live/Upcoming badges update without refresh.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+  const now = useMemo(() => new Date(nowTick), [nowTick]);
+
+  const [liveListenerCount, setLiveListenerCount] = useState<number | null>(null);
+  useEffect(() => {
+    const unsubscribe = subscribeToListenerCount((count) => {
+      setLiveListenerCount(count);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const todayShowsCount = useMemo(() => {
+    const today = new Date().getDay();
+    return shows.filter((s) => s.published && s.dayOfWeek === today).length;
+  }, [shows]);
 
   return (
     <AdminLayout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Radio Shows</h1>
             <p className="text-sm text-muted-foreground">Manage radio show schedule</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className="w-full sm:w-auto flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground bg-muted/50 px-2 py-1 rounded">
               <Users className="h-3.5 w-3.5" />
-              <span>{listenerCount !== undefined ? listenerCount : '-'}</span>
+              <span>{liveListenerCount !== null ? liveListenerCount : "-"}</span>
               <span className="text-xs">listeners</span>
+              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs">Total Tracks today {todayShowsCount}</span>
             </div>
-            <Button size="sm" onClick={handleOpenNew}>
+            <Button size="sm" onClick={handleOpenNew} className="w-full sm:w-auto">
               <Plus className="h-3.5 w-3.5 mr-1.5" />
               Add Show
             </Button>
@@ -526,7 +548,10 @@ export default function AdminRadioShows() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <h3 className="font-semibold text-base">{day.label}</h3>
-                            <Badge variant="outline" className="text-xs">
+                            <Badge
+                              variant={dayShows.length > 0 ? "outline" : "secondary"}
+                              className={dayShows.length > 0 ? "text-xs border-primary/30 text-primary" : "text-xs opacity-70"}
+                            >
                               {dayShows.length} {dayShows.length === 1 ? 'show' : 'shows'}
                             </Badge>
                             {dayRepeat24h && (
@@ -597,7 +622,7 @@ export default function AdminRadioShows() {
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                           <h4 className="font-medium text-sm truncate">{show.title}</h4>
-                                          <StatusBadge show={show} shows={shows} />
+                                          <StatusBadge show={show} shows={shows} now={now} />
                                           {show.repeat24h && (
                                             <Badge variant="secondary" className="text-[10px] gap-1">
                                               <Repeat className="h-2.5 w-2.5" />
@@ -717,7 +742,7 @@ export default function AdminRadioShows() {
         </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">
                 {editingShow ? "Edit Show" : "Add New Show"}
@@ -730,7 +755,7 @@ export default function AdminRadioShows() {
                   <CloudDownload className="h-4 w-4 text-orange-500" />
                   <h3 className="text-sm font-medium">Import from SoundCloud</h3>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     placeholder="Paste SoundCloud track URL..."
                     value={soundcloudUrl}
@@ -862,7 +887,7 @@ export default function AdminRadioShows() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="startTime">Start Time</Label>
                       <Input
@@ -930,7 +955,7 @@ export default function AdminRadioShows() {
         </Dialog>
 
         <Dialog open={isTrackDialogOpen} onOpenChange={setIsTrackDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="sm:max-w-md overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Add Recent Stream</DialogTitle>
             </DialogHeader>
@@ -941,7 +966,7 @@ export default function AdminRadioShows() {
                   <CloudDownload className="h-4 w-4 text-orange-500" />
                   <h3 className="text-sm font-medium">Import from SoundCloud</h3>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     placeholder="Paste SoundCloud URL..."
                     value={trackSoundcloudUrl}

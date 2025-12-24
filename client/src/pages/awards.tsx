@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown, ExternalLink, Play, Pause } from "lucide-react";
-import { FaSpotify, FaSoundcloud } from "react-icons/fa";
+import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown } from "lucide-react";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead } from "@/components/seo-head";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { db, type AwardCategory, type AwardPeriod, type AwardEntry } from "@/lib/database";
+import { AwardEntryCard } from "@/components/award-entry-card";
 
 function generateFingerprint(): string {
   const canvas = document.createElement("canvas");
@@ -131,7 +130,7 @@ export default function AwardsPage() {
         keywords={["music awards", "electronic music voting", "artist awards", "track of the month", "music competition"]}
       />
 
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[52vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="w-full h-full bg-gradient-to-b from-primary/10 via-background to-background" />
         </div>
@@ -152,7 +151,7 @@ export default function AwardsPage() {
           }}
         />
 
-        <div className="relative z-10 text-center px-6 md:px-8 py-20">
+        <div className="relative z-10 text-center px-6 md:px-8 py-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -162,7 +161,7 @@ export default function AwardsPage() {
           </motion.div>
 
           <motion.h1
-            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-[-0.04em] mb-6"
+            className="text-5xl sm:text-6xl md:text-7xl font-bold tracking-[-0.04em] mb-6"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
@@ -233,7 +232,7 @@ export default function AwardsPage() {
                 </p>
               </motion.div>
             ) : (
-              <div className="space-y-16">
+              <div className="space-y-12">
                 {activeVotingPeriods.map((period) => (
                   <VotingPeriodSection
                     key={period.id}
@@ -313,10 +312,10 @@ function VotingPeriodSection({
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-2xl md:text-3xl font-bold">{period.name}</h2>
+            <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">{period.name}</h2>
             <Badge variant="default" className="bg-primary/20 text-primary border-primary/30">
               Voting Open
             </Badge>
@@ -351,7 +350,7 @@ function VotingPeriodSection({
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         <AnimatePresence>
           {period.entries.map((entry, index) => (
             <motion.div
@@ -360,7 +359,7 @@ function VotingPeriodSection({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <EntryCard
+              <AwardEntryCard
                 entry={entry}
                 categoryType={period.category?.type || "artist"}
                 onVote={() => onVote(entry.id, period.id)}
@@ -373,188 +372,6 @@ function VotingPeriodSection({
         </AnimatePresence>
       </div>
     </motion.section>
-  );
-}
-
-function EntryCard({
-  entry,
-  categoryType,
-  onVote,
-  hasVoted,
-  isVoting,
-  totalVotes = 0,
-}: {
-  entry: AwardEntry;
-  categoryType: "artist" | "track";
-  onVote: () => void;
-  hasVoted: boolean;
-  isVoting: boolean;
-  totalVotes?: number;
-}) {
-  const votePercentage = totalVotes > 0 && entry.voteCount > 0 
-    ? Math.round((entry.voteCount / totalVotes) * 100) 
-    : 0;
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (audio) {
-        audio.pause();
-        audio.src = "";
-      }
-    };
-  }, [audio]);
-
-  const handlePlayPause = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!entry.trackAudioUrl) return;
-
-    if (isPlaying && audio) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      if (!audio) {
-        const newAudio = new Audio(entry.trackAudioUrl);
-        newAudio.addEventListener("ended", () => setIsPlaying(false));
-        newAudio.addEventListener("error", () => {
-          setIsPlaying(false);
-          console.error("Audio playback error");
-        });
-        setAudio(newAudio);
-        newAudio.play().then(() => setIsPlaying(true)).catch(console.error);
-      } else {
-        audio.play().then(() => setIsPlaying(true)).catch(console.error);
-      }
-    }
-  };
-
-  const imageUrl = categoryType === "artist" ? entry.artistImageUrl : entry.trackCoverUrl;
-  const title = categoryType === "artist" ? entry.artistName : entry.trackTitle;
-  const subtitle = categoryType === "track" ? entry.trackArtist : entry.artistBio;
-
-  return (
-    <Card className="group overflow-hidden bg-card/50 hover:bg-card transition-all duration-300 border-border/50 hover:border-primary/30 hover:shadow-lg">
-      <div className="relative aspect-square overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={title || "Entry"}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
-            {categoryType === "artist" ? (
-              <User className="h-16 w-16 text-muted-foreground/50" />
-            ) : (
-              <Music className="h-16 w-16 text-muted-foreground/50" />
-            )}
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        
-        {entry.voteCount > 0 && (
-          <Badge className="absolute top-3 right-3 bg-background/90 text-foreground z-10">
-            {entry.voteCount} {entry.voteCount === 1 ? 'vote' : 'votes'}
-            {votePercentage > 0 && ` (${votePercentage}%)`}
-          </Badge>
-        )}
-
-        {/* Play button overlay - centered like fresh drops */}
-        {entry.trackAudioUrl && (
-          <motion.div
-            initial={false}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center"
-          >
-            <Button
-              size="icon"
-              className="h-14 w-14 rounded-full bg-white text-black hover:bg-white/90"
-              onClick={handlePlayPause}
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
-            </Button>
-          </motion.div>
-        )}
-      </div>
-
-      <CardContent className="p-4 space-y-3">
-        <div>
-          <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors mb-1">{title || "Unknown"}</h3>
-          {subtitle && (
-            <p className="text-sm text-muted-foreground line-clamp-2">{subtitle}</p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          {(entry.spotifyUrl || entry.soundcloudUrl) && (
-            <div className="flex items-center gap-2">
-              {entry.spotifyUrl && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 gap-2 hover:bg-[#1DB954]/10 hover:text-[#1DB954] hover:border-[#1DB954]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(entry.spotifyUrl!, "_blank");
-                  }}
-                >
-                  <FaSpotify className="h-4 w-4" />
-                  <span className="text-xs">Spotify</span>
-                </Button>
-              )}
-              {entry.soundcloudUrl && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 gap-2 hover:bg-[#ff5500]/10 hover:text-[#ff5500] hover:border-[#ff5500]"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(entry.soundcloudUrl!, "_blank");
-                  }}
-                >
-                  <FaSoundcloud className="h-4 w-4" />
-                  <span className="text-xs">SoundCloud</span>
-                </Button>
-              )}
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <Button
-              className="w-full gap-2"
-              onClick={onVote}
-              disabled={hasVoted || isVoting}
-              variant={hasVoted ? "secondary" : "default"}
-              size="sm"
-            >
-              {isVoting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : hasVoted ? (
-                <>
-                  <CheckCircle className="h-4 w-4" />
-                  Voted
-                </>
-              ) : (
-                <>
-                  <Vote className="h-4 w-4" />
-                  Vote
-                </>
-              )}
-            </Button>
-            {hasVoted && entry.voteCount > 0 && (
-              <div className="text-xs text-center text-muted-foreground">
-                {entry.voteCount} {entry.voteCount === 1 ? 'vote' : 'votes'}
-                {votePercentage > 0 && ` • ${votePercentage}%`}
-              </div>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

@@ -312,6 +312,13 @@ CREATE TABLE IF NOT EXISTS site_settings (
   hero_tag TEXT,
   hero_title TEXT DEFAULT 'GROUPTHERAPY',
   hero_subtitle TEXT DEFAULT 'The sound of tomorrow, today. Discover the future of the music you love.',
+  -- Contact Details
+  contact_email TEXT,
+  contact_email_subtext TEXT,
+  contact_phone TEXT,
+  contact_phone_subtext TEXT,
+  contact_address TEXT,
+  contact_address_subtext TEXT,
   hero_background_image TEXT,
   hero_background_video TEXT,
   hero_background_type TEXT DEFAULT 'image',

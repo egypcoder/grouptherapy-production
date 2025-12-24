@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Play, Music2, ListMusic } from "lucide-react";
-import { Link } from "wouter";
+import { ChevronLeft, ChevronRight, Play, Music2, ListMusic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SiSpotify } from "react-icons/si";
 import { SpotifyEmbed } from "@/components/playlist-player";
-import type { Playlist } from "@shared/schema";
+import type { Playlist } from "@/lib/database";
 
 interface PlaylistsSectionProps {
   playlists?: Playlist[];
   title?: string;
+  autoPlay?: boolean;
 }
 
 const demoPlaylists: Partial<Playlist>[] = [
@@ -62,9 +62,14 @@ function extractSpotifyId(url: string): string | null {
 export function PlaylistsSection({
   playlists = [],
   title = "",
+  autoPlay = true,
 }: PlaylistsSectionProps) {
   const [selectedPlaylist, setSelectedPlaylist] = useState<Partial<Playlist> | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
 
   const displayPlaylists = playlists.length > 0 ? playlists : demoPlaylists;
 
@@ -77,23 +82,104 @@ export function PlaylistsSection({
     return playlist.spotifyPlaylistId ?? extractSpotifyId(playlist.spotifyUrl || "") ?? null;
   };
 
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener("scroll", checkScroll, { passive: true });
+      checkScroll();
+      return () => el.removeEventListener("scroll", checkScroll);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!autoPlay) return;
+
+    const interval = setInterval(() => {
+      if (scrollRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+        const isAtEnd = scrollLeft >= scrollWidth - clientWidth - 10;
+
+        if (isAtEnd) {
+          scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          scrollRef.current.scrollBy({ left: 280, behavior: "smooth" });
+        }
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [autoPlay]);
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = 280;
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
-        {displayPlaylists.slice(0, 4).map((playlist, index) => (
-          <motion.div
-            key={playlist.id || index}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1, duration: 0.4 }}
-          >
-            <PlaylistCard 
-              playlist={playlist as Playlist} 
-              onPlay={() => handlePlayPlaylist(playlist)}
-            />
-          </motion.div>
-        ))}
+      <div className="relative">
+        {title && (
+          <div className="max-w-7xl mx-auto px-6 md:px-8 mb-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => scroll("left")}
+                  disabled={!canScrollLeft}
+                  className="rounded-full"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => scroll("right")}
+                  disabled={!canScrollRight}
+                  className="rounded-full"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div
+          ref={scrollRef}
+          className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 px-6 md:px-8 snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {displayPlaylists.map((playlist, index) => (
+            <motion.div
+              key={playlist.id || index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.05, duration: 0.4 }}
+              className="flex-shrink-0 w-[220px] md:w-[260px] snap-start"
+            >
+              <PlaylistCard
+                playlist={playlist as Playlist}
+                onPlay={() => handlePlayPlaylist(playlist)}
+              />
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>

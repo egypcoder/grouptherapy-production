@@ -385,7 +385,7 @@ export default function AdminStaticPages() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="heroCtaText">CTA Text</Label>
                     <Input
@@ -477,55 +477,61 @@ export default function AdminStaticPages() {
               <h3 className="font-semibold text-lg border-b pb-2">Stats</h3>
               <div className="space-y-2">
                 {statsItems.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Select
-                      value={item.icon}
-                      onValueChange={(value) => updateStatItem(index, "icon", value)}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {iconOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      value={item.prefix}
-                      onChange={(e) => updateStatItem(index, "prefix", e.target.value)}
-                      placeholder="$"
-                      className="w-12"
-                    />
-                    <Input
-                      type="number"
-                      value={item.value}
-                      onChange={(e) => updateStatItem(index, "value", parseInt(e.target.value) || 0)}
-                      placeholder="50"
-                      className="w-20"
-                    />
-                    <Input
-                      value={item.suffix}
-                      onChange={(e) => updateStatItem(index, "suffix", e.target.value)}
-                      placeholder="+"
-                      className="w-14"
-                    />
+                  <div key={index} className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={item.icon}
+                        onValueChange={(value) => updateStatItem(index, "icon", value)}
+                      >
+                        <SelectTrigger className="w-full sm:w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {iconOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeStatItem(index)}
+                        className="ml-auto text-muted-foreground hover:text-destructive h-8 w-8"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
+                      <Input
+                        value={item.prefix}
+                        onChange={(e) => updateStatItem(index, "prefix", e.target.value)}
+                        placeholder="$"
+                        className="w-full sm:w-12"
+                      />
+                      <Input
+                        type="number"
+                        value={item.value}
+                        onChange={(e) => updateStatItem(index, "value", parseInt(e.target.value) || 0)}
+                        placeholder="50"
+                        className="w-full sm:w-20"
+                      />
+                      <Input
+                        value={item.suffix}
+                        onChange={(e) => updateStatItem(index, "suffix", e.target.value)}
+                        placeholder="+"
+                        className="w-full sm:w-14"
+                      />
+                    </div>
+
                     <Input
                       value={item.label}
                       onChange={(e) => updateStatItem(index, "label", e.target.value)}
                       placeholder="Label"
-                      className="flex-1"
+                      className="w-full"
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeStatItem(index)}
-                      className="text-muted-foreground hover:text-destructive h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))}
                 <Button variant="outline" size="sm" onClick={addStatItem} className="mt-2">
@@ -550,7 +556,11 @@ export default function AdminStaticPages() {
 
         <div className="grid gap-4">
           {pages.map((page) => (
-            <Card key={page.id}>
+            <Card
+              key={page.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => handleEdit(page)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
@@ -568,11 +578,22 @@ export default function AdminStaticPages() {
                   </div>
                   <div className="flex gap-2">
                     <Link href={`/${page.slug}`}>
-                      <Button variant="outline" size="sm">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                     </Link>
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(page)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(page);
+                      }}
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </div>
@@ -588,7 +609,7 @@ export default function AdminStaticPages() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="inset-0 sm:inset-auto rounded-none sm:rounded-lg max-h-[100svh] sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Edit {editingPage?.title}</DialogTitle>
             </DialogHeader>

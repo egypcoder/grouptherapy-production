@@ -105,7 +105,7 @@ function updateStructuredData(data: object) {
   if (!script) {
     script = document.createElement("script");
     script.id = id;
-    script.type = "application/ld+json";
+    (script as HTMLScriptElement).type = "application/ld+json";
     document.head.appendChild(script);
   }
   script.textContent = JSON.stringify(data);

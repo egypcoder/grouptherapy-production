@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import {
@@ -37,10 +37,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { MetricsChart } from "@/components/metrics-chart";
 import { AnalyticsChart } from "@/components/analytics-chart";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryFunctions } from "@/lib/queryClient";
 import type { Release, Event, Post, RadioShow, Artist, Contact, AnalyticsSummary, NewsletterSubscriber, Playlist, Video as VideoType, Career, Tour } from "@/lib/database";
 import { useAuth } from "@/lib/auth-context";
+import { subscribeToListenerCount } from "@/lib/firebase";
+import { supabase } from "@/lib/supabase";
 import {
   Table,
   TableBody,
@@ -185,7 +187,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
           <ThemeToggle />
         </div>
-        <div className="p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>
@@ -202,6 +204,9 @@ function formatDuration(seconds: number): string {
 }
 
 export default function AdminDashboard() {
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+
   const { data: releases = [] } = useQuery<Release[]>({
     queryKey: ["releases"],
     queryFn: queryFunctions.releases,
@@ -263,6 +268,82 @@ export default function AdminDashboard() {
     refetchInterval: 60000,
   });
 
+  useEffect(() => {
+    if (!supabase) return;
+
+    const invalidate = (keys: string[]) => {
+      keys.forEach((k) => queryClient.invalidateQueries({ queryKey: [k] }));
+    };
+
+    const channel = supabase
+      .channel("admin-dashboard-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "releases" },
+        () => invalidate(["releases"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "artists" },
+        () => invalidate(["artists"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "events" },
+        () => invalidate(["events", "analyticsSummary"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "posts" },
+        () => invalidate(["posts"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "contacts" },
+        () => invalidate(["contacts", "analyticsSummary"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "newsletter_subscribers" },
+        () => invalidate(["newsletterSubscribers", "analyticsSummary"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "page_views" },
+        () => invalidate(["analyticsSummary"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "analytics_events" },
+        () => invalidate(["analyticsSummary"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "radio_tracks" },
+        () => invalidate(["analyticsSummary"])
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "radio_sessions" },
+        () => invalidate(["analyticsSummary"])
+      )
+      .subscribe();
+
+    return () => {
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [queryClient]);
+
+  const [liveListenerCount, setLiveListenerCount] = useState<number | null>(null);
+  useEffect(() => {
+    const unsubscribe = subscribeToListenerCount((count) => {
+      setLiveListenerCount(count);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const publishedReleases = releases.filter(r => r.published);
   const upcomingEvents = events.filter(e => new Date(e.date) > new Date());
   const activeSubscribers = newsletterSubs.filter(s => s.active);
@@ -273,28 +354,32 @@ export default function AdminDashboard() {
       value: analytics?.totalPageViews?.toLocaleString() || "0", 
       change: `${analytics?.todayPageViews || 0} today`, 
       icon: Eye,
-      color: "text-blue-500"
+      color: "text-blue-500",
+      href: "/admin"
     },
     { 
       label: "This Month", 
       value: analytics?.monthPageViews?.toLocaleString() || "0", 
       change: `${analytics?.weekPageViews || 0} this week`, 
       icon: BarChart3,
-      color: "text-green-500"
+      color: "text-green-500",
+      href: "/admin"
     },
     { 
       label: "Newsletter Subscribers", 
       value: activeSubscribers.length.toString(), 
       change: `${newsletterSubs.length} total`, 
       icon: Mail,
-      color: "text-purple-500"
+      color: "text-purple-500",
+      href: "/admin/newsletters"
     },
     { 
       label: "Contact Submissions", 
       value: analytics?.contactSubmissions?.toString() || contacts.length.toString(), 
       change: `${analytics?.newContactSubmissions || contacts.filter(c => c.status === 'new').length} new`, 
       icon: Send,
-      color: "text-orange-500"
+      color: "text-orange-500",
+      href: "/admin/contacts"
     },
   ];
 
@@ -304,30 +389,74 @@ export default function AdminDashboard() {
       value: releases.length.toString(), 
       change: `${publishedReleases.length} published`, 
       icon: Music,
-      color: "text-pink-500"
+      color: "text-pink-500",
+      href: "/admin/releases"
     },
     { 
       label: "Active Artists", 
       value: artists.length.toString(), 
       change: "All time", 
       icon: Users,
-      color: "text-cyan-500"
+      color: "text-cyan-500",
+      href: "/admin/artists"
     },
     { 
-      label: "Event RSVPs", 
-      value: analytics?.totalRsvps?.toString() || events.reduce((acc, e) => acc + (e.rsvpCount || 0), 0).toString(), 
+      label: "Get Tickets Clicks", 
+      value: analytics?.totalEventTicketClicks?.toString() || "0", 
       change: `${upcomingEvents.length} upcoming`, 
-      icon: Ticket,
-      color: "text-amber-500"
+      icon: MousePointerClick,
+      color: "text-amber-500",
+      href: "/admin/events"
     },
     { 
-      label: "Radio Listens", 
-      value: analytics?.totalRadioListens?.toString() || "0", 
-      change: formatDuration(analytics?.totalRadioDuration || 0) + " total", 
+      label: "Radio Listeners", 
+      value: liveListenerCount !== null ? liveListenerCount.toString() : "-", 
+      change: `${analytics?.radioTracksToday || 0} tracks total today`, 
       icon: Radio,
-      color: "text-red-500"
+      color: "text-red-500",
+      href: "/admin/radio"
     },
   ];
+
+  type PageViewsRange = "today" | "7d" | "30d" | "90d" | "custom";
+  const [pageViewsRange, setPageViewsRange] = useState<PageViewsRange>("30d");
+  const [pageViewsStart, setPageViewsStart] = useState<Date | undefined>();
+  const [pageViewsEnd, setPageViewsEnd] = useState<Date | undefined>();
+
+  const pageViewsChartData = useMemo(() => {
+    if (!analytics) return [];
+
+    if (pageViewsRange === "today") {
+      return (analytics.pageViewsTodayByHour || []).map((h) => ({
+        date: `${String(h.hour).padStart(2, "0")}:00`,
+        views: h.views,
+      }));
+    }
+
+    let days = analytics.pageViewsByDay || [];
+
+    if (pageViewsRange === "custom" && pageViewsStart && pageViewsEnd) {
+      const start = new Date(pageViewsStart);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(pageViewsEnd);
+      end.setHours(23, 59, 59, 999);
+      days = days.filter((d) => {
+        const dt = new Date(d.date);
+        return dt >= start && dt <= end;
+      });
+    } else if (pageViewsRange === "7d") {
+      days = days.slice(-7);
+    } else if (pageViewsRange === "30d") {
+      days = days.slice(-30);
+    } else if (pageViewsRange === "90d") {
+      days = days.slice(-90);
+    }
+
+    return days.map((day) => ({
+      date: new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      views: day.views,
+    }));
+  }, [analytics, pageViewsRange, pageViewsStart, pageViewsEnd]);
 
   const contentCounts = [
     { label: "Releases", count: releases.length, icon: Music, href: "/admin/releases" },
@@ -351,7 +480,7 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {primaryStats.map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -359,7 +488,10 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className="border-border/50">
+              <Card
+                className="border-border/50 cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => setLocation(stat.href)}
+              >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
@@ -377,7 +509,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {secondaryStats.map((stat, index) => (
             <motion.div
               key={stat.label}
@@ -385,7 +517,10 @@ export default function AdminDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + index * 0.05 }}
             >
-              <Card className="border-border/50">
+              <Card
+                className="border-border/50 cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => setLocation(stat.href)}
+              >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
@@ -409,29 +544,59 @@ export default function AdminDashboard() {
               <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
               <CardDescription className="text-xs">Common tasks at your fingertips</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-2">
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Link href="/admin/releases/new">
-                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9 text-sm rounded-lg border-border/50" data-testid="button-quick-new-release">
-                  <Music className="h-4 w-4 text-primary" />
-                  New Release
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-new-release">
+                  <Music className="h-4 w-4 text-primary shrink-0" />
+                  Add a New Release
                 </Button>
               </Link>
               <Link href="/admin/events/new">
-                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9 text-sm rounded-lg border-border/50" data-testid="button-quick-new-event">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  New Event
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-new-event">
+                  <Calendar className="h-4 w-4 text-primary shrink-0" />
+                  Add a New Event
                 </Button>
               </Link>
               <Link href="/admin/posts/new">
-                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9 text-sm rounded-lg border-border/50" data-testid="button-quick-new-post">
-                  <FileText className="h-4 w-4 text-primary" />
-                  New Post
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-new-post">
+                  <FileText className="h-4 w-4 text-primary shrink-0" />
+                  Write a New Post
                 </Button>
               </Link>
-              <Link href="/admin/radio">
-                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9 text-sm rounded-lg border-border/50" data-testid="button-quick-new-show">
-                  <Radio className="h-4 w-4 text-primary" />
-                  New Show
+              <Link href="/admin/artists">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-artists">
+                  <Users className="h-4 w-4 text-primary shrink-0" />
+                  Manage Artists
+                </Button>
+              </Link>
+              <Link href="/admin/videos">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-videos">
+                  <Video className="h-4 w-4 text-primary shrink-0" />
+                  Manage Videos
+                </Button>
+              </Link>
+              <Link href="/admin/playlists">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-playlists">
+                  <ListMusic className="h-4 w-4 text-primary shrink-0" />
+                  Manage Playlists
+                </Button>
+              </Link>
+              <Link href="/admin/awards">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-awards">
+                  <Trophy className="h-4 w-4 text-primary shrink-0" />
+                  Manage Awards
+                </Button>
+              </Link>
+              <Link href="/admin/contacts">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-messages">
+                  <Mail className="h-4 w-4 text-primary shrink-0" />
+                  View Messages
+                </Button>
+              </Link>
+              <Link href="/admin/settings">
+                <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-auto py-2 text-sm rounded-lg border-border/50 whitespace-normal text-left items-start" data-testid="button-quick-settings">
+                  <Settings className="h-4 w-4 text-primary shrink-0" />
+                  Settings
                 </Button>
               </Link>
             </CardContent>
@@ -447,15 +612,15 @@ export default function AdminDashboard() {
                 {publishedReleases.slice(0, 2).map((release) => (
                   <div
                     key={release.id}
-                    className="flex items-start justify-between gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0"
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">Release published</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
                         {release.title} - {release.artistName}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
                       {release.releaseDate ? new Date(release.releaseDate).toLocaleDateString() : "-"}
                     </span>
                   </div>
@@ -463,15 +628,15 @@ export default function AdminDashboard() {
                 {upcomingEvents.slice(0, 1).map((event) => (
                   <div
                     key={event.id}
-                    className="flex items-start justify-between gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0"
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">Event scheduled</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
                         {event.title}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
                       {new Date(event.date).toLocaleDateString()}
                     </span>
                   </div>
@@ -479,15 +644,15 @@ export default function AdminDashboard() {
                 {posts.slice(0, 1).map((post) => (
                   <div
                     key={post.id}
-                    className="flex items-start justify-between gap-4"
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">Blog post {post.published ? 'published' : 'drafted'}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
                         {post.title}
                       </p>
                     </div>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
                       {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -503,14 +668,20 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
-          {analytics?.pageViewsByDay && analytics.pageViewsByDay.length > 0 ? (
+          {analytics && pageViewsChartData.length > 0 ? (
             <AnalyticsChart
               title="Page Views Trend"
-              description="Daily page views over time"
-              data={analytics.pageViewsByDay.map((day) => ({
-                date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                views: day.views,
-              }))}
+              description={
+                pageViewsRange === "today"
+                  ? "Today views by hour"
+                    : "Daily page views over time"
+              }
+              data={pageViewsChartData}
+              onDateRangeChange={(range, start, end) => {
+                setPageViewsRange(range);
+                setPageViewsStart(start);
+                setPageViewsEnd(end);
+              }}
             />
           ) : (
             <Card>
@@ -638,7 +809,7 @@ export default function AdminDashboard() {
             <CardDescription>Total content across all sections</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-9 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-4">
               {contentCounts.map((item) => (
                 <Link key={item.label} href={item.href}>
                   <div className="flex flex-col items-center p-4 rounded-md border hover:bg-muted/50 transition-colors cursor-pointer group text-center">

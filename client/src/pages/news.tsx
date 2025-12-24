@@ -20,7 +20,7 @@ const demoPosts: Partial<Post>[] = [
     excerpt: "Get ready for the biggest GroupTherapy event yet! We're thrilled to reveal the full lineup for our annual summer festival.",
     coverUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&h=400&fit=crop",
     category: "events",
-    publishedAt: new Date("2024-03-01"),
+    publishedAt: new Date("2024-03-01").toISOString(),
     featured: true,
     authorName: "GroupTherapy Team",
   },
@@ -31,7 +31,7 @@ const demoPosts: Partial<Post>[] = [
     excerpt: "After two years in the making, Luna Wave delivers her most ambitious project to date with 'Midnight Sessions'.",
     coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop",
     category: "releases",
-    publishedAt: new Date("2024-02-28"),
+    publishedAt: new Date("2024-02-28").toISOString(),
     featured: true,
     authorName: "Sarah Chen",
   },
@@ -42,7 +42,7 @@ const demoPosts: Partial<Post>[] = [
     excerpt: "Take an exclusive tour of our state-of-the-art radio studio where the magic happens 24/7.",
     coverUrl: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800&h=400&fit=crop",
     category: "features",
-    publishedAt: new Date("2024-02-25"),
+    publishedAt: new Date("2024-02-25").toISOString(),
     authorName: "Marcus Rivera",
   },
   {
@@ -52,7 +52,7 @@ const demoPosts: Partial<Post>[] = [
     excerpt: "We sat down with Neon Pulse to discuss the past, present, and future of techno music.",
     coverUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800&h=400&fit=crop",
     category: "interviews",
-    publishedAt: new Date("2024-02-20"),
+    publishedAt: new Date("2024-02-20").toISOString(),
     authorName: "Alex Thompson",
   },
   {
@@ -62,7 +62,7 @@ const demoPosts: Partial<Post>[] = [
     excerpt: "GroupTherapy Records partners with Pioneer DJ to bring cutting-edge technology to our artists and events.",
     coverUrl: "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=800&h=400&fit=crop",
     category: "news",
-    publishedAt: new Date("2024-02-15"),
+    publishedAt: new Date("2024-02-15").toISOString(),
     authorName: "Emma Wilson",
   },
   {
@@ -72,7 +72,7 @@ const demoPosts: Partial<Post>[] = [
     excerpt: "Circuit Breaker announces a 30-date world tour supporting his latest album 'Velocity'.",
     coverUrl: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800&h=400&fit=crop",
     category: "events",
-    publishedAt: new Date("2024-02-10"),
+    publishedAt: new Date("2024-02-10").toISOString(),
     authorName: "GroupTherapy Team",
   },
 ];
@@ -222,31 +222,46 @@ function FeaturedPostCard({
 }) {
   return (
     <Link href={`/news/${post.slug || post.id}`}>
-      <Card className="overflow-hidden group h-full" data-testid={`card-post-featured-${post.id}`}>
-        <div className="relative aspect-[16/9] overflow-hidden">
+      <Card className="overflow-hidden group h-full bg-background" data-testid={`card-post-featured-${post.id}`}>
+        <div className="relative aspect-[16/9] overflow-hidden bg-muted">
           {post.coverUrl ? (
             <img
               src={post.coverUrl}
               alt={post.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="w-full h-full object-cover"
               loading="lazy"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-6">
-            <Badge className="mb-3 capitalize">{post.category}</Badge>
-            <h3 className="text-xl lg:text-2xl font-bold text-white mb-2 group-hover:text-primary transition-colors">
-              {post.title}
-            </h3>
-            <p className="text-sm text-white/80 line-clamp-2">{post.excerpt}</p>
-            <div className="flex items-center gap-4 mt-4 text-xs text-white/60">
-              <span>{formatDate(post.publishedAt)}</span>
-              <span>by {post.authorName}</span>
+          {post.category && (
+            <div className="absolute top-4 left-4">
+              <span className="px-2 py-1 text-[10px] font-medium bg-background/90 text-foreground rounded-full uppercase tracking-wide border border-border/50">
+                {post.category}
+              </span>
             </div>
-          </div>
+          )}
         </div>
+        <CardContent className="p-5">
+          <h3 className="text-xl md:text-2xl font-semibold tracking-tight leading-snug group-hover:text-primary transition-colors">
+            {post.title}
+          </h3>
+          {post.excerpt && (
+            <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+              {post.excerpt}
+            </p>
+          )}
+          <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <Calendar className="h-3.5 w-3.5" />
+              {formatDate(post.publishedAt ?? null)}
+            </span>
+            <span className="flex items-center gap-1 font-medium">
+              Read
+              <ArrowRight className="h-3 w-3" />
+            </span>
+          </div>
+        </CardContent>
       </Card>
     </Link>
   );
@@ -261,31 +276,39 @@ function PostCard({
 }) {
   return (
     <Link href={`/news/${post.slug || post.id}`}>
-      <Card className="overflow-hidden group h-full" data-testid={`card-post-${post.id}`}>
-        <div className="relative aspect-[3/2] overflow-hidden">
+      <Card className="overflow-hidden group h-full bg-background" data-testid={`card-post-${post.id}`}>
+        <div className="relative aspect-[3/2] overflow-hidden bg-muted">
           {post.coverUrl ? (
             <img
               src={post.coverUrl}
               alt={post.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="w-full h-full object-cover"
               loading="lazy"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted" />
           )}
-          <Badge className="absolute top-3 left-3 capitalize">{post.category}</Badge>
+          {post.category && (
+            <div className="absolute top-3 left-3">
+              <span className="px-2 py-1 text-[10px] font-medium bg-background/90 text-foreground rounded-full uppercase tracking-wide border border-border/50">
+                {post.category}
+              </span>
+            </div>
+          )}
         </div>
         <CardContent className="p-4">
-          <h3 className="font-semibold line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {post.title}
           </h3>
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-            {post.excerpt}
-          </p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{formatDate(post.publishedAt)}</span>
-            <span className="flex items-center gap-1 text-primary font-medium">
-              Read More
+          {post.excerpt && (
+            <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+              {post.excerpt}
+            </p>
+          )}
+          <div className="flex items-center justify-between text-xs text-muted-foreground mt-4">
+            <span>{formatDate(post.publishedAt ?? null)}</span>
+            <span className="flex items-center gap-1 font-medium group-hover:text-foreground transition-colors">
+              Read
               <ArrowRight className="h-3 w-3" />
             </span>
           </div>

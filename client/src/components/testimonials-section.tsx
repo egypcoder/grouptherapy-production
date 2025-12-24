@@ -37,6 +37,13 @@ export function TestimonialsSection() {
 
   const testimonials = dbTestimonials.length > 0 ? dbTestimonials : fallbackTestimonials;
 
+  const getAvatarUrl = (testimonial: Testimonial | (typeof fallbackTestimonials)[number]) => {
+    if ("avatarUrl" in testimonial && typeof testimonial.avatarUrl === "string") {
+      return testimonial.avatarUrl;
+    }
+    return undefined;
+  };
+
   return (
     <section className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6 md:px-8">
@@ -77,9 +84,9 @@ export function TestimonialsSection() {
                 
                 <div className="flex items-center gap-3 pt-4 border-t border-border/50">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={'avatarUrl' in testimonial ? testimonial.avatarUrl : undefined} alt={testimonial.name} />
+                    <AvatarImage src={getAvatarUrl(testimonial)} alt={testimonial.name} />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                      {testimonial.name.split(' ').map(n => n[0]).join('')}
+                      {testimonial.name.split(' ').map((n) => n.charAt(0)).join('')}
                     </AvatarFallback>
                   </Avatar>
                   <div>

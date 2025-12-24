@@ -22,7 +22,7 @@ const demoReleases: Partial<Release>[] = [
     genres: ["Electronic", "House"],
     spotifyUrl: "#",
     featured: true,
-    releaseDate: new Date("2024-01-15"),
+    releaseDate: new Date("2024-01-15").toISOString(),
   },
   {
     id: "2",
@@ -32,7 +32,7 @@ const demoReleases: Partial<Release>[] = [
     type: "single",
     genres: ["Techno"],
     spotifyUrl: "#",
-    releaseDate: new Date("2024-02-01"),
+    releaseDate: new Date("2024-02-01").toISOString(),
   },
   {
     id: "3",
@@ -43,7 +43,7 @@ const demoReleases: Partial<Release>[] = [
     genres: ["Deep House"],
     spotifyUrl: "#",
     featured: true,
-    releaseDate: new Date("2024-02-10"),
+    releaseDate: new Date("2024-02-10").toISOString(),
   },
   {
     id: "4",
@@ -53,7 +53,7 @@ const demoReleases: Partial<Release>[] = [
     type: "album",
     genres: ["Drum & Bass"],
     spotifyUrl: "#",
-    releaseDate: new Date("2024-01-20"),
+    releaseDate: new Date("2024-01-20").toISOString(),
   },
   {
     id: "5",
@@ -63,7 +63,7 @@ const demoReleases: Partial<Release>[] = [
     type: "single",
     genres: ["Progressive"],
     spotifyUrl: "#",
-    releaseDate: new Date("2024-03-01"),
+    releaseDate: new Date("2024-03-01").toISOString(),
   },
   {
     id: "6",
@@ -73,7 +73,7 @@ const demoReleases: Partial<Release>[] = [
     type: "album",
     genres: ["UK Garage"],
     spotifyUrl: "#",
-    releaseDate: new Date("2024-02-28"),
+    releaseDate: new Date("2024-02-28").toISOString(),
   },
   {
     id: "7",
@@ -84,7 +84,7 @@ const demoReleases: Partial<Release>[] = [
     genres: ["Ambient"],
     spotifyUrl: "#",
     featured: true,
-    releaseDate: new Date("2024-03-15"),
+    releaseDate: new Date("2024-03-15").toISOString(),
   },
   {
     id: "8",
@@ -94,7 +94,7 @@ const demoReleases: Partial<Release>[] = [
     type: "single",
     genres: ["Electro"],
     spotifyUrl: "#",
-    releaseDate: new Date("2024-03-20"),
+    releaseDate: new Date("2024-03-20").toISOString(),
   },
 ];
 
@@ -315,7 +315,11 @@ function ReleaseGridCard({ release }: { release: Release }) {
             animate={{ opacity: isHovered ? 1 : 0 }}
             className="absolute inset-0 bg-black/60 flex items-center justify-center gap-3"
           >
-            <Button size="icon" variant="secondary" className="h-12 w-12 rounded-full">
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-12 w-12 rounded-full"
+            >
               <Play className="h-5 w-5 ml-0.5" />
             </Button>
           </motion.div>
@@ -387,7 +391,7 @@ function ReleaseListCard({ release }: { release: Release }) {
         </Badge>
 
         <span className="text-sm text-muted-foreground hidden lg:block w-24 text-right">
-          {formatDate(release.releaseDate)}
+          {formatDate(release.releaseDate ?? null)}
         </span>
 
         {release.spotifyUrl && (

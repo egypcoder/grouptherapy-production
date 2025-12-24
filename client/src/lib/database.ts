@@ -366,15 +366,20 @@ export interface AnalyticsSummary {
   totalReleaseClicks: number;
   totalRadioListens: number;
   totalRadioDuration: number;
+  radioTracksToday: number;
   newsletterSubscribers: number;
   activeSubscribers: number;
   contactSubmissions: number;
   newContactSubmissions: number;
   totalRsvps: number;
+  totalEventTicketClicks: number;
   topPages: { path: string; views: number }[];
   topReleases: { id: string; name: string; clicks: number }[];
+  topEvents: { id: string; name: string; clicks: number }[];
   topReferrers: { referrer: string; count: number }[];
   pageViewsByDay: { date: string; views: number }[];
+  pageViewsTodayByHour: { hour: number; views: number }[];
+  pageViewsLast24HoursByHour: { hourStart: string; views: number }[];
   radioShowStats: { showId: string; showName: string; listens: number; avgDuration: number; totalDuration: number }[];
 }
 
@@ -394,6 +399,12 @@ export interface StatItem {
 export interface SiteSettings {
   id?: string;
   emailServiceConfig?: string; // JSON string of email service configuration
+  contactEmail?: string;
+  contactEmailSubtext?: string;
+  contactPhone?: string;
+  contactPhoneSubtext?: string;
+  contactAddress?: string;
+  contactAddressSubtext?: string;
   heroTag?: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -1221,7 +1232,11 @@ export const db = {
   siteSettings: {
     async get(): Promise<SiteSettings | null> {
       if (!supabase) return null;
-      const { data, error } = await supabase.from('site_settings').select('*').limit(1).single();
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
       if (error) return null;
       return convertSnakeToCamel(data);
     },
@@ -1320,15 +1335,20 @@ export const db = {
           totalReleaseClicks: 0,
           totalRadioListens: 0,
           totalRadioDuration: 0,
+          radioTracksToday: 0,
           newsletterSubscribers: 0,
           activeSubscribers: 0,
           contactSubmissions: 0,
           newContactSubmissions: 0,
           totalRsvps: 0,
+          totalEventTicketClicks: 0,
           topPages: [],
           topReleases: [],
+          topEvents: [],
           topReferrers: [],
           pageViewsByDay: [],
+          pageViewsTodayByHour: [],
+          pageViewsLast24HoursByHour: [],
           radioShowStats: []
         };
       }
@@ -1344,7 +1364,9 @@ export const db = {
         weekViewsResult,
         monthViewsResult,
         releaseClicksResult,
+        eventTicketClicksResult,
         radioSessionsResult,
+        radioTracksTodayResult,
         subscribersResult,
         activeSubscribersResult,
         contactsResult,
@@ -1352,6 +1374,7 @@ export const db = {
         eventsResult,
         topPagesResult,
         releaseEventsResult,
+        eventTicketEventsResult,
         referrersResult,
         radioShowsResult
       ] = await Promise.all([
@@ -1360,7 +1383,12 @@ export const db = {
         supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
         supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', monthAgo),
         supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'release_click'),
+        supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'event_ticket_click'),
         supabase.from('radio_sessions').select('duration_seconds'),
+        supabase
+          .from('radio_tracks')
+          .select('played_at, created_at')
+          .or(`played_at.gte.${today},created_at.gte.${today}`),
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }).eq('active', true),
         supabase.from('contacts').select('id', { count: 'exact', head: true }),
@@ -1368,6 +1396,7 @@ export const db = {
         supabase.from('events').select('rsvp_count'),
         supabase.from('page_views').select('page_path').gte('created_at', monthAgo),
         supabase.from('analytics_events').select('entity_id, entity_name').eq('event_type', 'release_click').gte('created_at', monthAgo),
+        supabase.from('analytics_events').select('entity_id, entity_name, metadata').eq('event_type', 'event_ticket_click').gte('created_at', monthAgo),
         supabase.from('page_views').select('referrer').gte('created_at', monthAgo).not('referrer', 'is', null),
         supabase.from('radio_sessions').select('show_id, duration_seconds')
       ]);
@@ -1376,6 +1405,14 @@ export const db = {
 
       const totalRadioDuration = (radioSessionsResult.data || []).reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
       const totalRsvps = (eventsResult.data || []).reduce((acc, e) => acc + (e.rsvp_count || 0), 0);
+
+      const todayStartForRadio = new Date(today);
+      const radioTracksToday = (radioTracksTodayResult.data || []).filter((t: any) => {
+        const dtRaw = t.played_at || t.created_at;
+        if (!dtRaw) return false;
+        const dt = new Date(dtRaw);
+        return dt >= todayStartForRadio;
+      }).length;
 
       const pagePathCounts: Record<string, number> = {};
       (topPagesResult.data || []).forEach(pv => {
@@ -1397,6 +1434,21 @@ export const db = {
         }
       });
       const topReleases = Object.entries(releaseClickCounts)
+        .sort((a, b) => b[1].clicks - a[1].clicks)
+        .slice(0, 10)
+        .map(([id, data]) => ({ id, name: data.name, clicks: data.clicks }));
+
+      const eventClickCounts: Record<string, { name: string; clicks: number }> = {};
+      (eventTicketEventsResult.data || []).forEach((ev: any) => {
+        if (ev.entity_id) {
+          const entityId = ev.entity_id;
+          if (!eventClickCounts[entityId]) {
+            eventClickCounts[entityId] = { name: ev.entity_name || 'Unknown', clicks: 0 };
+          }
+          eventClickCounts[entityId].clicks++;
+        }
+      });
+      const topEvents = Object.entries(eventClickCounts)
         .sort((a, b) => b[1].clicks - a[1].clicks)
         .slice(0, 10)
         .map(([id, data]) => ({ id, name: data.name, clicks: data.clicks }));
@@ -1455,6 +1507,52 @@ export const db = {
         .map(([date, views]) => ({ date, views }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
+      const todayStart = new Date(today);
+      const hourlyCounts: Record<number, number> = {};
+      for (let hour = 0; hour < 24; hour++) {
+        hourlyCounts[hour] = 0;
+      }
+      (pageViewsByDayData.data || []).forEach((pv) => {
+        const dt = new Date(pv.created_at);
+        if (dt >= todayStart) {
+          const hour = dt.getHours();
+          hourlyCounts[hour] = (hourlyCounts[hour] || 0) + 1;
+        }
+      });
+      const pageViewsTodayByHour = Array.from({ length: 24 }, (_, hour) => ({
+        hour,
+        views: hourlyCounts[hour] || 0,
+      }));
+
+      const nowHourStart = new Date(now);
+      nowHourStart.setMinutes(0, 0, 0);
+      const last24Start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      const last24HourStarts = Array.from({ length: 24 }, (_, idx) =>
+        new Date(nowHourStart.getTime() - (23 - idx) * 60 * 60 * 1000)
+      );
+      const last24Counts: Record<string, number> = {};
+      last24HourStarts.forEach((dt) => {
+        last24Counts[dt.toISOString()] = 0;
+      });
+
+      (pageViewsByDayData.data || []).forEach((pv) => {
+        const dt = new Date(pv.created_at);
+        if (dt >= last24Start) {
+          const bucket = new Date(dt);
+          bucket.setMinutes(0, 0, 0);
+          const key = bucket.toISOString();
+          if (key in last24Counts) {
+            last24Counts[key] = (last24Counts[key] || 0) + 1;
+          }
+        }
+      });
+
+      const pageViewsLast24HoursByHour = last24HourStarts.map((dt) => ({
+        hourStart: dt.toISOString(),
+        views: last24Counts[dt.toISOString()] || 0,
+      }));
+
       return {
         totalPageViews: pageViewsResult.count || 0,
         todayPageViews: todayViewsResult.count || 0,
@@ -1463,15 +1561,20 @@ export const db = {
         totalReleaseClicks: releaseClicksResult.count || 0,
         totalRadioListens: radioSessionsResult.data?.length || 0,
         totalRadioDuration,
+        radioTracksToday,
         newsletterSubscribers: subscribersResult.count || 0,
         activeSubscribers: activeSubscribersResult.count || 0,
         contactSubmissions: contactsResult.count || 0,
         newContactSubmissions: newContactsResult.count || 0,
         totalRsvps,
+        totalEventTicketClicks: eventTicketClicksResult.count || 0,
         topPages,
         topReleases,
+        topEvents,
         topReferrers,
         pageViewsByDay,
+        pageViewsTodayByHour,
+        pageViewsLast24HoursByHour,
         radioShowStats: radioShowStatsArray
       };
     }

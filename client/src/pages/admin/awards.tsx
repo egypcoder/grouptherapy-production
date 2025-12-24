@@ -505,11 +505,11 @@ export default function AdminAwards() {
           </TabsContent>
 
           <TabsContent value="periods" className="space-y-4">
-            <div className="flex justify-between items-center gap-4">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <h2 className="text-xl font-semibold">Voting Periods</h2>
                 <Select value={selectedCategoryId || "all"} onValueChange={(val) => setSelectedCategoryId(val === "all" ? "" : val)}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Filter by category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -522,7 +522,7 @@ export default function AdminAwards() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={() => setPeriodDialogOpen(true)}>
+              <Button onClick={() => setPeriodDialogOpen(true)} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Period
               </Button>
@@ -605,11 +605,11 @@ export default function AdminAwards() {
           </TabsContent>
 
           <TabsContent value="entries" className="space-y-4">
-            <div className="flex justify-between items-center gap-4">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                 <h2 className="text-xl font-semibold">Nominees / Entries</h2>
                 <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
-                  <SelectTrigger className="w-[300px]">
+                  <SelectTrigger className="w-full sm:w-[300px]">
                     <SelectValue placeholder="Select a voting period" />
                   </SelectTrigger>
                   <SelectContent>
@@ -624,6 +624,7 @@ export default function AdminAwards() {
               <Button
                 onClick={() => setEntryDialogOpen(true)}
                 disabled={!selectedPeriodId}
+                className="w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Nominee
@@ -752,7 +753,7 @@ export default function AdminAwards() {
         </Tabs>
 
         <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="sm:max-w-lg sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{editingCategory ? "Edit Category" : "Add Award Category"}</DialogTitle>
             </DialogHeader>
@@ -784,7 +785,7 @@ export default function AdminAwards() {
                   rows={2}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Type</Label>
                   <Select
@@ -816,7 +817,7 @@ export default function AdminAwards() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="cat-order">Display Order</Label>
                   <Input
@@ -845,7 +846,7 @@ export default function AdminAwards() {
         </Dialog>
 
         <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="sm:max-w-lg sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{editingPeriod ? "Edit Period" : "Add Voting Period"}</DialogTitle>
             </DialogHeader>
@@ -877,7 +878,7 @@ export default function AdminAwards() {
                   placeholder="e.g., December 2024"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="period-start">Start Date</Label>
                   <Input
@@ -915,7 +916,7 @@ export default function AdminAwards() {
         </Dialog>
 
         <Dialog open={entryDialogOpen} onOpenChange={setEntryDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{editingEntry ? "Edit Nominee" : "Add Nominee"}</DialogTitle>
             </DialogHeader>
@@ -952,7 +953,7 @@ export default function AdminAwards() {
                 </>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="entry-track-title">Track Title</Label>
                       <Input

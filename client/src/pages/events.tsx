@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useRoute, useLocation } from "wouter";
 import { queryFunctions } from "@/lib/queryClient";
 import { db, type Event } from "@/lib/database";
+import { EventCountdown } from "@/components/event-countdown";
 
 // Helper function to get currency symbol
 function getCurrencySymbol(currency?: string): string {
@@ -24,9 +25,9 @@ function getCurrencySymbol(currency?: string): string {
     CAD: "C$",
     AUD: "A$",
   };
-  return symbols[currency || "USD"] || "$";
+  const code = (currency || "USD").toUpperCase();
+  return symbols[code] || "$";
 }
-import { EventCountdown } from "@/components/event-countdown";
 
 const demoEvents: Partial<Event>[] = [
   {
@@ -339,6 +340,17 @@ function EventCard({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    db.analytics.trackEvent("event_ticket_click", {
+                      category: "engagement",
+                      entityType: "event",
+                      entityId: event.id,
+                      entityName: event.title,
+                      metadata: {
+                        source: "events_card",
+                        slug: event.slug,
+                        ticketUrl: event.ticketUrl,
+                      },
+                    });
                     window.open(event.ticketUrl, '_blank');
                   }}
                 >
@@ -445,6 +457,17 @@ function EventListCard({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      db.analytics.trackEvent("event_ticket_click", {
+                        category: "engagement",
+                        entityType: "event",
+                        entityId: event.id,
+                        entityName: event.title,
+                        metadata: {
+                          source: "events_list",
+                          slug: event.slug,
+                          ticketUrl: event.ticketUrl,
+                        },
+                      });
                       window.open(event.ticketUrl, '_blank');
                     }}
                   >

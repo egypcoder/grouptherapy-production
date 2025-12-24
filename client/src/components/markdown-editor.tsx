@@ -122,8 +122,8 @@ export function MarkdownEditor({
 
   return (
     <div className="border rounded-md overflow-hidden">
-      <div className="flex items-center justify-between border-b bg-muted/30 px-2 py-1">
-        <div className="flex items-center gap-1">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b bg-muted/30 px-2 py-1">
+        <div className="flex items-center gap-1 w-full overflow-x-auto sm:overflow-visible min-w-max">
           <Button
             type="button"
             variant="ghost"

@@ -4,6 +4,8 @@ import { HeroSection } from "@/components/hero-section";
 import { ReleasesCarousel } from "@/components/releases-carousel";
 import { EventsCarousel } from "@/components/events-carousel";
 import { PlaylistsSection } from "@/components/playlists-section";
+import { PostsCarousel } from "@/components/posts-carousel";
+import { AwardEntryCard } from "@/components/award-entry-card";
 import { FeaturedArtists } from "@/components/featured-artists";
 import { NewsletterSection } from "@/components/newsletter-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
@@ -41,8 +43,6 @@ import {
   Trophy,
   Play,
   Vote,
-  CheckCircle,
-  Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -287,125 +287,55 @@ function AwardsSection({
   if (!hasActiveVoting || entries.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 via-background to-background">
+    <section className="py-16 md:py-24 bg-muted/30">
       <div className="max-w-7xl mx-auto px-6 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10"
         >
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-6">
-            <Trophy className="w-6 h-6" />
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+              <Trophy className="w-4 h-4 text-primary" />
+              Therapy Awards
+            </div>
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
+              Voting is <span className="gradient-text">live</span>
+            </h2>
+            <p className="text-muted-foreground max-w-xl">
+              Vote for your favorites. You’ll see the live results after you vote.
+            </p>
           </div>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-            Vote for Your <span className="gradient-text">Favorites</span>
-          </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Cast your vote in the Therapy Awards
-          </p>
-        </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          {entries.map((entry, index) => {
-            const imageUrl = entry.artistImageUrl || entry.trackCoverUrl;
-            const title = entry.artistName || entry.trackTitle;
-            const subtitle = entry.trackArtist || entry.artistBio;
-
-            return (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1, duration: 0.5 }}
-                className="group relative overflow-hidden rounded-2xl bg-card/50  hover:border-primary/30 transition-all duration-300"
-              >
-                <div className="aspect-square overflow-hidden">
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={title || "Entry"}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
-                      <Trophy className="h-16 w-16 text-muted-foreground/50" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="font-semibold text-lg text-white truncate">
-                    {title || "Unknown"}
-                  </h3>
-                  {subtitle && (
-                    <p className="text-sm text-white/70 line-clamp-1">
-                      {subtitle}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mt-3">
-                    <div>
-                      {entry.voteCount > 0 && (
-                        <p className="text-xs text-primary">
-                          {entry.voteCount} {entry.voteCount === 1 ? 'vote' : 'votes'}
-                          {totalVotes > 0 && ` • ${Math.round((entry.voteCount / totalVotes) * 100)}%`}
-                        </p>
-                      )}
-                      {votedEntries.has(entry.id) && (
-                        <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          You voted
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={votedEntries.has(entry.id) ? "secondary" : "default"}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVote(entry.id);
-                      }}
-                      disabled={votedEntries.has(entry.id) || voteMutation.isPending}
-                      className="gap-1"
-                    >
-                      {voteMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : votedEntries.has(entry.id) ? (
-                        <>
-                          <CheckCircle className="h-3 w-3" />
-                          Voted
-                        </>
-                      ) : (
-                        <>
-                          <Vote className="h-3 w-3" />
-                          Vote
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-center"
-        >
           <Link href="/awards">
-            <Button size="lg" className="gap-2 rounded-full px-8">
-              <Vote className="w-4 h-4" />
-              Vote Now
+            <Button variant="outline" size="lg" className="rounded-full px-7">
+              View Awards
+              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
         </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+          {entries.map((entry, index) => (
+            <motion.div
+              key={entry.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1, duration: 0.5 }}
+            >
+              <AwardEntryCard
+                entry={entry}
+                onVote={() => handleVote(entry.id)}
+                hasVoted={votedEntries.has(entry.id)}
+                isVoting={voteMutation.isPending}
+                totalVotes={totalVotes}
+              />
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -473,6 +403,7 @@ export default function HomePage() {
   });
 
   const heroTitle = siteSettings?.heroTitle || "GROUPTHERAPY";
+  const heroTag = siteSettings?.heroTag || "Electronic Music Label";
   const heroSubtitle =
     siteSettings?.heroSubtitle ||
     "The future of electronic music, curated for you.";
@@ -483,6 +414,11 @@ export default function HomePage() {
   const statsItems = siteSettings?.statsItems?.length
     ? siteSettings.statsItems
     : defaultStatsItems;
+
+  const heroStats = statsItems.slice(0, 3).map((stat) => ({
+    value: `${stat.prefix || ""}${stat.value}${stat.suffix || ""}`,
+    label: stat.label,
+  }));
 
   const organizationSchema = generateStructuredData("Organization", {
     name: "GroupTherapy Records",
@@ -513,6 +449,7 @@ export default function HomePage() {
       />
 
       <HeroSection
+        heroTag={heroTag}
         title={heroTitle}
         subtitle={heroSubtitle}
         backgroundImage={heroBackgroundImage}
@@ -521,6 +458,7 @@ export default function HomePage() {
         ctaText={heroCtaText}
         ctaLink={heroCtaLink}
         showRadio={showHeroRadio}
+        heroStats={heroStats}
       />
 
       <StatsSection statsItems={statsItems} />
@@ -578,9 +516,10 @@ export default function HomePage() {
             title="Curated"
             highlight="Playlists"
             description="Handpicked selections for every mood"
+            action={{ label: "View All Playlists", href: "/playlists" }}
           />
-          <PlaylistsSection playlists={playlists || []} title="" />
         </div>
+        <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
       </section>
 
       <section className="py-16 md:py-24">
@@ -591,55 +530,8 @@ export default function HomePage() {
             description="Stay updated with the latest from the label"
             action={{ label: "View All News", href: "/news" }}
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {(posts || []).slice(0, 4).map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1, duration: 0.4 }}
-              >
-                <Link href={`/news/${post.slug}`}>
-                  <div className="group cursor-pointer bg-card/50  rounded-2xl overflow-hidden transition-all duration-300">
-                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                      {post.coverUrl ? (
-                        <img
-                          src={post.coverUrl}
-                          alt={post.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
-                          <Radio className="h-10 w-10 text-muted-foreground/50" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                      {post.category && (
-                        <div className="absolute top-3 left-3">
-                          <span className="px-2 py-1 text-[10px] font-medium bg-primary/90 text-primary-foreground rounded-full uppercase tracking-wide">
-                            {post.category}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-medium text-lg/[1.2] line-clamp-2 group-hover:text-primary transition-colors mb-2">
-                        {post.title}
-                      </h3>
-                      {post.excerpt && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {post.excerpt}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
         </div>
+        <PostsCarousel posts={(posts || []).slice(0, 8)} autoPlay={true} />
       </section>
 
       <TestimonialsSection />

@@ -373,7 +373,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
                 />
               </div>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -386,7 +386,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -451,7 +451,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
                         {post.published ? "Published" : "Draft"}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -509,7 +509,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
       </div>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Delete Post</DialogTitle>
             <DialogDescription>
@@ -532,7 +532,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
       </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{editingPost ? "Edit Post" : "Create Post"}</DialogTitle>
             <DialogDescription>
@@ -594,7 +594,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="category">Category</Label>
                 <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
@@ -640,7 +640,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="metaTitle">Meta Title (SEO)</Label>
                 <Input

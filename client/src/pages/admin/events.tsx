@@ -302,7 +302,7 @@ export default function AdminEvents() {
                 />
               </div>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]" data-testid="select-events-status">
+                <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-events-status">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -371,7 +371,7 @@ export default function AdminEvents() {
                           {event.published ? "Published" : "Draft"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <Button 
                             variant="ghost" 
@@ -428,7 +428,7 @@ export default function AdminEvents() {
       </div>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md overflow-x-hidden">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
@@ -463,7 +463,7 @@ export default function AdminEvents() {
       </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{editingEvent ? "Edit Event" : "Create Event"}</DialogTitle>
             <DialogDescription>
@@ -493,7 +493,7 @@ export default function AdminEvents() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="venue">Venue *</Label>
                 <Input
@@ -514,7 +514,7 @@ export default function AdminEvents() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="city">City *</Label>
                 <Input
@@ -535,7 +535,7 @@ export default function AdminEvents() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="date">Start Date & Time</Label>
                 <Input
@@ -556,7 +556,7 @@ export default function AdminEvents() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="ticketPrice">Ticket Price</Label>
                 <Input
@@ -586,7 +586,7 @@ export default function AdminEvents() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="capacity">Capacity</Label>
                 <Input
@@ -597,7 +597,7 @@ export default function AdminEvents() {
                   placeholder="e.g., 500"
                 />
               </div>
-              <div className="grid gap-2">
+              <div className="hidden sm:grid gap-2">
                 {/* Empty cell for grid alignment */}
               </div>
             </div>

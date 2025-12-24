@@ -181,7 +181,7 @@ export default function AdminPressKit() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="sm:max-w-lg sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{editingAsset ? "Edit Asset" : "Add New Asset"}</DialogTitle>
             </DialogHeader>

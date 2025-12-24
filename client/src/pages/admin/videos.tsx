@@ -308,7 +308,7 @@ export default function AdminVideos() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{editingVideo ? "Edit Video" : "Add New Video"}</DialogTitle>
             </DialogHeader>
@@ -319,7 +319,7 @@ export default function AdminVideos() {
                     <Link className="h-4 w-4" />
                     Quick Add from URL
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       placeholder="Paste YouTube or Vimeo URL..."
                       value={videoUrl}

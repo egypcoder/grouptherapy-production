@@ -186,7 +186,7 @@ export function trackListener(): () => void {
 
 export function subscribeToListenerCount(callback: (count: number) => void): () => void {
   if (!database) {
-    callback(127);
+    callback(0);
     return () => {};
   }
 
@@ -194,7 +194,7 @@ export function subscribeToListenerCount(callback: (count: number) => void): () 
   const unsubscribe = onValue(listenersRef, (snapshot) => {
     const data = snapshot.val();
     const count = data ? Object.keys(data).length : 0;
-    callback(Math.max(count, 1));
+    callback(count);
   });
 
   return () => off(listenersRef);

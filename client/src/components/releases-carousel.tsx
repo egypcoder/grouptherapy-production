@@ -5,7 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Release } from "@shared/schema";
+import type { Release } from "@/lib/database";
 
 interface ReleasesCarouselProps {
   releases: Release[];

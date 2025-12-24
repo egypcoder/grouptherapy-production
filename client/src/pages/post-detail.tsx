@@ -1,8 +1,8 @@
 import { useRoute, Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowLeft, Calendar, User, Tag, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { db, type Post } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
@@ -70,6 +70,14 @@ function estimateReadTime(content: string): number {
 export default function PostDetailPage() {
   const [, params] = useRoute("/news/:slug");
   const slug = params?.slug;
+
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroImageY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const heroImageScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
   const { data: post, isLoading } = useQuery<Post | null>({
     queryKey: ["post", slug],
@@ -153,13 +161,14 @@ export default function PostDetailPage() {
         structuredData={postSchema}
       />
 
-      <div className="relative">
+      <div ref={heroRef} className="relative">
         {post.coverUrl && (
           <div className="absolute inset-0 h-[50vh] overflow-hidden">
-            <img
+            <motion.img
               src={post.coverUrl}
               alt={post.title}
               className="w-full h-full object-cover"
+              style={{ y: heroImageY, scale: heroImageScale }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-background" />
           </div>

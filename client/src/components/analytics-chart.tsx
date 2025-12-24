@@ -21,7 +21,7 @@ interface DataPoint {
   views: number;
 }
 
-type DateRange = "7d" | "30d" | "90d" | "custom";
+type DateRange = "today" | "7d" | "30d" | "90d" | "custom";
 
 interface AnalyticsChartProps {
   data: DataPoint[];
@@ -68,6 +68,7 @@ export function AnalyticsChart({
   };
 
   const rangeButtons: { label: string; value: DateRange }[] = [
+    { label: "Today", value: "today" },
     { label: "7d", value: "7d" },
     { label: "30d", value: "30d" },
     { label: "90d", value: "90d" },

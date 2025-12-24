@@ -1,8 +1,9 @@
 import { useRoute, Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowLeft, Calendar, ExternalLink, Music, Play } from "lucide-react";
 import { SiSpotify, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
 import { db, type Release, type Artist } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,14 @@ function trackReleaseClick(release: Release, platform: string) {
 export default function ReleaseDetailPage() {
   const [, params] = useRoute("/releases/:slug");
   const slug = params?.slug;
+
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroImageY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const heroImageScale = useTransform(scrollYProgress, [0, 1], [1.05, 1.15]);
 
   const { data: release, isLoading } = useQuery<Release | null>({
     queryKey: ["release", slug],
@@ -87,13 +96,14 @@ export default function ReleaseDetailPage() {
         structuredData={releaseSchema}
       />
 
-      <div className="relative">
+      <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[50vh] overflow-hidden">
           {release.coverUrl ? (
-            <img
+            <motion.img
               src={release.coverUrl}
               alt={release.title}
               className="w-full h-full object-cover blur-xl scale-110"
+              style={{ y: heroImageY, scale: heroImageScale }}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/30 to-muted" />

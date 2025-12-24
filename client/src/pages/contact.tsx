@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Send, Mail, MapPin, Phone, Upload, X } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { db } from "@/lib/database";
 
 const contactSchema = z.object({
@@ -47,30 +47,57 @@ const categories = [
   { value: "support", label: "Support" },
 ];
 
-const contactInfo = [
-  {
-    icon: Mail,
-    title: "Email",
-    details: "hello@grouptherapy.com",
-    subtext: "We'll respond within 24 hours",
-  },
-  {
-    icon: MapPin,
-    title: "Office",
-    details: "London, United Kingdom",
-    subtext: "Shoreditch Creative Hub",
-  },
-  {
-    icon: Phone,
-    title: "Phone",
-    details: "+44 20 1234 5678",
-    subtext: "Mon-Fri, 9am-6pm GMT",
-  },
-];
-
 export default function ContactPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: siteSettings, isLoading: isSiteSettingsLoading } = useQuery({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
+  const siteSettingsForDisplay = useMemo(() => {
+    if (siteSettings) return siteSettings;
+    if (isSiteSettingsLoading) return null;
+    return {
+      contactEmail: "hello@grouptherapy.com",
+      contactEmailSubtext: "",
+      contactPhone: "",
+      contactPhoneSubtext: "",
+      contactAddress: "London, United Kingdom",
+      contactAddressSubtext: "",
+    };
+  }, [siteSettings, isSiteSettingsLoading]);
+
+  const contactInfo = useMemo(() => {
+    const email = siteSettingsForDisplay?.contactEmail || "";
+    const phone = siteSettingsForDisplay?.contactPhone || "";
+    const address = siteSettingsForDisplay?.contactAddress || "";
+
+    return [
+      {
+        icon: Mail,
+        title: "Email",
+        details: email,
+        subtext: siteSettingsForDisplay?.contactEmailSubtext || "",
+        href: email ? `mailto:${email}` : undefined,
+      },
+      {
+        icon: MapPin,
+        title: "Office",
+        details: address,
+        subtext: siteSettingsForDisplay?.contactAddressSubtext || "",
+        href: address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : undefined,
+      },
+      {
+        icon: Phone,
+        title: "Phone",
+        details: phone,
+        subtext: siteSettingsForDisplay?.contactPhoneSubtext || "",
+        href: phone ? `tel:${phone.replace(/\s+/g, "")}` : undefined,
+      },
+    ].filter((i) => i.details);
+  }, [siteSettingsForDisplay]);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
@@ -129,7 +156,14 @@ export default function ContactPage() {
               </p>
             </motion.div>
 
-            {contactInfo.map((info, index) => (
+            {isSiteSettingsLoading && contactInfo.length === 0 ? (
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">Loading contact details...</p>
+                </CardContent>
+              </Card>
+            ) : (
+              contactInfo.map((info, index) => (
               <motion.div
                 key={info.title}
                 initial={{ opacity: 0, x: -20 }}
@@ -143,13 +177,27 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold">{info.title}</h3>
-                      <p className="text-sm">{info.details}</p>
-                      <p className="text-xs text-muted-foreground">{info.subtext}</p>
+                      {info.href ? (
+                        <a
+                          className="text-sm hover:text-primary transition-colors"
+                          href={info.href}
+                          target={info.href.startsWith("http") ? "_blank" : undefined}
+                          rel={info.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                        >
+                          {info.details}
+                        </a>
+                      ) : (
+                        <p className="text-sm">{info.details}</p>
+                      )}
+                      {!!info.subtext && (
+                        <p className="text-xs text-muted-foreground">{info.subtext}</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               </motion.div>
-            ))}
+              ))
+            )}
 
             {/* Demo Submission Note */}
             <motion.div

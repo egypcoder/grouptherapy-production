@@ -525,7 +525,7 @@ export default function AdminReleases() {
                 />
               </div>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-[140px]" data-testid="select-filter-type">
+                <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-filter-type">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -536,7 +536,7 @@ export default function AdminReleases() {
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]" data-testid="select-filter-status">
+                <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-filter-status">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -674,7 +674,7 @@ export default function AdminReleases() {
       </div>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Delete Release</DialogTitle>
             <DialogDescription>
@@ -697,7 +697,7 @@ export default function AdminReleases() {
       </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{editingRelease ? "Edit Release" : "Create Release"}</DialogTitle>
             <DialogDescription>
@@ -755,7 +755,7 @@ export default function AdminReleases() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="type">Type</Label>
                 <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>

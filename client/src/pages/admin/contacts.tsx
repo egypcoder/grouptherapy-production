@@ -111,7 +111,9 @@ export default function AdminContacts() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [refetch, notificationsEnabled, toast]);
 
@@ -199,7 +201,7 @@ export default function AdminContacts() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold" data-testid="text-admin-contacts-title">Messages</h1>
             <p className="text-muted-foreground">
@@ -210,7 +212,7 @@ export default function AdminContacts() {
             variant={notificationsEnabled ? "default" : "outline"}
             size="sm"
             onClick={handleEnableNotifications}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
           >
             {notificationsEnabled ? (
               <>
@@ -226,7 +228,7 @@ export default function AdminContacts() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">{displayContacts.length}</div>
@@ -271,7 +273,7 @@ export default function AdminContacts() {
                 />
               </div>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -284,7 +286,7 @@ export default function AdminContacts() {
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -393,7 +395,7 @@ export default function AdminContacts() {
       </div>
 
       <Dialog open={!!selectedContact} onOpenChange={() => setSelectedContact(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>{selectedContact?.subject}</DialogTitle>
             <DialogDescription>
@@ -449,7 +451,7 @@ export default function AdminContacts() {
       </Dialog>
 
       <Dialog open={showNotificationPrompt} onOpenChange={setShowNotificationPrompt}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md overflow-x-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-primary" />

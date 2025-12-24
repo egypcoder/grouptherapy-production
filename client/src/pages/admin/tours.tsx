@@ -206,7 +206,7 @@ export default function AdminTours() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>{editingTour ? "Edit Tour" : "Add New Tour"}</DialogTitle>
             </DialogHeader>
@@ -238,7 +238,7 @@ export default function AdminTours() {
                   currentImage={formData.imageUrl}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="startDate">Start Date</Label>
                   <Input

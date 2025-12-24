@@ -5,7 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Event } from "@shared/schema";
+import type { Event } from "@/lib/database";
 
 // Helper function to get currency symbol
 function getCurrencySymbol(currency?: string): string {

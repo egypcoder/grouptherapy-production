@@ -18,9 +18,12 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState({
     siteName: "GroupTherapy Records",
     tagline: "Electronic Music Label",
-    email: "info@grouptherapy.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Music Street, Los Angeles, CA 90001",
+    email: "",
+    emailSubtext: "",
+    phone: "",
+    phoneSubtext: "",
+    address: "",
+    addressSubtext: "",
     description: "GroupTherapy is a cutting-edge electronic music label...",
     spotify: "https://spotify.com/grouptherapy",
     instagram: "https://instagram.com/grouptherapy",
@@ -38,16 +41,34 @@ export default function AdminSettings() {
     queryFn: () => db.staticPages.getBySlug("about"),
   });
 
+  const { data: siteSettings } = useQuery({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
+  useEffect(() => {
+    if (!siteSettings) return;
+    setSettings((prev) => ({
+      ...prev,
+      email: siteSettings.contactEmail || prev.email,
+      emailSubtext: siteSettings.contactEmailSubtext || prev.emailSubtext,
+      phone: siteSettings.contactPhone || prev.phone,
+      phoneSubtext: siteSettings.contactPhoneSubtext || prev.phoneSubtext,
+      address: siteSettings.contactAddress || prev.address,
+      addressSubtext: siteSettings.contactAddressSubtext || prev.addressSubtext,
+    }));
+  }, [siteSettings]);
+
   // Update local state when About page data is loaded
   useEffect(() => {
     if (aboutPage) {
       // Extract mission and content from the about page content
       const content = aboutPage.content || "";
       const missionMatch = content.match(/<h3>Our Mission<\/h3><p>(.*?)<\/p>/s);
-      const mission = missionMatch ? missionMatch[1] : "";
+      const mission = missionMatch?.[1] ?? "";
 
       setAboutContent({
-        mission: mission,
+        mission,
         content: content,
       });
     }
@@ -85,10 +106,48 @@ export default function AdminSettings() {
     },
   });
 
+  const updateSiteSettingsMutation = useMutation({
+    mutationFn: async (data: {
+      email: string;
+      emailSubtext: string;
+      phone: string;
+      phoneSubtext: string;
+      address: string;
+      addressSubtext: string;
+    }) => {
+      return db.siteSettings.update({
+        contactEmail: data.email,
+        contactEmailSubtext: data.emailSubtext,
+        contactPhone: data.phone,
+        contactPhoneSubtext: data.phoneSubtext,
+        contactAddress: data.address,
+        contactAddressSubtext: data.addressSubtext,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["siteSettings"] });
+      toast({
+        title: "Settings saved",
+        description: "Your settings have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to save settings",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = () => {
-    toast({
-      title: "Settings saved",
-      description: "Your settings have been updated successfully.",
+    updateSiteSettingsMutation.mutate({
+      email: settings.email,
+      emailSubtext: settings.emailSubtext,
+      phone: settings.phone,
+      phoneSubtext: settings.phoneSubtext,
+      address: settings.address,
+      addressSubtext: settings.addressSubtext,
     });
   };
 
@@ -158,6 +217,13 @@ export default function AdminSettings() {
                   value={settings.email}
                   onChange={(e) => setSettings({ ...settings, email: e.target.value })}
                 />
+                <p className="text-xs text-muted-foreground mt-1">Small text shown under the email on the Contact page</p>
+                <Input
+                  id="emailSubtext"
+                  value={settings.emailSubtext}
+                  onChange={(e) => setSettings({ ...settings, emailSubtext: e.target.value })}
+                  placeholder="e.g. We'll respond within 24 hours"
+                />
               </div>
               <div>
                 <Label htmlFor="phone">Phone</Label>
@@ -165,6 +231,13 @@ export default function AdminSettings() {
                   id="phone"
                   value={settings.phone}
                   onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Small text shown under the phone on the Contact page</p>
+                <Input
+                  id="phoneSubtext"
+                  value={settings.phoneSubtext}
+                  onChange={(e) => setSettings({ ...settings, phoneSubtext: e.target.value })}
+                  placeholder="e.g. Mon-Fri, 9am-6pm"
                 />
               </div>
               <div>
@@ -174,6 +247,13 @@ export default function AdminSettings() {
                   rows={3}
                   value={settings.address}
                   onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Small text shown under the address on the Contact page</p>
+                <Input
+                  id="addressSubtext"
+                  value={settings.addressSubtext}
+                  onChange={(e) => setSettings({ ...settings, addressSubtext: e.target.value })}
+                  placeholder="e.g. Shoreditch Creative Hub"
                 />
               </div>
             </CardContent>
@@ -213,8 +293,15 @@ export default function AdminSettings() {
             </CardContent>
           </Card>
 
-          <Button onClick={handleSave} size="lg">
-            Save Settings
+          <Button onClick={handleSave} size="lg" disabled={updateSiteSettingsMutation.isPending}>
+            {updateSiteSettingsMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Settings"
+            )}
           </Button>
         </div>
 

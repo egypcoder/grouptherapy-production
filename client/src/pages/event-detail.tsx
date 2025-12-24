@@ -1,7 +1,8 @@
 import { useRoute, Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowLeft, Calendar, MapPin, Clock, Ticket, Users, ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
 import { db, type Event, type Artist } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
@@ -10,9 +11,29 @@ import { Card, CardContent } from "@/components/ui/card";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { EventCountdown } from "@/components/event-countdown";
 
+function getCurrencySymbol(currency?: string): string {
+  const symbols: Record<string, string> = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    CAD: "C$",
+    AUD: "A$",
+  };
+  const code = (currency || "USD").toUpperCase();
+  return symbols[code] || "$";
+}
+
 export default function EventDetailPage() {
   const [, params] = useRoute("/events/:slug");
   const slug = params?.slug;
+
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroImageY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const heroImageScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
   const { data: event, isLoading } = useQuery<Event | null>({
     queryKey: ["event", slug],
@@ -33,6 +54,21 @@ export default function EventDetailPage() {
   const eventArtists = allArtists?.filter(a => event?.artistIds?.includes(a.id)) || [];
   const eventDate = event?.date ? new Date(event.date) : null;
   const isEventPast = eventDate ? isPast(eventDate) : false;
+
+  const trackTicketClick = (source: string) => {
+    if (!event) return;
+    db.analytics.trackEvent("event_ticket_click", {
+      category: "engagement",
+      entityType: "event",
+      entityId: event.id,
+      entityName: event.title,
+      metadata: {
+        source,
+        slug: event.slug,
+        ticketUrl: event.ticketUrl,
+      },
+    });
+  };
 
   const eventSchema = event ? generateStructuredData("Event", {
     name: event.title,
@@ -90,13 +126,14 @@ export default function EventDetailPage() {
         structuredData={eventSchema}
       />
 
-      <div className="relative">
+      <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
           {event.imageUrl ? (
-            <img
+            <motion.img
               src={event.imageUrl}
               alt={event.title}
               className="w-full h-full object-cover"
+              style={{ y: heroImageY, scale: heroImageScale }}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/30 to-muted" />
@@ -154,10 +191,15 @@ export default function EventDetailPage() {
               )}
 
               {event.ticketUrl && !isEventPast && (
-                <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer">
+                <a
+                  href={event.ticketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => trackTicketClick("event_detail_hero")}
+                >
                   <Button size="lg" className="bg-primary hover:bg-primary/90">
                     <Ticket className="h-5 w-5 mr-2" />
-                    Get Tickets {event.ticketPrice && `- ${event.ticketPrice}`}
+                    Get Tickets{event.ticketPrice ? ` - ${getCurrencySymbol(event.currency)}${event.ticketPrice}` : ""}
                   </Button>
                 </a>
               )}
@@ -241,14 +283,20 @@ export default function EventDetailPage() {
                       <Ticket className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-medium">Price</p>
-                        <p className="text-muted-foreground">{event.ticketPrice}</p>
+                        <p className="text-muted-foreground">{getCurrencySymbol(event.currency)}{event.ticketPrice}</p>
                       </div>
                     </div>
                   )}
                 </div>
 
                 {event.ticketUrl && !isEventPast && (
-                  <a href={event.ticketUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <a
+                    href={event.ticketUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                    onClick={() => trackTicketClick("event_detail_sidebar")}
+                  >
                     <Button className="w-full">
                       <Ticket className="h-4 w-4 mr-2" />
                       Get Tickets

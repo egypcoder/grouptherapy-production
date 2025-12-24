@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { SiSpotify, SiInstagram, SiSoundcloud } from "react-icons/si";
-import type { Artist } from "@shared/schema";
+import type { Artist } from "@/lib/database";
 
 interface FeaturedArtistsProps {
   artists?: Artist[];

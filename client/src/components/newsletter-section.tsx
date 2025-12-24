@@ -95,7 +95,7 @@ export function NewsletterSection() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
-                className="flex-1 h-12 px-5 rounded-full bg-background border-border/50"
+                className="flex-1 h-12 min-h-12 px-5 rounded-full bg-background border-border/50"
                 data-testid="input-newsletter-email-section"
               />
               <Button 

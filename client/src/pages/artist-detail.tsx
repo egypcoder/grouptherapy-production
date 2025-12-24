@@ -1,8 +1,9 @@
 import { useRoute, Link } from "wouter";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowLeft, Calendar, MapPin, ExternalLink } from "lucide-react";
 import { SiSpotify, SiInstagram, SiSoundcloud, SiYoutube, SiX } from "react-icons/si";
 import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
 import { db, type Artist, type Release, type Event } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,14 @@ const demoEvents: Partial<Event>[] = [
 export default function ArtistDetailPage() {
   const [match, params] = useRoute("/artists/:slug");
   const slug = params?.slug;
+
+  const heroRef = useRef<HTMLDivElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroImageY = useTransform(scrollYProgress, [0, 1], [0, 90]);
+  const heroImageScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
   const { data: artist, isLoading: artistLoading } = useQuery<Artist | null>({
     queryKey: ["artist", slug],
@@ -117,13 +126,14 @@ export default function ArtistDetailPage() {
         structuredData={artistSchema}
       />
 
-      <div className="relative">
+      <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
           {displayArtist.imageUrl ? (
-            <img
+            <motion.img
               src={displayArtist.imageUrl}
               alt={displayArtist.name}
               className="w-full h-full object-cover"
+              style={{ y: heroImageY, scale: heroImageScale }}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary/30 to-muted" />

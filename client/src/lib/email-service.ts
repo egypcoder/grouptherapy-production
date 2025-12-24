@@ -88,7 +88,7 @@ export async function sendEmail(data: EmailData): Promise<EmailResult> {
       default:
         return {
           success: false,
-          error: `Unknown email service: ${EMAIL_SERVICE}`,
+          error: `Unknown email service: ${emailService}`,
         };
     }
   } catch (error) {

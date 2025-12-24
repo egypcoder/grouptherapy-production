@@ -1,10 +1,12 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Play, ArrowRight, Radio } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useRadio } from "@/lib/radio-context";
 
 interface HeroProps {
+  heroTag?: string;
   title?: string;
   subtitle?: string;
   backgroundImage?: string;
@@ -13,9 +15,11 @@ interface HeroProps {
   showRadio?: boolean;
   ctaText?: string;
   ctaLink?: string;
+  heroStats?: { value: string; label: string }[];
 }
 
 export function HeroSection({
+  heroTag = "Electronic Music Label",
   title = "GROUPTHERAPY",
   subtitle = "The future of electronic music, curated for you.",
   backgroundImage,
@@ -24,8 +28,18 @@ export function HeroSection({
   showRadio = true,
   ctaText = "Explore Releases",
   ctaLink = "/releases",
+  heroStats,
 }: HeroProps) {
   const { togglePlay, isPlaying } = useRadio();
+
+  const displayHeroStats =
+    heroStats && heroStats.length > 0
+      ? heroStats
+      : [
+          { value: "50+", label: "Artists" },
+          { value: "200+", label: "Releases" },
+          { value: "24/7", label: "Radio" },
+        ];
 
   return (
     <section className="relative min-h-[100svh] flex items-center justify-center overflow-hidden">
@@ -102,7 +116,7 @@ export function HeroSection({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            Electronic Music Label
+            {heroTag}
           </motion.span>
         </motion.div>
 
@@ -193,11 +207,7 @@ export function HeroSection({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.8 }}
         >
-          {[
-            { value: "50+", label: "Artists" },
-            { value: "200+", label: "Releases" },
-            { value: "24/7", label: "Radio" },
-          ].map((stat, i) => (
+          {displayHeroStats.map((stat, i) => (
             <motion.div
               key={stat.label}
               className="text-center"
@@ -252,14 +262,26 @@ export function PageHero({
   subtitle?: string;
   backgroundImage?: string;
 }) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"],
+  });
+  const imageY = useTransform(scrollYProgress, [0, 1], [0, 80]);
+  const imageScale = useTransform(scrollYProgress, [0, 1], [1, 1.08]);
+
   return (
-    <section className="relative min-h-[30vh] flex items-center justify-center overflow-hidden pt-20">
+    <section
+      ref={sectionRef}
+      className="relative min-h-[30vh] flex items-center justify-center overflow-hidden pt-20"
+    >
       <div className="absolute inset-0 z-0">
         {backgroundImage ? (
-          <img
+          <motion.img
             src={backgroundImage}
             alt=""
             className="w-full h-full object-cover"
+            style={{ y: imageY, scale: imageScale }}
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-b from-muted/30 to-background" />
