@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, ExternalLink, Filter, Search, Grid, List } from "lucide-react";
+import { Play, ExternalLink, Search, Grid, List } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
 import { db, type Release } from "@/lib/database";
 
 const demoReleases: Partial<Release>[] = [
@@ -98,13 +97,38 @@ const demoReleases: Partial<Release>[] = [
   },
 ];
 
-const genres = ["All", "Electronic", "House", "Techno", "Deep House", "Drum & Bass", "Progressive", "Ambient"];
 const releaseTypes = ["All", "Album", "EP", "Single"];
+
+function getMonthKey(value: string | Date | null | undefined): string {
+  if (!value) return "unknown";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getMonthLabel(monthKey: string): string {
+  if (monthKey === "unknown") return "Unknown";
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  const date = new Date(year, monthIndex, 1);
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
+function MonthSpacer({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase whitespace-nowrap">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-border/60" />
+    </div>
+  );
+}
 
 export default function ReleasesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedGenre, setSelectedGenre] = useState("All");
   const [selectedType, setSelectedType] = useState("All");
   const [sortBy, setSortBy] = useState("newest");
 
@@ -119,12 +143,10 @@ export default function ReleasesPage() {
     const matchesSearch =
       release.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       release.artistName?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGenre =
-      selectedGenre === "All" || release.genres?.includes(selectedGenre);
     const matchesType =
       selectedType === "All" ||
       release.type?.toLowerCase() === selectedType.toLowerCase();
-    return matchesSearch && matchesGenre && matchesType;
+    return matchesSearch && matchesType;
   });
 
   const sortedReleases = [...filteredReleases].sort((a, b) => {
@@ -139,6 +161,33 @@ export default function ReleasesPage() {
     }
     return 0;
   });
+
+  const releasesByMonth = (() => {
+    const map = new Map<string, Release[]>();
+    for (const release of sortedReleases as Release[]) {
+      const key = getMonthKey(release.releaseDate ?? null);
+      const current = map.get(key);
+      if (current) {
+        current.push(release);
+      } else {
+        map.set(key, [release]);
+      }
+    }
+
+    const keys = Array.from(map.keys());
+    const direction = sortBy === "oldest" ? 1 : -1;
+    keys.sort((a, b) => {
+      if (a === "unknown") return 1;
+      if (b === "unknown") return -1;
+      return a.localeCompare(b) * direction;
+    });
+
+    return keys.map((key) => ({
+      key,
+      label: getMonthLabel(key),
+      releases: map.get(key) ?? [],
+    }));
+  })();
 
   const musicGroupSchema = generateStructuredData("MusicGroup", {
     name: "GroupTherapy Records",
@@ -185,20 +234,6 @@ export default function ReleasesPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {/* Genre Filter */}
-            <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-              <SelectTrigger className="w-[140px]" data-testid="select-genre">
-                <SelectValue placeholder="Genre" />
-              </SelectTrigger>
-              <SelectContent>
-                {genres.map((genre) => (
-                  <SelectItem key={genre} value={genre}>
-                    {genre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             {/* Type Filter */}
             <Select value={selectedType} onValueChange={setSelectedType}>
               <SelectTrigger className="w-[120px]" data-testid="select-type">
@@ -254,29 +289,43 @@ export default function ReleasesPage() {
 
         {/* Releases Grid/List */}
         {viewMode === "grid" ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
-            {sortedReleases.map((release, index) => (
-              <motion.div
-                key={release.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <ReleaseGridCard release={release as Release} />
-              </motion.div>
+          <div className="space-y-10">
+            {releasesByMonth.map((group) => (
+              <div key={group.key} className="space-y-4">
+                <MonthSpacer label={group.label} />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+                  {group.releases.map((release, index) => (
+                    <motion.div
+                      key={release.id}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.02 }}
+                    >
+                      <ReleaseGridCard release={release as Release} />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-3">
-            {sortedReleases.map((release, index) => (
-              <motion.div
-                key={release.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <ReleaseListCard release={release as Release} />
-              </motion.div>
+          <div className="space-y-10">
+            {releasesByMonth.map((group) => (
+              <div key={group.key} className="space-y-3">
+                <MonthSpacer label={group.label} />
+                <div className="space-y-3">
+                  {group.releases.map((release, index) => (
+                    <motion.div
+                      key={release.id}
+                      initial={{ opacity: 0, x: -14 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.02 }}
+                    >
+                      <ReleaseListCard release={release as Release} />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -313,7 +362,7 @@ function ReleaseGridCard({ release }: { release: Release }) {
           <motion.div
             initial={false}
             animate={{ opacity: isHovered ? 1 : 0 }}
-            className="absolute inset-0 bg-black/60 flex items-center justify-center gap-3"
+            className="absolute inset-0 bg-black/60 flex items-center justify-center gap-3 pointer-events-none"
           >
             <Button
               size="icon"

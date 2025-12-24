@@ -216,7 +216,7 @@ function ReleaseCard({ release }: { release: Release }) {
           <motion.div
             initial={false}
             animate={{ opacity: isHovered ? 1 : 0 }}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center"
+            className="absolute inset-0 bg-black/50 flex items-center justify-center pointer-events-none sm:group-hover:pointer-events-auto"
           >
             <Button
               size="icon"

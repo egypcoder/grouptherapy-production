@@ -304,15 +304,6 @@ export function Navigation() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
               >
-                <Link href="/admin">
-                  <Button 
-                    variant="outline" 
-                    className="rounded-full"
-                    data-testid="link-mobile-admin"
-                  >
-                    Admin
-                  </Button>
-                </Link>
               </motion.div>
             </motion.nav>
           </motion.div>
