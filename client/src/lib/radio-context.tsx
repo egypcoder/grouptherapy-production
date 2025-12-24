@@ -115,10 +115,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isLiveSessionRef = useRef<boolean>(false);
-  const isRepeat24hDayRef = useRef<boolean>(false);
-  const repeat24hShowsRef = useRef<RadioShow[]>([]);
-  const repeat24hIndexRef = useRef<number>(0);
-  const repeat24hDayKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToServerTimeOffset((offset) => {
@@ -255,11 +251,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         );
 
         if (todayShows.length === 0) {
-          isRepeat24hDayRef.current = false;
-          repeat24hShowsRef.current = [];
-          repeat24hIndexRef.current = 0;
-          repeat24hDayKeyRef.current = null;
-
           setHasScheduledShow(false);
           setCurrentShow(null);
           setNextShowTime(null);
@@ -273,41 +264,17 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         }
 
         // Check if today has 24-hour repeat enabled
-        const is24hRepeatDay =
-          todayShows.length > 0 && todayShows.every((show) => show.repeat24h);
-        isRepeat24hDayRef.current = is24hRepeatDay;
-
-        if (!is24hRepeatDay) {
-          repeat24hShowsRef.current = [];
-          repeat24hIndexRef.current = 0;
-          repeat24hDayKeyRef.current = null;
-        }
+        const is24hRepeatDay = todayShows.length > 0 && todayShows.every((show) => show.repeat24h);
 
         let liveShow = null;
         
         if (is24hRepeatDay) {
-          const publishedShows = todayShows
-            .filter((show) => show.published)
-            .sort((a, b) => {
-              if (!a.startTime && !b.startTime) return 0;
-              if (!a.startTime) return 1;
-              if (!b.startTime) return -1;
-              return parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime);
-            });
-
-          const dayKey = new Date().toDateString();
-          if (repeat24hDayKeyRef.current !== dayKey) {
-            repeat24hDayKeyRef.current = dayKey;
-            repeat24hIndexRef.current = 0;
-          }
-
-          repeat24hShowsRef.current = publishedShows;
-
+          const publishedShows = todayShows.filter((show) => show.published);
           if (publishedShows.length > 0) {
-            const safeIndex =
-              repeat24hIndexRef.current % publishedShows.length;
-            repeat24hIndexRef.current = safeIndex;
-            liveShow = publishedShows[safeIndex];
+            const totalMinutesInDay = 24 * 60;
+            const minutesPerShow = Math.floor(totalMinutesInDay / publishedShows.length);
+            const currentShowIndex = Math.floor(currentMinutes / minutesPerShow) % publishedShows.length;
+            liveShow = publishedShows[currentShowIndex];
           }
         } else {
           // Normal scheduling logic
@@ -391,11 +358,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("Error fetching radio shows:", error);
-        isRepeat24hDayRef.current = false;
-        repeat24hShowsRef.current = [];
-        repeat24hIndexRef.current = 0;
-        repeat24hDayKeyRef.current = null;
-
         setHasScheduledShow(false);
         setAudioUrl(FALLBACK_STREAM_URL);
         setCurrentTrack({
@@ -485,38 +447,6 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           setIsPlaying(false);
           setProgress(0);
         }
-      } else if (
-        isRepeat24hDayRef.current &&
-        repeat24hDayKeyRef.current === new Date().toDateString() &&
-        repeat24hShowsRef.current.length > 0
-      ) {
-        const shows = repeat24hShowsRef.current;
-        const nextIndex = (repeat24hIndexRef.current + 1) % shows.length;
-        repeat24hIndexRef.current = nextIndex;
-        const nextShow = shows[nextIndex];
-        if (!nextShow) {
-          setIsPlaying(false);
-          setProgress(0);
-          return;
-        }
-
-        setHasScheduledShow(true);
-        setCurrentShow(nextShow);
-        setIsLive(true);
-        setNextShowTime(null);
-        setCountdownSeconds(null);
-        setProgress(0);
-
-        const url =
-          nextShow.streamUrl || nextShow.recordedUrl || FALLBACK_STREAM_URL;
-        setAudioUrl(url);
-        setCurrentTrack({
-          title: nextShow.title,
-          artist: nextShow.hostName || "Unknown",
-          coverUrl: nextShow.coverUrl,
-          showName: nextShow.title,
-          hostName: nextShow.hostName,
-        });
       } else {
         setIsPlaying(false);
         setProgress(0);
@@ -704,8 +634,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       isLive &&
       currentShow &&
       currentShow.recordedUrl &&
-      currentShow.startTime &&
-      !isRepeat24hDayRef.current
+      currentShow.startTime
     ) {
       // Calculate scheduled position for recorded shows when play is pressed
       const now = new Date();
