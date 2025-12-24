@@ -123,7 +123,7 @@ export function EventsCarousel({
       <div className="relative">
         <div
           ref={scrollRef}
-          className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 px-6 md:px-8 snap-x snap-mandatory"
+          className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 px-6 md:px-8 snap-x snap-mandatory overflow-y-hidden"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {sortedEvents.map((event, index) => {
