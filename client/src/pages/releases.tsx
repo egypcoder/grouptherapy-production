@@ -7,95 +7,10 @@ import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { db, type Release } from "@/lib/database";
-
-const demoReleases: Partial<Release>[] = [
-  {
-    id: "1",
-    title: "Midnight Sessions",
-    artistName: "Luna Wave",
-    coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
-    type: "album",
-    genres: ["Electronic", "House"],
-    spotifyUrl: "#",
-    featured: true,
-    releaseDate: new Date("2024-01-15").toISOString(),
-  },
-  {
-    id: "2",
-    title: "Echoes of Tomorrow",
-    artistName: "Neon Pulse",
-    coverUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=400&fit=crop",
-    type: "single",
-    genres: ["Techno"],
-    spotifyUrl: "#",
-    releaseDate: new Date("2024-02-01").toISOString(),
-  },
-  {
-    id: "3",
-    title: "Deep Waters",
-    artistName: "Aqua Dreams",
-    coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&h=400&fit=crop",
-    type: "ep",
-    genres: ["Deep House"],
-    spotifyUrl: "#",
-    featured: true,
-    releaseDate: new Date("2024-02-10").toISOString(),
-  },
-  {
-    id: "4",
-    title: "Velocity",
-    artistName: "Circuit Breaker",
-    coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
-    type: "album",
-    genres: ["Drum & Bass"],
-    spotifyUrl: "#",
-    releaseDate: new Date("2024-01-20").toISOString(),
-  },
-  {
-    id: "5",
-    title: "Solar Flare",
-    artistName: "Cosmic Ray",
-    coverUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop",
-    type: "single",
-    genres: ["Progressive"],
-    spotifyUrl: "#",
-    releaseDate: new Date("2024-03-01").toISOString(),
-  },
-  {
-    id: "6",
-    title: "Urban Nights",
-    artistName: "Street Beat",
-    coverUrl: "https://images.unsplash.com/photo-1504898770365-14faca6a7320?w=400&h=400&fit=crop",
-    type: "album",
-    genres: ["UK Garage"],
-    spotifyUrl: "#",
-    releaseDate: new Date("2024-02-28").toISOString(),
-  },
-  {
-    id: "7",
-    title: "Crystal Clear",
-    artistName: "Glass House",
-    coverUrl: "https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop",
-    type: "ep",
-    genres: ["Ambient"],
-    spotifyUrl: "#",
-    featured: true,
-    releaseDate: new Date("2024-03-15").toISOString(),
-  },
-  {
-    id: "8",
-    title: "Thunder Road",
-    artistName: "Storm Chasers",
-    coverUrl: "https://images.unsplash.com/photo-1493676304819-0d7a8d026dcf?w=400&h=400&fit=crop",
-    type: "single",
-    genres: ["Electro"],
-    spotifyUrl: "#",
-    releaseDate: new Date("2024-03-20").toISOString(),
-  },
-];
 
 const releaseTypes = ["All", "Album", "EP", "Single"];
 
@@ -117,11 +32,11 @@ function getMonthLabel(monthKey: string): string {
 
 function MonthSpacer({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase whitespace-nowrap">
+    <div className="flex items-center gap-3 my-8">
+      <span className="ml-0 sm:-ml-20 text-sm font-semibold tracking-widest text-primary uppercase whitespace-nowrap">
         {label}
       </span>
-      <div className="h-px flex-1 bg-border/60" />
+      <div className="h-px flex-1 bg-border/70" />
     </div>
   );
 }
@@ -132,14 +47,26 @@ export default function ReleasesPage() {
   const [selectedType, setSelectedType] = useState("All");
   const [sortBy, setSortBy] = useState("newest");
 
-  const { data: releases } = useQuery<Release[]>({
-    queryKey: ["releases"],
-    queryFn: () => db.releases.getPublished(),
+  const PAGE_SIZE = 48;
+  const {
+    data: releasesPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery<Release[]>({
+    queryKey: ["releases", "published", { pageSize: PAGE_SIZE }],
+    queryFn: ({ pageParam }) => db.releases.getPublishedPage(PAGE_SIZE, (pageParam as number) ?? 0),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage || lastPage.length < PAGE_SIZE) return undefined;
+      return allPages.length * PAGE_SIZE;
+    },
   });
 
-  const displayReleases = releases?.length ? releases : demoReleases;
+  const releases = releasesPages?.pages?.flat() ?? [];
 
-  const filteredReleases = displayReleases.filter((release) => {
+  const filteredReleases = releases.filter((release) => {
     const matchesSearch =
       release.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       release.artistName?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -283,12 +210,50 @@ export default function ReleasesPage() {
         </div>
 
         {/* Results Count */}
-        <p className="text-sm text-muted-foreground mb-6">
-          Showing {sortedReleases.length} releases
-        </p>
+        {isLoading ? (
+          <Skeleton className="h-4 w-44 mb-6" />
+        ) : (
+          <p className="text-sm text-muted-foreground mb-6">
+            Showing {sortedReleases.length} releases
+          </p>
+        )}
 
         {/* Releases Grid/List */}
-        {viewMode === "grid" ? (
+        {isLoading ? (
+          viewMode === "grid" ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+              {Array.from({ length: 20 }).map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <Skeleton className="aspect-square w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {Array.from({ length: 12 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-md">
+                  <Skeleton className="h-16 w-16 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-1/3" />
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2">
+                    <Skeleton className="h-5 w-14" />
+                    <Skeleton className="h-5 w-14" />
+                  </div>
+                  <Skeleton className="hidden md:flex h-5 w-14" />
+                  <Skeleton className="hidden lg:block h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          )
+        ) : sortedReleases.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No releases found</p>
+          </div>
+        ) : viewMode === "grid" ? (
           <div className="space-y-10">
             {releasesByMonth.map((group) => (
               <div key={group.key} className="space-y-4">
@@ -327,6 +292,20 @@ export default function ReleasesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!isLoading && hasNextPage && (
+          <div className="mt-10 flex justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isFetchingNextPage}
+              onClick={() => fetchNextPage()}
+              data-testid="button-load-more-releases"
+            >
+              {isFetchingNextPage ? "Loading…" : "Load more"}
+            </Button>
           </div>
         )}
       </div>

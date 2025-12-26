@@ -1,73 +1,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Search, Filter } from "lucide-react";
+import { Play, Search, X } from "lucide-react";
 import { PageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { db, type Video } from "@/lib/database";
-
-const demoVideos: Partial<Video>[] = [
-  {
-    id: "1",
-    title: "Luna Wave - Midnight Sessions (Official Video)",
-    artistName: "Luna Wave",
-    thumbnailUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=450&fit=crop",
-    youtubeId: "dQw4w9WgXcQ",
-    category: "music-video",
-    duration: "4:32",
-    featured: true,
-  },
-  {
-    id: "2",
-    title: "Neon Pulse - Behind the Scenes",
-    artistName: "Neon Pulse",
-    thumbnailUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800&h=450&fit=crop",
-    youtubeId: "dQw4w9WgXcQ",
-    category: "behind-the-scenes",
-    duration: "12:45",
-  },
-  {
-    id: "3",
-    title: "GroupTherapy Sessions Vol. 1 - Aftermovie",
-    artistName: "GroupTherapy",
-    thumbnailUrl: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800&h=450&fit=crop",
-    youtubeId: "dQw4w9WgXcQ",
-    category: "event",
-    duration: "6:18",
-    featured: true,
-  },
-  {
-    id: "4",
-    title: "Circuit Breaker - Velocity (Live Performance)",
-    artistName: "Circuit Breaker",
-    thumbnailUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&h=450&fit=crop",
-    youtubeId: "dQw4w9WgXcQ",
-    category: "live",
-    duration: "8:21",
-  },
-  {
-    id: "5",
-    title: "Studio Session with Aqua Dreams",
-    artistName: "Aqua Dreams",
-    thumbnailUrl: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800&h=450&fit=crop",
-    youtubeId: "dQw4w9WgXcQ",
-    category: "behind-the-scenes",
-    duration: "15:33",
-  },
-  {
-    id: "6",
-    title: "Cosmic Ray - Solar Flare (Official Video)",
-    artistName: "Cosmic Ray",
-    thumbnailUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&h=450&fit=crop",
-    youtubeId: "dQw4w9WgXcQ",
-    category: "music-video",
-    duration: "3:58",
-  },
-];
 
 const categories = [
   { value: "all", label: "All Videos" },
@@ -82,14 +24,20 @@ export default function VideosPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
-  const { data: videos } = useQuery<Video[]>({
-    queryKey: ["videos"],
-    queryFn: () => db.videos.getAll(),
+  const getEmbedSrc = (video: Video) => {
+    if (video.youtubeId) {
+      return `https://www.youtube.com/embed/${video.youtubeId}?autoplay=1&rel=0`;
+    }
+
+    return video.videoUrl || "";
+  };
+
+  const { data: videos = [], isLoading } = useQuery<Video[]>({
+    queryKey: ["videos", "published", { limit: 48 }],
+    queryFn: () => db.videos.getPublishedPage(48, 0),
   });
 
-  const displayVideos = videos?.length ? videos : demoVideos;
-
-  const filteredVideos = displayVideos.filter((video) => {
+  const filteredVideos = videos.filter((video) => {
     const matchesSearch =
       video.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       video.artistName?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -132,78 +80,137 @@ export default function VideosPage() {
           </Select>
         </div>
 
-        {/* Featured Videos */}
-        {filteredVideos.some((v) => v.featured) && selectedCategory === "all" && (
-          <section className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">Featured</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredVideos
-                .filter((v) => v.featured)
-                .map((video, index) => (
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 9 }).map((_, index) => (
+              <div key={index} className="space-y-3">
+                <Skeleton className="aspect-video w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            {/* Featured Videos */}
+            {filteredVideos.some((v) => v.featured) && selectedCategory === "all" && (
+              <section className="mb-12">
+                <h2 className="text-2xl font-bold mb-6">Featured</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {filteredVideos
+                    .filter((v) => v.featured)
+                    .map((video, index) => (
+                      <motion.div
+                        key={video.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
+                        <VideoCard
+                          video={video as Video}
+                          featured
+                          onClick={() => setSelectedVideo(video as Video)}
+                        />
+                      </motion.div>
+                    ))}
+                </div>
+              </section>
+            )}
+
+            {/* All Videos */}
+            <section>
+              <h2 className="text-2xl font-bold mb-6">
+                {selectedCategory === "all" ? "All Videos" : categories.find((c) => c.value === selectedCategory)?.label}
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredVideos.map((video, index) => (
                   <motion.div
                     key={video.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.03 }}
                   >
                     <VideoCard
                       video={video as Video}
-                      featured
                       onClick={() => setSelectedVideo(video as Video)}
                     />
                   </motion.div>
                 ))}
-            </div>
-          </section>
-        )}
+              </div>
+            </section>
 
-        {/* All Videos */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6">
-            {selectedCategory === "all" ? "All Videos" : categories.find((c) => c.value === selectedCategory)?.label}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVideos.map((video, index) => (
-              <motion.div
-                key={video.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <VideoCard
-                  video={video as Video}
-                  onClick={() => setSelectedVideo(video as Video)}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {filteredVideos.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No videos found</p>
-          </div>
+            {filteredVideos.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No videos found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* Video Modal */}
-      <Dialog open={!!selectedVideo} onOpenChange={() => setSelectedVideo(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+      <Dialog open={!!selectedVideo} onOpenChange={(open) => !open && setSelectedVideo(null)}>
+        <DialogContent className="sm:overflow-hidden sm:w-[min(96vw,72rem)] sm:max-w-none sm:p-0 sm:pb-0 [&>button]:hidden">
           <DialogTitle className="sr-only">{selectedVideo?.title}</DialogTitle>
           {selectedVideo && (
-            <div>
-              <div className="aspect-video bg-black">
-                <iframe
-                  src={`https://www.youtube.com/embed/${selectedVideo.youtubeId}?autoplay=1`}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+            <div className="sm:grid sm:grid-rows-[auto,1fr]">
+              <div className="flex items-start justify-between pb-6 sm:p-4 sm:pb-2">
+                  <div className="-mx-4 space-y-2 px-4 pt-4 sm:mx-4 sm:px-0 sm:p-4">
+                <h3 className="text-lg font-semibold leading-tight tracking-tight sm:text-2xl">
+                  {selectedVideo.title}
+                </h3>
+                <div className="flex flex-row items-center gap-1 space-x-1">
+                {selectedVideo.artistName && (
+                  <p className="text-sm text-muted-foreground">{selectedVideo.artistName}</p>
+                )}
+
+                {(selectedVideo.description || selectedVideo.category || selectedVideo.duration) && (
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedVideo.category && (
+                        <Badge variant="secondary">{selectedVideo.category}</Badge>
+                      )}
+                      {selectedVideo.duration && (
+                        <Badge variant="outline">{selectedVideo.duration}</Badge>
+                      )}
+                    </div>
+                    {selectedVideo.description && (
+                      <p className="whitespace-pre-line text-sm text-muted-foreground">
+                        {selectedVideo.description}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div></div>
+                <DialogClose asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Close video"
+                    className="h-11 w-11 rounded-full bg-background/85 backdrop-blur"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </DialogClose>
               </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-lg">{selectedVideo.title}</h3>
-                <p className="text-sm text-muted-foreground">{selectedVideo.artistName}</p>
+              <div className="-mx-4 mb-20 sm:mb-0 overflow-hidden rounded-md bg-black sm:mx-0 sm:rounded-none sm:rounded-t-lg">
+                {getEmbedSrc(selectedVideo) ? (
+                  <iframe
+                    title={selectedVideo.title}
+                    src={getEmbedSrc(selectedVideo)}
+                    className="aspect-video h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="flex aspect-video w-full items-center justify-center text-sm text-muted-foreground">
+                    Video unavailable
+                  </div>
+                )}
               </div>
+
+            
             </div>
           )}
         </DialogContent>
@@ -248,7 +255,7 @@ function VideoCard({
         {/* Play Button Overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center">
-            <Play className="h-8 w-8 text-primary-foreground ml-1" />
+            <Play className="h-8 w-8 text-white ml-1" fill="white"/>
           </div>
         </div>
 

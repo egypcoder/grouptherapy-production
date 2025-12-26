@@ -327,23 +327,23 @@ SUBJECT: [subject line here]
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Newsletter Management</h1>
             <p className="text-muted-foreground text-sm mt-1">
               Manage subscribers and send newsletters
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportSubscribers}>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:w-auto">
+            <Button className="w-full sm:w-auto" variant="outline" onClick={handleExportSubscribers}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
-            <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
+            <Button className="w-full sm:w-auto" variant="outline" onClick={() => setIsSettingsOpen(true)}>
               <Settings className="h-4 w-4 mr-2" />
               Email Settings
             </Button>
-            <Button onClick={() => setIsComposeOpen(true)} disabled={!isConfigured}>
+            <Button className="w-full sm:w-auto" onClick={() => setIsComposeOpen(true)} disabled={!isConfigured}>
               <Mail className="h-4 w-4 mr-2" />
               Compose Newsletter
             </Button>
@@ -354,7 +354,7 @@ SUBJECT: [subject line here]
         {!isConfigured && (
           <Card className="border-yellow-500/20 bg-yellow-500/5">
             <CardContent className="p-4">
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
@@ -364,7 +364,7 @@ SUBJECT: [subject line here]
                     Please configure your email service settings to send newsletters.
                   </p>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setIsSettingsOpen(true)}>
+                <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => setIsSettingsOpen(true)}>
                   Configure
                 </Button>
               </div>
@@ -375,7 +375,7 @@ SUBJECT: [subject line here]
         {isConfigured && (
           <Card className="border-green-500/20 bg-green-500/5">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900 dark:text-green-100">
@@ -385,7 +385,7 @@ SUBJECT: [subject line here]
                     From: {emailConfig.fromEmail}
                   </p>
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)}>
+                <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)}>
                   Edit
                 </Button>
               </div>
@@ -438,44 +438,48 @@ SUBJECT: [subject line here]
             <CardDescription>Manage your newsletter subscriber list</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Subscribed</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subscribers.map((subscriber) => (
-                  <TableRow key={subscriber.id}>
-                    <TableCell className="font-medium">{subscriber.email}</TableCell>
-                    <TableCell>{subscriber.name || "-"}</TableCell>
-                    <TableCell>{subscriber.source || "-"}</TableCell>
-                    <TableCell>
-                      {new Date(subscriber.subscribedAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={subscriber.active ? "default" : "secondary"}>
-                        {subscriber.active ? "Active" : "Unsubscribed"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteMutation.mutate(subscriber.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+            <div className="w-full overflow-x-auto">
+              <Table className="min-w-[720px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[280px]">Email</TableHead>
+                    <TableHead className="hidden sm:table-cell">Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Source</TableHead>
+                    <TableHead className="hidden md:table-cell">Subscribed</TableHead>
+                    <TableHead className="w-[140px]">Status</TableHead>
+                    <TableHead className="w-[80px] text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {subscribers.map((subscriber) => (
+                    <TableRow key={subscriber.id}>
+                      <TableCell className="font-medium">
+                        <div className="max-w-[260px] truncate">{subscriber.email}</div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{subscriber.name || "-"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{subscriber.source || "-"}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {new Date(subscriber.subscribedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={subscriber.active ? "default" : "secondary"}>
+                          {subscriber.active ? "Active" : "Unsubscribed"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMutation.mutate(subscriber.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
             {subscribers.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">

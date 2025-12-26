@@ -65,7 +65,7 @@ interface RadioContextType {
 
 const RadioContext = createContext<RadioContextType | undefined>(undefined);
 
-const FALLBACK_STREAM_URL = "https://stream.zeno.fm/ra1s8tn1kkzuv";
+const FALLBACK_STREAM_URL = null;
 const SYNC_THRESHOLD_SECONDS = 0.5;
 const SYNC_SOFT_THRESHOLD_SECONDS = 0.12;
 const SYNC_INTERVAL_MS = 1000;
@@ -255,7 +255,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           setCurrentShow(null);
           setNextShowTime(null);
           setCountdownSeconds(null);
-          setAudioUrl(FALLBACK_STREAM_URL);
+          setAudioUrl(null);
           setCurrentTrack({
             title: "GroupTherapy Radio",
             artist: "24/7 Mix",
@@ -297,7 +297,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           setNextShowTime(null);
           setCountdownSeconds(null);
           const url =
-            liveShow.streamUrl || liveShow.recordedUrl || FALLBACK_STREAM_URL;
+            liveShow.streamUrl || liveShow.recordedUrl || null;
           setAudioUrl(url);
           setCurrentTrack({
             title: liveShow.title,
@@ -341,7 +341,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           setCountdownSeconds(secondsUntil > 0 ? secondsUntil : null);
 
           // Don't set audioUrl for upcoming shows - use fallback stream instead
-          setAudioUrl(FALLBACK_STREAM_URL);
+          setAudioUrl(null);
           setCurrentTrack({
             title: nextShow.title,
             artist: nextShow.hostName,
@@ -354,7 +354,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
           setCurrentShow(null);
           setNextShowTime(null);
           setCountdownSeconds(null);
-          setAudioUrl(FALLBACK_STREAM_URL);
+          setAudioUrl(null);
           setCurrentTrack({
             title: "GroupTherapy Radio",
             artist: "24/7 Mix",
@@ -363,7 +363,7 @@ export function RadioProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error fetching radio shows:", error);
         setHasScheduledShow(false);
-        setAudioUrl(FALLBACK_STREAM_URL);
+        setAudioUrl(null);
         setCurrentTrack({
           title: "GroupTherapy Radio",
           artist: "24/7 Mix",

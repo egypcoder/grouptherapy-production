@@ -60,7 +60,7 @@ function extractSpotifyId(url: string): string | null {
 }
 
 export function PlaylistsSection({
-  playlists = [],
+  playlists,
   title = "",
   autoPlay = true,
 }: PlaylistsSectionProps) {
@@ -71,7 +71,8 @@ export function PlaylistsSection({
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
 
-  const displayPlaylists = playlists.length > 0 ? playlists : demoPlaylists;
+  const shouldUseDemo = playlists === undefined;
+  const displayPlaylists = shouldUseDemo ? demoPlaylists : playlists;
 
   const handlePlayPlaylist = (playlist: Partial<Playlist>) => {
     setSelectedPlaylist(playlist);
@@ -159,6 +160,14 @@ export function PlaylistsSection({
           </div>
         )}
 
+        {!displayPlaylists || displayPlaylists.length === 0 ? (
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
+            <div className="rounded-2xl border bg-card p-8 text-center text-muted-foreground">
+              No playlists available.
+            </div>
+          </div>
+        ) : (
+
         <div
           ref={scrollRef}
           className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 px-6 md:px-8 snap-x snap-mandatory overflow-y-hidden"
@@ -180,10 +189,11 @@ export function PlaylistsSection({
             </motion.div>
           ))}
         </div>
+        )}
       </div>
 
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-card border-border/50 rounded-2xl">
+        <DialogContent className="sm:max-w-3xl sm:p-0 sm:overflow-hidden sm:bg-card sm:border-border/50 sm:rounded-2xl">
           {selectedPlaylist && (
             <>
               <div className="p-6 border-b border-border/50">

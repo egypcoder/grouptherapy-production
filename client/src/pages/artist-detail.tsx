@@ -7,51 +7,8 @@ import { useRef } from "react";
 import { db, type Artist, type Release, type Event } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-
-const demoArtist: Artist = {
-  id: "1",
-  name: "Luna Wave",
-  slug: "luna-wave",
-  bio: "Electronic producer known for atmospheric soundscapes and driving beats that transport listeners to otherworldly dimensions. With a career spanning over a decade, Luna Wave has become a cornerstone of the electronic music scene, performing at major festivals and releasing critically acclaimed albums.",
-  imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=1000&fit=crop",
-  featured: true,
-  socialLinks: { instagram: "#", spotify: "#", soundcloud: "#", youtube: "#", twitter: "#" },
-  createdAt: new Date().toISOString(),
-};
-
-const demoReleases: Partial<Release>[] = [
-  {
-    id: "1",
-    title: "Midnight Dreams EP",
-    artistName: "Luna Wave",
-    coverUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop",
-    releaseDate: "2024-06-15",
-    type: "EP",
-    spotifyUrl: "#",
-  },
-  {
-    id: "2",
-    title: "Echoes of Tomorrow",
-    artistName: "Luna Wave",
-    coverUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop",
-    releaseDate: "2024-03-20",
-    type: "Album",
-    spotifyUrl: "#",
-  },
-];
-
-const demoEvents: Partial<Event>[] = [
-  {
-    id: "1",
-    title: "Summer Festival 2025",
-    venue: "Main Stage",
-    city: "London",
-    country: "UK",
-    date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    imageUrl: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400&h=300&fit=crop",
-  },
-];
 
 export default function ArtistDetailPage() {
   const [match, params] = useRoute("/artists/:slug");
@@ -76,38 +33,40 @@ export default function ArtistDetailPage() {
     enabled: !!slug,
   });
 
-  const { data: allReleases } = useQuery<Release[]>({
+  const { data: allReleases, isLoading: releasesLoading } = useQuery<Release[]>({
     queryKey: ["releases-all"],
     queryFn: () => db.releases.getAll(),
   });
 
-  const { data: allEvents } = useQuery<Event[]>({
+  const { data: allEvents, isLoading: eventsLoading } = useQuery<Event[]>({
     queryKey: ["events-all"],
     queryFn: () => db.events.getAll(),
   });
 
-  const displayArtist = artist || demoArtist;
-  
   const artistReleases = allReleases?.filter(
-    (r) => r.published && (r.artistName?.toLowerCase() === displayArtist.name?.toLowerCase() || r.artistId === displayArtist.id)
-  ) || (artist ? [] : demoReleases);
+    (r) =>
+      r.published &&
+      (r.artistName?.toLowerCase() === artist?.name?.toLowerCase() || r.artistId === artist?.id),
+  ) ?? [];
 
   const artistEvents = allEvents?.filter(
-    (e) => e.published && e.artistIds?.includes(displayArtist.id) && new Date(e.date) >= new Date()
-  ) || (artist ? [] : demoEvents);
+    (e) => e.published && e.artistIds?.includes(artist?.id ?? "") && new Date(e.date) >= new Date(),
+  ) ?? [];
 
-  const artistSchema = generateStructuredData("MusicGroup", {
-    name: displayArtist.name,
-    description: displayArtist.bio,
-    image: displayArtist.imageUrl,
-    sameAs: [
-      displayArtist.socialLinks?.spotify,
-      displayArtist.socialLinks?.instagram,
-      displayArtist.socialLinks?.soundcloud,
-      displayArtist.socialLinks?.youtube,
-      displayArtist.socialLinks?.twitter,
-    ].filter(Boolean),
-  });
+  const artistSchema = artist
+    ? generateStructuredData("MusicGroup", {
+        name: artist.name,
+        description: artist.bio,
+        image: artist.imageUrl,
+        sameAs: [
+          artist.socialLinks?.spotify,
+          artist.socialLinks?.instagram,
+          artist.socialLinks?.soundcloud,
+          artist.socialLinks?.youtube,
+          artist.socialLinks?.twitter,
+        ].filter(Boolean),
+      })
+    : null;
 
   if (artistLoading) {
     return (
@@ -117,21 +76,37 @@ export default function ArtistDetailPage() {
     );
   }
 
+  if (!artist) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Artist Not Found</h1>
+          <Link href="/artists">
+            <Button>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Artists
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <SEOHead
-        title={`${displayArtist.name} - GroupTherapy Records`}
-        description={displayArtist.bio || `Discover ${displayArtist.name} on GroupTherapy Records`}
-        keywords={[displayArtist.name, "electronic music", "DJ", "producer"]}
+        title={`${artist.name} - GroupTherapy Records`}
+        description={artist.bio || `Discover ${artist.name} on GroupTherapy Records`}
+        keywords={[artist.name, "electronic music", "DJ", "producer"]}
         structuredData={artistSchema}
       />
 
       <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
-          {displayArtist.imageUrl ? (
+          {artist.imageUrl ? (
             <motion.img
-              src={displayArtist.imageUrl}
-              alt={displayArtist.name}
+              src={artist.imageUrl}
+              alt={artist.name}
               className="w-full h-full object-cover"
               style={{ y: heroImageY, scale: heroImageScale }}
             />
@@ -156,10 +131,10 @@ export default function ArtistDetailPage() {
               className="flex flex-col md:flex-row gap-8 items-start"
             >
               <div className="w-48 h-48 md:w-64 md:h-64 rounded-lg overflow-hidden shadow-2xl flex-shrink-0">
-                {displayArtist.imageUrl ? (
+                {artist.imageUrl ? (
                   <img
-                    src={displayArtist.imageUrl}
-                    alt={displayArtist.name}
+                    src={artist.imageUrl}
+                    alt={artist.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -168,17 +143,17 @@ export default function ArtistDetailPage() {
               </div>
 
               <div className="flex-1 text-white">
-                <h1 className="text-4xl md:text-6xl font-bold mb-4">{displayArtist.name}</h1>
-                {displayArtist.bio && (
+                <h1 className="text-4xl md:text-6xl font-bold mb-4">{artist.name}</h1>
+                {artist.bio && (
                   <p className="text-lg text-white/80 max-w-2xl mb-6 leading-relaxed">
-                    {displayArtist.bio}
+                    {artist.bio}
                   </p>
                 )}
 
                 <div className="flex items-center gap-4">
-                  {displayArtist.socialLinks?.spotify && (
+                  {artist.socialLinks?.spotify && (
                     <a
-                      href={displayArtist.socialLinks.spotify}
+                      href={artist.socialLinks.spotify}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-[#1DB954] text-white transition-colors"
@@ -186,9 +161,9 @@ export default function ArtistDetailPage() {
                       <SiSpotify className="h-6 w-6" />
                     </a>
                   )}
-                  {displayArtist.socialLinks?.instagram && (
+                  {artist.socialLinks?.instagram && (
                     <a
-                      href={displayArtist.socialLinks.instagram}
+                      href={artist.socialLinks.instagram}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-pink-500 text-white transition-colors"
@@ -196,9 +171,9 @@ export default function ArtistDetailPage() {
                       <SiInstagram className="h-6 w-6" />
                     </a>
                   )}
-                  {displayArtist.socialLinks?.soundcloud && (
+                  {artist.socialLinks?.soundcloud && (
                     <a
-                      href={displayArtist.socialLinks.soundcloud}
+                      href={artist.socialLinks.soundcloud}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-orange-500 text-white transition-colors"
@@ -206,9 +181,9 @@ export default function ArtistDetailPage() {
                       <SiSoundcloud className="h-6 w-6" />
                     </a>
                   )}
-                  {displayArtist.socialLinks?.youtube && (
+                  {artist.socialLinks?.youtube && (
                     <a
-                      href={displayArtist.socialLinks.youtube}
+                      href={artist.socialLinks.youtube}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-600 text-white transition-colors"
@@ -216,9 +191,9 @@ export default function ArtistDetailPage() {
                       <SiYoutube className="h-6 w-6" />
                     </a>
                   )}
-                  {displayArtist.socialLinks?.twitter && (
+                  {artist.socialLinks?.twitter && (
                     <a
-                      href={displayArtist.socialLinks.twitter}
+                      href={artist.socialLinks.twitter}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-neutral-800 text-white transition-colors"
@@ -234,7 +209,20 @@ export default function ArtistDetailPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {artistReleases.length > 0 && (
+        {releasesLoading ? (
+          <section className="mb-16">
+            <h2 className="text-2xl font-bold mb-8">Releases</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <div key={index} className="space-y-3">
+                  <Skeleton className="aspect-square w-full rounded-lg" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : artistReleases.length > 0 ? (
           <section className="mb-16">
             <h2 className="text-2xl font-bold mb-8">Releases</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -278,9 +266,25 @@ export default function ArtistDetailPage() {
               ))}
             </div>
           </section>
-        )}
+        ) : null}
 
-        {artistEvents.length > 0 && (
+        {eventsLoading ? (
+          <section>
+            <h2 className="text-2xl font-bold mb-8">Upcoming Events</h2>
+            <div className="grid gap-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-6 p-4 rounded-lg bg-card">
+                  <Skeleton className="h-20 w-20 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-1/2" />
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                  <Skeleton className="h-9 w-24 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : artistEvents.length > 0 ? (
           <section>
             <h2 className="text-2xl font-bold mb-8">Upcoming Events</h2>
             <div className="grid gap-4">
@@ -324,9 +328,9 @@ export default function ArtistDetailPage() {
               ))}
             </div>
           </section>
-        )}
+        ) : null}
 
-        {artistReleases.length === 0 && artistEvents.length === 0 && (
+        {!releasesLoading && !eventsLoading && artistReleases.length === 0 && artistEvents.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No releases or events found for this artist.</p>
           </div>

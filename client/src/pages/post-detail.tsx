@@ -94,8 +94,8 @@ export default function PostDetailPage() {
     queryKey: ["related-posts", post?.category],
     queryFn: async () => {
       if (!post?.category) return [];
-      const allPosts = await db.posts.getAll();
-      return allPosts
+      const candidates = await db.posts.getPublishedPage(36, 0);
+      return candidates
         .filter(
           (p) =>
             p.published && p.category === post.category && p.id !== post.id,

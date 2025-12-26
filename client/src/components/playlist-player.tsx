@@ -312,7 +312,7 @@ export function PlaylistPlayer({
           </div>
         </div>
 
-        <div className="border-l bg-muted/30">
+        <div className="border-t md:border-t-0 md:border-l bg-muted/30">
           <div className="p-4 border-b flex items-center justify-between">
             <h4 className="font-semibold flex items-center gap-2">
               <ListMusic className="h-4 w-4" />
@@ -320,7 +320,7 @@ export function PlaylistPlayer({
             </h4>
             <span className="text-xs text-muted-foreground">{tracks.length} tracks</span>
           </div>
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="h-[35svh] md:h-[300px]">
             <div className="p-2">
               {tracks.map((track, index) => {
                 const hasAudio = !!(track.audioUrl || track.spotifyPreviewUrl);
@@ -356,7 +356,7 @@ export function PlaylistPlayer({
                       <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
                     </div>
                     {currentTrackIndex === index && isPlaying && (
-                      <div className="flex gap-0.5">
+                      <div className="hidden sm:flex gap-0.5 shrink-0">
                         {[...Array(3)].map((_, i) => (
                           <motion.div
                             key={i}
@@ -368,7 +368,7 @@ export function PlaylistPlayer({
                       </div>
                     )}
                     {track.duration && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="hidden sm:inline text-xs text-muted-foreground shrink-0">
                         {formatTime(track.duration)}
                       </span>
                     )}
@@ -396,7 +396,7 @@ export function SpotifyEmbed({
     <div className="w-full space-y-3">
       <div className={cn(
         "w-full rounded-lg overflow-hidden",
-        compact ? "h-[152px]" : "h-[500px]"
+        compact ? "h-[152px]" : "h-[55svh] sm:h-[500px]"
       )}>
         <iframe
           src={`https://open.spotify.com/embed/playlist/${playlistId}?utm_source=generator&theme=0`}

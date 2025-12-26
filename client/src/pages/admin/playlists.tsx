@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, ListMusic, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ListMusic, Loader2, Search, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,14 @@ import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Playlist } from "@/lib/database";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function extractSpotifyPlaylistId(url: string): string | null {
   if (!url) return null;
@@ -114,6 +122,7 @@ export default function AdminPlaylists() {
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [metadataFetched, setMetadataFetched] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -128,6 +137,18 @@ export default function AdminPlaylists() {
     queryKey: ["playlists"],
     queryFn: queryFunctions.playlists,
   });
+
+  const filteredPlaylists = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return playlists;
+    return playlists.filter((p) => {
+      return (
+        p.title?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q) ||
+        p.slug?.toLowerCase().includes(q)
+      );
+    });
+  }, [playlists, searchQuery]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -170,6 +191,43 @@ export default function AdminPlaylists() {
       toast({
         title: "Error",
         description: error.message || "Failed to save playlist",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: async ({ id, featured }: { id: string; featured: boolean }) => {
+      return db.playlists.update(id, { featured });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      queryClient.invalidateQueries({ queryKey: ["playlists", "featured", "published"] });
+      toast({ title: "Playlist updated" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update playlist",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const togglePublishedMutation = useMutation({
+    mutationFn: async ({ id, published }: { id: string; published: boolean }) => {
+      return db.playlists.update(id, { published });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      queryClient.invalidateQueries({ queryKey: ["playlists", "featured", "published"] });
+      queryClient.invalidateQueries({ queryKey: ["playlists", "published"] });
+      toast({ title: "Playlist updated" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update playlist",
         variant: "destructive",
       });
     },
@@ -326,40 +384,115 @@ export default function AdminPlaylists() {
           </Button>
         </div>
 
-        <div className="grid gap-4">
-          {playlists.map((playlist) => (
-            <Card key={playlist.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-20 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
-                    {playlist.coverUrl ? (
-                      <img src={playlist.coverUrl} alt={playlist.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ListMusic className="h-8 w-8 text-muted-foreground" />
+        <Card>
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search playlists..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[56px]"></TableHead>
+                  <TableHead>Playlist</TableHead>
+                  <TableHead className="w-[90px]">Tracks</TableHead>
+                  <TableHead className="w-[110px]">Featured</TableHead>
+                  <TableHead className="w-[110px]">Published</TableHead>
+                  <TableHead className="w-[120px] text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredPlaylists.map((playlist) => (
+                  <TableRow
+                    key={playlist.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleEdit(playlist)}
+                  >
+                    <TableCell>
+                      <div className="w-10 h-10 rounded overflow-hidden bg-muted flex items-center justify-center">
+                        {playlist.coverUrl ? (
+                          <img
+                            src={playlist.coverUrl}
+                            alt={playlist.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ListMusic className="h-5 w-5 text-muted-foreground" />
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold">{playlist.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{playlist.description}</p>
-                    {playlist.trackCount > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">{playlist.trackCount} tracks</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(playlist)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(playlist.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{playlist.title}</div>
+                      <div className="text-xs text-muted-foreground line-clamp-1">
+                        {playlist.description || playlist.slug}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">{playlist.trackCount || 0}</span>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Switch
+                        checked={!!playlist.featured}
+                        onCheckedChange={(checked) =>
+                          toggleFeaturedMutation.mutate({ id: playlist.id, featured: checked })
+                        }
+                        disabled={toggleFeaturedMutation.isPending}
+                      />
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2"
+                        onClick={() =>
+                          togglePublishedMutation.mutate({ id: playlist.id, published: !playlist.published })
+                        }
+                        disabled={togglePublishedMutation.isPending}
+                      >
+                        {playlist.published ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => handleEdit(playlist)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(playlist.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {filteredPlaylists.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                No playlists found
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">

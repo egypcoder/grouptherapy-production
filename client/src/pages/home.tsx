@@ -357,8 +357,8 @@ const defaultStatsItems: StatItem[] = [
 
 export default function HomePage() {
   const { data: releases } = useQuery<Release[]>({
-    queryKey: ["releases"],
-    queryFn: () => db.releases.getPublished(),
+    queryKey: ["releases", "published", { limit: 24 }],
+    queryFn: () => db.releases.getPublishedPage(24, 0),
   });
 
   const { data: events } = useQuery<Event[]>({
@@ -367,13 +367,13 @@ export default function HomePage() {
   });
 
   const { data: playlists } = useQuery<Playlist[]>({
-    queryKey: ["playlists"],
-    queryFn: () => db.playlists.getAll(),
+    queryKey: ["playlists", "featured", "published", { limit: 24 }],
+    queryFn: () => db.playlists.getFeaturedPublishedPage(24, 0),
   });
 
   const { data: posts } = useQuery<Post[]>({
-    queryKey: ["posts", "published"],
-    queryFn: () => db.posts.getPublished(),
+    queryKey: ["posts", "published", { limit: 12 }],
+    queryFn: () => db.posts.getPublishedPage(12, 0),
   });
 
   const { data: artists } = useQuery<Artist[]>({

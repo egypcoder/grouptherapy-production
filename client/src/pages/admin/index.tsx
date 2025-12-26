@@ -610,52 +610,55 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-3">
                 {publishedReleases.slice(0, 2).map((release) => (
-                  <div
-                    key={release.id}
-                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">Release published</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
-                        {release.title} - {release.artistName}
-                      </p>
+                  <Link key={release.id} href={`/admin/releases/${release.id}`}>
+                    <div
+                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">Release published</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                          {release.title} - {release.artistName}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
+                        {release.releaseDate ? new Date(release.releaseDate).toLocaleDateString() : "-"}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
-                      {release.releaseDate ? new Date(release.releaseDate).toLocaleDateString() : "-"}
-                    </span>
-                  </div>
+                  </Link>
                 ))}
                 {upcomingEvents.slice(0, 1).map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">Event scheduled</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
-                        {event.title}
-                      </p>
+                  <Link key={event.id} href={`/admin/events/${event.id}`}>
+                    <div
+                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">Event scheduled</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                          {event.title}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
+                        {new Date(event.date).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
-                      {new Date(event.date).toLocaleDateString()}
-                    </span>
-                  </div>
+                  </Link>
                 ))}
                 {posts.slice(0, 1).map((post) => (
-                  <div
-                    key={post.id}
-                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">Blog post {post.published ? 'published' : 'drafted'}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
-                        {post.title}
-                      </p>
+                  <Link key={post.id} href={`/admin/posts/${post.id}`}>
+                    <div
+                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">Blog post {post.published ? 'published' : 'drafted'}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                          {post.title}
+                        </p>
+                      </div>
+                      <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
+                        {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground sm:whitespace-nowrap self-end sm:self-auto">
-                      {new Date(post.publishedAt || post.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
+                  </Link>
                 ))}
                 {releases.length === 0 && events.length === 0 && posts.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">

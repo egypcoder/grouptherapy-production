@@ -25,11 +25,8 @@ export default function PlaylistsPage() {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   const { data: playlists = [], isLoading } = useQuery<Playlist[]>({
-    queryKey: ["playlists"],
-    queryFn: async () => {
-      const allPlaylists = await db.playlists.getAll();
-      return allPlaylists.filter(p => p.published);
-    },
+    queryKey: ["playlists", "published", { limit: 48 }],
+    queryFn: () => db.playlists.getPublishedPage(48, 0),
   });
 
   const handlePlayPlaylist = (playlist: Playlist) => {
@@ -93,12 +90,12 @@ export default function PlaylistsPage() {
       </div>
 
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-transparent border-none">
+        <DialogContent className="sm:max-w-4xl sm:p-0 sm:overflow-hidden sm:bg-transparent sm:border-none">
           {selectedPlaylist && (
             <div className="bg-card rounded-xl overflow-hidden">
               <div className="p-6 border-b">
                 <div className="flex items-start gap-4">
-                  <div className="w-32 h-32 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                  <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                     {selectedPlaylist.coverUrl ? (
                       <img
                         src={selectedPlaylist.coverUrl}
@@ -111,8 +108,8 @@ export default function PlaylistsPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold mb-2">{selectedPlaylist.title}</h2>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2 truncate">{selectedPlaylist.title}</h2>
                     <p className="text-muted-foreground mb-3">{selectedPlaylist.description}</p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       {selectedPlaylist.trackCount && selectedPlaylist.trackCount > 0 && (

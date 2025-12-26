@@ -8,74 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { db, type Post } from "@/lib/database";
-
-const demoPosts: Partial<Post>[] = [
-  {
-    id: "1",
-    title: "GroupTherapy Announces Summer Festival 2024 Lineup",
-    slug: "summer-festival-2024-lineup",
-    excerpt: "Get ready for the biggest GroupTherapy event yet! We're thrilled to reveal the full lineup for our annual summer festival.",
-    coverUrl: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800&h=400&fit=crop",
-    category: "events",
-    publishedAt: new Date("2024-03-01").toISOString(),
-    featured: true,
-    authorName: "GroupTherapy Team",
-  },
-  {
-    id: "2",
-    title: "Luna Wave Drops New Album 'Midnight Sessions'",
-    slug: "luna-wave-midnight-sessions",
-    excerpt: "After two years in the making, Luna Wave delivers her most ambitious project to date with 'Midnight Sessions'.",
-    coverUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop",
-    category: "releases",
-    publishedAt: new Date("2024-02-28").toISOString(),
-    featured: true,
-    authorName: "Sarah Chen",
-  },
-  {
-    id: "3",
-    title: "Behind the Scenes: GroupTherapy Radio Studio",
-    slug: "behind-the-scenes-radio-studio",
-    excerpt: "Take an exclusive tour of our state-of-the-art radio studio where the magic happens 24/7.",
-    coverUrl: "https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800&h=400&fit=crop",
-    category: "features",
-    publishedAt: new Date("2024-02-25").toISOString(),
-    authorName: "Marcus Rivera",
-  },
-  {
-    id: "4",
-    title: "Interview: Neon Pulse on the Evolution of Techno",
-    slug: "neon-pulse-interview",
-    excerpt: "We sat down with Neon Pulse to discuss the past, present, and future of techno music.",
-    coverUrl: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=800&h=400&fit=crop",
-    category: "interviews",
-    publishedAt: new Date("2024-02-20").toISOString(),
-    authorName: "Alex Thompson",
-  },
-  {
-    id: "5",
-    title: "New Partnership with Pioneer DJ Announced",
-    slug: "pioneer-dj-partnership",
-    excerpt: "GroupTherapy Records partners with Pioneer DJ to bring cutting-edge technology to our artists and events.",
-    coverUrl: "https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=800&h=400&fit=crop",
-    category: "news",
-    publishedAt: new Date("2024-02-15").toISOString(),
-    authorName: "Emma Wilson",
-  },
-  {
-    id: "6",
-    title: "Circuit Breaker World Tour Dates Revealed",
-    slug: "circuit-breaker-world-tour",
-    excerpt: "Circuit Breaker announces a 30-date world tour supporting his latest album 'Velocity'.",
-    coverUrl: "https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800&h=400&fit=crop",
-    category: "events",
-    publishedAt: new Date("2024-02-10").toISOString(),
-    authorName: "GroupTherapy Team",
-  },
-];
 
 const categories = ["all", "news", "releases", "events", "interviews", "features"];
 
@@ -83,14 +19,12 @@ export default function NewsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
-  const { data: posts } = useQuery<Post[]>({
-    queryKey: ["posts"],
-    queryFn: () => db.posts.getPublished(),
+  const { data: posts = [], isLoading } = useQuery<Post[]>({
+    queryKey: ["posts", "published", { limit: 24 }],
+    queryFn: () => db.posts.getPublishedPage(24, 0),
   });
 
-  const displayPosts = posts?.length ? posts : demoPosts;
-
-  const filteredPosts = displayPosts.filter((post) => {
+  const filteredPosts = posts.filter((post) => {
     const matchesSearch =
       post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.excerpt?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -114,7 +48,7 @@ export default function NewsPage() {
   const blogSchema = generateStructuredData("Blog", {
     name: "GroupTherapy Radar",
     description: "News, interviews, and stories from the world of electronic music",
-    blogPost: displayPosts.slice(0, 10).map((post) => ({
+    blogPost: posts.slice(0, 10).map((post) => ({
       "@type": "BlogPosting",
       headline: post.title,
       description: post.excerpt,
@@ -165,48 +99,86 @@ export default function NewsPage() {
           </Tabs>
         </div>
 
-        {/* Featured Posts */}
-        {featuredPosts.length > 0 && selectedCategory === "all" && (
-          <section className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">Featured Stories</h2>
-            <div className="grid lg:grid-cols-2 gap-6">
-              {featuredPosts.slice(0, 2).map((post, index) => (
-                <motion.div
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <FeaturedPostCard post={post as Post} formatDate={formatDate} />
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
+        {isLoading ? (
+          <>
+            <section className="mb-12">
+              <Skeleton className="h-7 w-48 mb-6" />
+              <div className="grid lg:grid-cols-2 gap-6">
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <div key={index} className="space-y-3">
+                    <Skeleton className="aspect-[16/9] w-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
 
-        {/* All Posts */}
-        <section>
-          <h2 className="text-2xl font-bold mb-6">
-            {selectedCategory === "all" ? "Latest Articles" : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}`}
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {regularPosts.map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <PostCard post={post as Post} formatDate={formatDate} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
+            <section>
+              <Skeleton className="h-7 w-56 mb-6" />
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div key={index} className="space-y-3">
+                    <Skeleton className="aspect-[3/2] w-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
+            {/* Featured Posts */}
+            {featuredPosts.length > 0 && selectedCategory === "all" && (
+              <section className="mb-12">
+                <h2 className="text-2xl font-bold mb-6">Featured Stories</h2>
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {featuredPosts.slice(0, 2).map((post, index) => (
+                    <motion.div
+                      key={post.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <FeaturedPostCard post={post as Post} formatDate={formatDate} />
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {filteredPosts.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No articles found</p>
-          </div>
+            {/* All Posts */}
+            <section>
+              <h2 className="text-2xl font-bold mb-6">
+                {selectedCategory === "all" ? "Latest Articles" : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}`}
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {regularPosts.map((post, index) => (
+                  <motion.div
+                    key={post.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <PostCard post={post as Post} formatDate={formatDate} />
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+
+            {filteredPosts.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No articles found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -512,6 +512,19 @@ export const db = {
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },
+    async getPublishedPage(limit = 24, offset = 0): Promise<Release[]> {
+      if (!supabase) return [];
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+      const { data, error } = await supabase
+        .from('releases')
+        .select('*')
+        .eq('published', true)
+        .order('release_date', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
     async getById(id: string): Promise<Release | null> {
       if (!supabase) return null;
       const { data, error } = await supabase.from('releases').select('*').eq('id', id).single();
@@ -600,6 +613,19 @@ export const db = {
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },
+    async getPublishedPage(limit = 12, offset = 0): Promise<Post[]> {
+      if (!supabase) return [];
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('published', true)
+        .order('published_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
     async getById(id: string): Promise<Post | null> {
       if (!supabase) return null;
       const { data, error } = await supabase.from('posts').select('*').eq('id', id).single();
@@ -670,6 +696,33 @@ export const db = {
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },
+    async getFeaturedPublishedPage(limit = 24, offset = 0): Promise<Playlist[]> {
+      if (!supabase) return [];
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('*')
+        .eq('published', true)
+        .eq('featured', true)
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getPublishedPage(limit = 24, offset = 0): Promise<Playlist[]> {
+      if (!supabase) return [];
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
     async getById(id: string): Promise<Playlist | null> {
       if (!supabase) return null;
       const { data, error } = await supabase.from('playlists').select('*').eq('id', id).single();
@@ -699,6 +752,19 @@ export const db = {
     async getAll(): Promise<Video[]> {
       if (!supabase) return [];
       const { data, error } = await supabase.from('videos').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getPublishedPage(limit = 24, offset = 0): Promise<Video[]> {
+      if (!supabase) return [];
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .range(from, to);
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },

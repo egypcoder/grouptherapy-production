@@ -11,6 +11,8 @@ import {
   Vote,
   Crown,
   CheckCircle,
+  Link,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +84,189 @@ interface EntryFormData {
   displayOrder: number;
 }
 
+interface FetchedMetadata {
+  title: string;
+  artistName: string;
+  coverUrl: string;
+  sourceUrl: string;
+  source: 'soundcloud' | 'spotify';
+}
+
+async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | null> {
+  try {
+    const oembedUrl = `https://soundcloud.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const response = await fetch(oembedUrl);
+    if (!response.ok) throw new Error('Failed to fetch SoundCloud metadata');
+    const data = await response.json();
+    
+    let coverUrl = data.thumbnail_url || '';
+    if (coverUrl) {
+      coverUrl = coverUrl.replace('-t500x500', '-t500x500').replace('-large', '-t500x500');
+    }
+    
+    const title = data.title || '';
+    const artistName = data.author_name || '';
+    
+    return {
+      title,
+      artistName,
+      coverUrl,
+      sourceUrl: url,
+      source: 'soundcloud',
+    };
+  } catch (error) {
+    console.error('SoundCloud fetch error:', error);
+    return null;
+  }
+}
+
+async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
+  const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+  const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
+  
+  if (!clientId || !clientSecret) {
+    console.error('Spotify credentials not configured. Please add VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET to your environment variables.');
+    return null;
+  }
+  
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + btoa(`${clientId}:${clientSecret}`),
+        },
+        body: 'grant_type=client_credentials',
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        const errorData = errorText ? JSON.parse(errorText).catch(() => ({})) : {};
+        const errorMessage = errorData.error_description || errorData.error || `HTTP ${response.status}`;
+        
+        if (attempt < retries) {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+          continue;
+        }
+        
+        throw new Error(`Failed to get Spotify access token: ${errorMessage}`);
+      }
+      
+      const data = await response.json();
+      if (!data.access_token) {
+        throw new Error('No access token in response');
+      }
+      
+      return data.access_token;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (attempt === retries) {
+        console.error(`Error getting Spotify access token after ${retries} attempts:`, errorMessage);
+        // Check for specific error types
+        if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
+          console.error('Network error - check your internet connection and CORS settings');
+        }
+        return null;
+      }
+      
+      // Wait before retry
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    }
+  }
+  
+  return null;
+}
+
+function extractSpotifyIdAndType(url: string): { id: string; type: 'track' | 'album' } | null {
+  // Handle both spotify.com and open.spotify.com URLs
+  const trackMatch = url.match(/(?:open\.)?spotify\.com\/track\/([a-zA-Z0-9]+)/);
+  if (trackMatch && trackMatch[1]) {
+    return { id: trackMatch[1], type: 'track' };
+  }
+  
+  const albumMatch = url.match(/(?:open\.)?spotify\.com\/album\/([a-zA-Z0-9]+)/);
+  if (albumMatch && albumMatch[1]) {
+    return { id: albumMatch[1], type: 'album' };
+  }
+  
+  return null;
+}
+
+async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null> {
+  try {
+    const extracted = extractSpotifyIdAndType(url);
+    if (!extracted) {
+      console.error('Could not extract Spotify ID from URL. Please ensure the URL is a valid Spotify track or album link.');
+      return null;
+    }
+
+    const accessToken = await getSpotifyAccessToken();
+    if (!accessToken) {
+      console.error('Could not get Spotify access token. Please check your Spotify API credentials.');
+      return null;
+    }
+
+    const apiUrl = extracted.type === 'track' 
+      ? `https://api.spotify.com/v1/tracks/${extracted.id}`
+      : `https://api.spotify.com/v1/albums/${extracted.id}`;
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage = `Failed to fetch Spotify ${extracted.type}`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorMessage;
+      } catch {
+        // If parsing fails, use default message
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    
+    let title = '';
+    let artistName = '';
+    let coverUrl = '';
+
+    if (extracted.type === 'track') {
+      title = data.name || '';
+      artistName = data.artists?.map((a: { name: string }) => a.name).join(', ') || '';
+      coverUrl = data.album?.images?.[0]?.url || '';
+    } else {
+      title = data.name || '';
+      artistName = data.artists?.map((a: { name: string }) => a.name).join(', ') || '';
+      coverUrl = data.images?.[0]?.url || '';
+    }
+    
+    return {
+      title,
+      artistName,
+      coverUrl,
+      sourceUrl: url,
+      source: 'spotify',
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error('Spotify fetch error:', errorMessage);
+    return null;
+  }
+}
+
+function detectLinkType(url: string): 'soundcloud' | 'spotify' | null {
+  if (url.includes('soundcloud.com')) return 'soundcloud';
+  if (url.includes('spotify.com') || url.includes('open.spotify.com')) return 'spotify';
+  return null;
+}
+
 const defaultCategoryForm: CategoryFormData = {
   name: "",
   slug: "",
@@ -132,6 +317,9 @@ export default function AdminAwards() {
   const [editingEntry, setEditingEntry] = useState<AwardEntry | null>(null);
   const [entryForm, setEntryForm] = useState<EntryFormData>(defaultEntryForm);
   const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
+  const [quickAddLink, setQuickAddLink] = useState("");
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+  const [metadataFetched, setMetadataFetched] = useState(false);
 
   const { data: categories = [] } = useQuery<AwardCategory[]>({
     queryKey: ["awardCategories"],
@@ -298,6 +486,9 @@ export default function AdminAwards() {
   const resetEntryForm = () => {
     setEditingEntry(null);
     setEntryForm(defaultEntryForm);
+    setQuickAddLink("");
+    setIsFetchingMetadata(false);
+    setMetadataFetched(false);
   };
 
   const handleEditCategory = (category: AwardCategory) => {
@@ -360,6 +551,70 @@ export default function AdminAwards() {
       displayOrder: entry.displayOrder,
     });
     setEntryDialogOpen(true);
+  };
+
+  const handleQuickAddLink = async (url: string) => {
+    setQuickAddLink(url);
+    
+    if (!url.trim()) return;
+    
+    const linkType = detectLinkType(url);
+    if (!linkType) {
+      return;
+    }
+    
+    setIsFetchingMetadata(true);
+    
+    try {
+      let metadata: FetchedMetadata | null = null;
+      
+      if (linkType === 'soundcloud') {
+        metadata = await fetchSoundCloudMetadata(url);
+      } else if (linkType === 'spotify') {
+        metadata = await fetchSpotifyMetadata(url);
+      }
+      
+      if (metadata) {
+        const categoryType = getSelectedCategory()?.type;
+        setEntryForm(prev => ({
+          ...prev,
+          ...(categoryType === 'artist' ? {
+            artistName: metadata!.artistName || prev.artistName,
+            artistImageUrl: metadata!.coverUrl || prev.artistImageUrl,
+          } : {
+            trackTitle: metadata!.title || prev.trackTitle,
+            trackArtist: metadata!.artistName || prev.trackArtist,
+            trackCoverUrl: metadata!.coverUrl || prev.trackCoverUrl,
+          }),
+          ...(linkType === 'soundcloud' ? { soundcloudUrl: url } : {}),
+          ...(linkType === 'spotify' ? { spotifyUrl: url } : {}),
+        }));
+        
+        setMetadataFetched(true);
+        
+        toast({
+          title: "Metadata fetched",
+          description: `Successfully imported from ${linkType === 'soundcloud' ? 'SoundCloud' : 'Spotify'}`,
+        });
+      } else {
+        const errorMsg = linkType === 'spotify' 
+          ? "Could not fetch metadata from Spotify. Please check your Spotify API credentials (VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET) or enter details manually."
+          : "Could not fetch metadata. Please enter the details manually.";
+        toast({
+          title: "Could not fetch metadata",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error fetching metadata",
+        description: "Please enter the details manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetchingMetadata(false);
+    }
   };
 
   const handleSaveEntry = () => {
@@ -450,7 +705,11 @@ export default function AdminAwards() {
                 </TableHeader>
                 <TableBody>
                   {categories.map((category) => (
-                    <TableRow key={category.id}>
+                    <TableRow 
+                      key={category.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleEditCategory(category)}
+                    >
                       <TableCell>
                         <div>
                           <p className="font-medium">{category.name}</p>
@@ -472,7 +731,7 @@ export default function AdminAwards() {
                         </Badge>
                       </TableCell>
                       <TableCell>{category.displayOrder}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleEditCategory(category)}>
                             <Pencil className="h-4 w-4" />
@@ -542,7 +801,11 @@ export default function AdminAwards() {
                 </TableHeader>
                 <TableBody>
                   {filteredPeriods.map((period) => (
-                    <TableRow key={period.id}>
+                    <TableRow 
+                      key={period.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleEditPeriod(period)}
+                    >
                       <TableCell className="font-medium">{period.name}</TableCell>
                       <TableCell>{getCategoryName(period.categoryId)}</TableCell>
                       <TableCell>
@@ -572,7 +835,7 @@ export default function AdminAwards() {
                           <span className="text-muted-foreground text-sm">Not yet</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleEditPeriod(period)}>
                             <Pencil className="h-4 w-4" />
@@ -655,7 +918,11 @@ export default function AdminAwards() {
                     </TableHeader>
                     <TableBody>
                       {entries.map((entry) => (
-                        <TableRow key={entry.id}>
+                        <TableRow 
+                          key={entry.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleEditEntry(entry)}
+                        >
                           <TableCell>
                             <div className="flex items-center gap-3">
                               {(entry.artistImageUrl || entry.trackCoverUrl) && (
@@ -692,7 +959,7 @@ export default function AdminAwards() {
                               <span className="text-muted-foreground">Nominee</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-2">
                               {!entry.isWinner && !getSelectedPeriod()?.winnerId && (
                                 <Button
@@ -921,10 +1188,37 @@ export default function AdminAwards() {
               <DialogTitle>{editingEntry ? "Edit Nominee" : "Add Nominee"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {!editingEntry && (
+                <div className="grid gap-2 p-4 border rounded-lg bg-muted/30">
+                  <Label htmlFor="quickAddLink" className="flex items-center gap-2">
+                    <Link className="h-4 w-4" />
+                    Quick Add from Link
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="quickAddLink"
+                      value={quickAddLink}
+                      onChange={(e) => handleQuickAddLink(e.target.value)}
+                      placeholder="Paste SoundCloud or Spotify URL..."
+                      disabled={isFetchingMetadata}
+                      className="pr-10"
+                    />
+                    {isFetchingMetadata && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Paste a SoundCloud or Spotify link to auto-fill title, artist, and cover image
+                  </p>
+                </div>
+              )}
+
               {getSelectedCategory()?.type === "artist" ? (
                 <>
                   <div>
-                    <Label htmlFor="entry-artist-name">Artist Name</Label>
+                    <Label htmlFor="entry-artist-name">
+                      Artist Name {!quickAddLink && '*'}
+                    </Label>
                     <Input
                       id="entry-artist-name"
                       value={entryForm.artistName}
@@ -932,14 +1226,24 @@ export default function AdminAwards() {
                     />
                   </div>
                   <div>
-                    <Label>Artist Image</Label>
-                    <ImageUpload
-                      onUploadComplete={(url) => setEntryForm({ ...entryForm, artistImageUrl: url })}
-                      bucket="media"
-                      folder="awards"
-                      aspectRatio="square"
-                      currentImage={entryForm.artistImageUrl}
-                    />
+                    <Label>Artist Image {metadataFetched && entryForm.artistImageUrl && "(fetched from link)"}</Label>
+                    {metadataFetched && entryForm.artistImageUrl ? (
+                      <div className="relative w-full aspect-square max-w-[200px] rounded-lg overflow-hidden border bg-muted">
+                        <img 
+                          src={entryForm.artistImageUrl} 
+                          alt="Artist image" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <ImageUpload
+                        onUploadComplete={(url) => setEntryForm({ ...entryForm, artistImageUrl: url })}
+                        bucket="media"
+                        folder="awards"
+                        aspectRatio="square"
+                        currentImage={entryForm.artistImageUrl}
+                      />
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="entry-artist-bio">Artist Bio</Label>
@@ -955,7 +1259,9 @@ export default function AdminAwards() {
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="entry-track-title">Track Title</Label>
+                      <Label htmlFor="entry-track-title">
+                        Track Title {!quickAddLink && '*'}
+                      </Label>
                       <Input
                         id="entry-track-title"
                         value={entryForm.trackTitle}
@@ -963,7 +1269,9 @@ export default function AdminAwards() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="entry-track-artist">Artist</Label>
+                      <Label htmlFor="entry-track-artist">
+                        Artist {!quickAddLink && '*'}
+                      </Label>
                       <Input
                         id="entry-track-artist"
                         value={entryForm.trackArtist}
@@ -972,14 +1280,24 @@ export default function AdminAwards() {
                     </div>
                   </div>
                   <div>
-                    <Label>Track Cover</Label>
-                    <ImageUpload
-                      onUploadComplete={(url) => setEntryForm({ ...entryForm, trackCoverUrl: url })}
-                      bucket="media"
-                      folder="awards"
-                      aspectRatio="square"
-                      currentImage={entryForm.trackCoverUrl}
-                    />
+                    <Label>Track Cover {metadataFetched && entryForm.trackCoverUrl && "(fetched from link)"}</Label>
+                    {metadataFetched && entryForm.trackCoverUrl ? (
+                      <div className="relative w-full aspect-square max-w-[200px] rounded-lg overflow-hidden border bg-muted">
+                        <img 
+                          src={entryForm.trackCoverUrl} 
+                          alt="Track cover" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <ImageUpload
+                        onUploadComplete={(url) => setEntryForm({ ...entryForm, trackCoverUrl: url })}
+                        bucket="media"
+                        folder="awards"
+                        aspectRatio="square"
+                        currentImage={entryForm.trackCoverUrl}
+                      />
+                    )}
                   </div>
                   <div>
                     <Label>Track Audio</Label>
