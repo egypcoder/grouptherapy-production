@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, FileText, Eye, Plus, Trash2, Home } from "lucide-react";
+import { Pencil, FileText, Eye, Plus, Trash2, Home, GripVertical } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,129 @@ import { Link } from "wouter";
 import { VideoUpload } from "@/components/video-upload";
 import { ImageUpload } from "@/components/image-upload";
 import { MarkdownEditor } from "@/components/markdown-editor";
+
+type AboutPageModel = {
+  heroTitle: string;
+  heroSubtitle: string;
+  missionHeading: string;
+  missionText: string;
+  stats: Array<{ value: string; label: string }>;
+  timelineHeading: string;
+  milestones: Array<{ year: string; title: string; description: string }>;
+  teamHeading: string;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    role: string;
+    bio?: string;
+    imageUrl?: string;
+    socialLinks?: { linkedin?: string; twitter?: string; instagram?: string };
+    order?: number;
+  }>;
+  ctaHeading: string;
+  ctaDescription: string;
+  ctaPrimaryText: string;
+  ctaSecondaryText: string;
+};
+
+const defaultAboutPageModel: AboutPageModel = {
+  heroTitle: "About Us",
+  heroSubtitle: "The story behind the sound",
+  missionHeading: "Our Mission",
+  missionText:
+    "GroupTherapy Records is more than a record label – it's a movement. We're dedicated to discovering, nurturing, and amplifying the most innovative voices in electronic music. From underground clubs to festival main stages, we're building a community that celebrates the transformative power of sound.",
+  stats: [
+    { value: "200+", label: "Releases" },
+    { value: "50+", label: "Artists" },
+    { value: "1M+", label: "Monthly Listeners" },
+    { value: "100+", label: "Events" },
+  ],
+  timelineHeading: "Our Journey",
+  milestones: [
+    { year: "2015", title: "Founded", description: "GroupTherapy Records was born in a London basement studio" },
+    { year: "2017", title: "First Festival", description: "Launched our flagship festival event" },
+    { year: "2019", title: "100 Releases", description: "Reached 100 releases milestone" },
+    { year: "2021", title: "Radio Launch", description: "GroupTherapy Radio goes live 24/7" },
+    { year: "2023", title: "Global Expansion", description: "Opened offices in Berlin and Los Angeles" },
+    { year: "2024", title: "Today", description: "Continuing to push boundaries in electronic music" },
+  ],
+  teamHeading: "Meet the Team",
+  teamMembers: [
+    {
+      id: "1",
+      name: "Alex Thompson",
+      role: "Founder & CEO",
+      bio: "Visionary behind GroupTherapy Records, Alex has been shaping electronic music culture for over 15 years.",
+      imageUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop",
+      socialLinks: { linkedin: "#", twitter: "#" },
+      order: 1,
+    },
+    {
+      id: "2",
+      name: "Sarah Chen",
+      role: "Head of A&R",
+      bio: "With an ear for the next big sound, Sarah discovers and develops the talent that defines our roster.",
+      imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=300&fit=crop",
+      socialLinks: { linkedin: "#", instagram: "#" },
+      order: 2,
+    },
+    {
+      id: "3",
+      name: "Marcus Rivera",
+      role: "Creative Director",
+      bio: "Marcus crafts the visual identity of GroupTherapy, from album art to live show production.",
+      imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop",
+      socialLinks: { twitter: "#", instagram: "#" },
+      order: 3,
+    },
+    {
+      id: "4",
+      name: "Emma Wilson",
+      role: "Marketing Director",
+      bio: "Emma leads our global marketing strategy, connecting artists with fans worldwide.",
+      imageUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&h=300&fit=crop",
+      socialLinks: { linkedin: "#" },
+      order: 4,
+    },
+  ],
+  ctaHeading: "Want to work with us?",
+  ctaDescription:
+    "Whether you're an artist looking for a home, a promoter seeking talent, or a brand interested in partnerships – we'd love to hear from you.",
+  ctaPrimaryText: "Get in Touch",
+  ctaSecondaryText: "Press Kit",
+};
+
+function tryParseAboutPageModel(raw: string): AboutPageModel | null {
+  const trimmed = (raw || "").trim();
+  if (!trimmed || !trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.heroTitle || !parsed.heroSubtitle) return null;
+    return parsed as AboutPageModel;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeAboutPageModel(input: Partial<AboutPageModel> | null | undefined): AboutPageModel {
+  const m: any = input || {};
+  return {
+    heroTitle: m.heroTitle ?? defaultAboutPageModel.heroTitle,
+    heroSubtitle: m.heroSubtitle ?? defaultAboutPageModel.heroSubtitle,
+    missionHeading: m.missionHeading ?? defaultAboutPageModel.missionHeading,
+    missionText: m.missionText ?? defaultAboutPageModel.missionText,
+    stats: Array.isArray(m.stats) ? m.stats : defaultAboutPageModel.stats,
+    timelineHeading: m.timelineHeading ?? defaultAboutPageModel.timelineHeading,
+    milestones: Array.isArray(m.milestones) ? m.milestones : defaultAboutPageModel.milestones,
+    teamHeading: m.teamHeading ?? defaultAboutPageModel.teamHeading,
+    teamMembers: Array.isArray(m.teamMembers) ? m.teamMembers : defaultAboutPageModel.teamMembers,
+    ctaHeading: m.ctaHeading ?? defaultAboutPageModel.ctaHeading,
+    ctaDescription: m.ctaDescription ?? defaultAboutPageModel.ctaDescription,
+    ctaPrimaryText: m.ctaPrimaryText ?? defaultAboutPageModel.ctaPrimaryText,
+    ctaSecondaryText: m.ctaSecondaryText ?? defaultAboutPageModel.ctaSecondaryText,
+  };
+}
 
 function renderMarkdown(markdown: string): string {
   if (!markdown) return '';
@@ -111,6 +234,10 @@ export default function AdminStaticPages() {
     metaDescription: "",
     published: true,
   });
+
+  const [aboutForm, setAboutForm] = useState<AboutPageModel>(defaultAboutPageModel);
+  const [draggingTeamMemberId, setDraggingTeamMemberId] = useState<string | null>(null);
+  const [dragOverTeamMemberId, setDragOverTeamMemberId] = useState<string | null>(null);
 
   const [heroSettings, setHeroSettings] = useState({
     heroTag: "",
@@ -210,7 +337,36 @@ export default function AdminStaticPages() {
       metaDescription: page.metaDescription || "",
       published: page.published ?? true,
     });
+
+    if ((page.slug || "").toLowerCase() === "about") {
+      const parsed = page.content ? tryParseAboutPageModel(page.content) : null;
+      if (!parsed && (page.content || "").trim()) {
+        toast({
+          title: "About editor",
+          description: "Existing About content is not in the structured format. Loading the default template.",
+        });
+      }
+      setAboutForm(normalizeAboutPageModel(parsed || defaultAboutPageModel));
+    }
     setIsDialogOpen(true);
+  };
+
+  const reorderAboutTeamMembers = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+
+    setAboutForm((prev) => {
+      const fromIndex = prev.teamMembers.findIndex((m) => m.id === fromId);
+      const toIndex = prev.teamMembers.findIndex((m) => m.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+
+      const nextMembers = [...prev.teamMembers];
+      const [moved] = nextMembers.splice(fromIndex, 1);
+      if (!moved) return prev;
+      nextMembers.splice(toIndex, 0, moved);
+
+      const normalized = nextMembers.map((m, idx) => ({ ...m, order: idx + 1 }));
+      return { ...prev, teamMembers: normalized };
+    });
   };
 
   const handleSave = () => {
@@ -218,7 +374,7 @@ export default function AdminStaticPages() {
 
     const pageData: Partial<StaticPage> = {
       title: formData.title,
-      content: formData.content,
+      content: (editingPage.slug || "").toLowerCase() === "about" ? JSON.stringify(aboutForm, null, 2) : formData.content,
       metaTitle: formData.metaTitle,
       metaDescription: formData.metaDescription,
       published: formData.published,
@@ -609,39 +765,464 @@ export default function AdminStaticPages() {
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="inset-0 sm:inset-auto rounded-none sm:rounded-lg max-h-[100svh] sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogContent className="sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle>Edit {editingPage?.title}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Page Title</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="slug">URL Slug (read-only)</Label>
-                <Input
-                  id="slug"
-                  value={formData.slug}
-                  disabled
-                  className="bg-muted"
-                />
-              </div>
-              <div>
-                <Label>Content (Markdown)</Label>
-                <div className="mt-2">
-                  <MarkdownEditor
-                    value={formData.content}
-                    onChange={(value) => setFormData({ ...formData, content: value })}
-                    placeholder="Enter content using Markdown..."
-                    minHeight="350px"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="slug">URL Slug (read-only)</Label>
+                  <Input
+                    id="slug"
+                    value={formData.slug}
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
               </div>
+
+              {(editingPage?.slug || formData.slug).toLowerCase() === "about" ? (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Hero</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        value={aboutForm.heroTitle}
+                        onChange={(e) => setAboutForm({ ...aboutForm, heroTitle: e.target.value })}
+                        placeholder="Hero title"
+                      />
+                      <Input
+                        value={aboutForm.heroSubtitle}
+                        onChange={(e) => setAboutForm({ ...aboutForm, heroSubtitle: e.target.value })}
+                        placeholder="Hero subtitle"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Mission</Label>
+                    <Input
+                      value={aboutForm.missionHeading}
+                      onChange={(e) => setAboutForm({ ...aboutForm, missionHeading: e.target.value })}
+                      placeholder="Heading"
+                    />
+                    <Textarea
+                      rows={4}
+                      value={aboutForm.missionText}
+                      onChange={(e) => setAboutForm({ ...aboutForm, missionText: e.target.value })}
+                      placeholder="Mission text"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Stats</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setAboutForm({
+                            ...aboutForm,
+                            stats: [...aboutForm.stats, { value: "", label: "" }],
+                          })
+                        }
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {aboutForm.stats.map((s, idx) => (
+                        <div key={idx} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-start">
+                          <Input
+                            value={s.value}
+                            onChange={(e) => {
+                              const next = [...aboutForm.stats];
+                              const existing = next[idx];
+                              if (!existing) return;
+                              next[idx] = { ...existing, value: e.target.value };
+                              setAboutForm({ ...aboutForm, stats: next });
+                            }}
+                            placeholder="Value (e.g. 50+)"
+                          />
+                          <Input
+                            value={s.label}
+                            onChange={(e) => {
+                              const next = [...aboutForm.stats];
+                              const existing = next[idx];
+                              if (!existing) return;
+                              next[idx] = { ...existing, label: e.target.value };
+                              setAboutForm({ ...aboutForm, stats: next });
+                            }}
+                            placeholder="Label"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive h-10 w-10"
+                            onClick={() =>
+                              setAboutForm({
+                                ...aboutForm,
+                                stats: aboutForm.stats.filter((_, i) => i !== idx),
+                              })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Timeline</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setAboutForm({
+                            ...aboutForm,
+                            milestones: [...aboutForm.milestones, { year: "", title: "", description: "" }],
+                          })
+                        }
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                    <Input
+                      value={aboutForm.timelineHeading}
+                      onChange={(e) => setAboutForm({ ...aboutForm, timelineHeading: e.target.value })}
+                      placeholder="Timeline heading"
+                    />
+                    <div className="space-y-3">
+                      {aboutForm.milestones.map((m, idx) => (
+                        <div key={idx} className="rounded-md border p-3 space-y-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <Input
+                              value={m.year}
+                              onChange={(e) => {
+                                const next = [...aboutForm.milestones];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = { ...existing, year: e.target.value };
+                                setAboutForm({ ...aboutForm, milestones: next });
+                              }}
+                              placeholder="Year"
+                            />
+                            <Input
+                              className="sm:col-span-2"
+                              value={m.title}
+                              onChange={(e) => {
+                                const next = [...aboutForm.milestones];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = { ...existing, title: e.target.value };
+                                setAboutForm({ ...aboutForm, milestones: next });
+                              }}
+                              placeholder="Title"
+                            />
+                          </div>
+                          <Textarea
+                            rows={2}
+                            value={m.description}
+                            onChange={(e) => {
+                              const next = [...aboutForm.milestones];
+                              const existing = next[idx];
+                              if (!existing) return;
+                              next[idx] = { ...existing, description: e.target.value };
+                              setAboutForm({ ...aboutForm, milestones: next });
+                            }}
+                            placeholder="Description"
+                          />
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() =>
+                                setAboutForm({
+                                  ...aboutForm,
+                                  milestones: aboutForm.milestones.filter((_, i) => i !== idx),
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Team</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setAboutForm({
+                            ...aboutForm,
+                            teamMembers: [
+                              ...aboutForm.teamMembers,
+                              { id: String(Date.now()), name: "", role: "", bio: "", imageUrl: "", order: aboutForm.teamMembers.length + 1 },
+                            ],
+                          })
+                        }
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                    <Input
+                      value={aboutForm.teamHeading}
+                      onChange={(e) => setAboutForm({ ...aboutForm, teamHeading: e.target.value })}
+                      placeholder="Team heading"
+                    />
+                    <div className="space-y-3">
+                      {aboutForm.teamMembers.map((tm, idx) => (
+                        <div
+                          key={tm.id || String(idx)}
+                          className={`rounded-md border p-3 space-y-3 ${dragOverTeamMemberId === tm.id ? "ring-2 ring-primary" : ""}`}
+                          onDragOver={(e) => {
+                            if (!draggingTeamMemberId) return;
+                            e.preventDefault();
+                            setDragOverTeamMemberId(tm.id);
+                          }}
+                          onDragLeave={() => {
+                            if (dragOverTeamMemberId === tm.id) setDragOverTeamMemberId(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const fromId = e.dataTransfer.getData("text/plain") || draggingTeamMemberId;
+                            if (!fromId || !tm.id) return;
+                            reorderAboutTeamMembers(fromId, tm.id);
+                            setDraggingTeamMemberId(null);
+                            setDragOverTeamMemberId(null);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div
+                              className="inline-flex items-center gap-2 text-xs text-muted-foreground select-none"
+                              draggable
+                              onDragStart={(e) => {
+                                if (!tm.id) return;
+                                setDraggingTeamMemberId(tm.id);
+                                e.dataTransfer.setData("text/plain", tm.id);
+                                e.dataTransfer.effectAllowed = "move";
+                              }}
+                              onDragEnd={() => {
+                                setDraggingTeamMemberId(null);
+                                setDragOverTeamMemberId(null);
+                              }}
+                            >
+                              <GripVertical className="h-4 w-4" />
+                              Drag to reorder
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <Input
+                              value={tm.name}
+                              onChange={(e) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = { ...existing, name: e.target.value };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              placeholder="Name"
+                            />
+                            <Input
+                              value={tm.role}
+                              onChange={(e) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = { ...existing, role: e.target.value };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              placeholder="Role"
+                            />
+                          </div>
+
+                          <Textarea
+                            rows={2}
+                            value={tm.bio || ""}
+                            onChange={(e) => {
+                              const next = [...aboutForm.teamMembers];
+                              const existing = next[idx];
+                              if (!existing) return;
+                              next[idx] = { ...existing, bio: e.target.value };
+                              setAboutForm({ ...aboutForm, teamMembers: next });
+                            }}
+                            placeholder="Bio"
+                          />
+
+                          <div className="space-y-2">
+                            <Label>Photo</Label>
+                            <ImageUpload
+                              currentImage={tm.imageUrl || ""}
+                              onUploadComplete={(url) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = { ...existing, imageUrl: url };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              bucket="media"
+                              folder="about/team"
+                              aspectRatio="square"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <Input
+                              value={String(tm.order ?? "")}
+                              onChange={(e) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = { ...existing, order: parseInt(e.target.value) || 0 };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              placeholder="Order"
+                            />
+                            <Input
+                              className="sm:col-span-3"
+                              value={tm.socialLinks?.linkedin || ""}
+                              onChange={(e) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = {
+                                  ...existing,
+                                  socialLinks: { ...(existing.socialLinks || {}), linkedin: e.target.value },
+                                };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              placeholder="LinkedIn URL"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <Input
+                              value={tm.socialLinks?.twitter || ""}
+                              onChange={(e) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = {
+                                  ...existing,
+                                  socialLinks: { ...(existing.socialLinks || {}), twitter: e.target.value },
+                                };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              placeholder="X/Twitter URL"
+                            />
+                            <Input
+                              value={tm.socialLinks?.instagram || ""}
+                              onChange={(e) => {
+                                const next = [...aboutForm.teamMembers];
+                                const existing = next[idx];
+                                if (!existing) return;
+                                next[idx] = {
+                                  ...existing,
+                                  socialLinks: { ...(existing.socialLinks || {}), instagram: e.target.value },
+                                };
+                                setAboutForm({ ...aboutForm, teamMembers: next });
+                              }}
+                              placeholder="Instagram URL"
+                            />
+                          </div>
+
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              onClick={() =>
+                                setAboutForm({
+                                  ...aboutForm,
+                                  teamMembers: aboutForm.teamMembers.filter((_, i) => i !== idx),
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>CTA</Label>
+                    <Input
+                      value={aboutForm.ctaHeading}
+                      onChange={(e) => setAboutForm({ ...aboutForm, ctaHeading: e.target.value })}
+                      placeholder="CTA heading"
+                    />
+                    <Textarea
+                      rows={2}
+                      value={aboutForm.ctaDescription}
+                      onChange={(e) => setAboutForm({ ...aboutForm, ctaDescription: e.target.value })}
+                      placeholder="CTA description"
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Input
+                        value={aboutForm.ctaPrimaryText}
+                        onChange={(e) => setAboutForm({ ...aboutForm, ctaPrimaryText: e.target.value })}
+                        placeholder="Primary button text"
+                      />
+                      <Input
+                        value={aboutForm.ctaSecondaryText}
+                        onChange={(e) => setAboutForm({ ...aboutForm, ctaSecondaryText: e.target.value })}
+                        placeholder="Secondary button text"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setAboutForm(defaultAboutPageModel)}
+                    >
+                      Load Template
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Label>Content (Markdown)</Label>
+                  <div className="mt-2">
+                    <MarkdownEditor
+                      value={formData.content}
+                      onChange={(value) => setFormData({ ...formData, content: value })}
+                      placeholder="Enter content using Markdown..."
+                      minHeight="350px"
+                    />
+                  </div>
+                </div>
+              )}
               <div>
                 <Label htmlFor="metaTitle">SEO Title (Optional)</Label>
                 <Input

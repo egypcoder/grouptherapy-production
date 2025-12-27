@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus,
@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Link,
   Loader2,
+  GripVertical,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -337,6 +338,13 @@ export default function AdminAwards() {
     enabled: !!selectedPeriodId,
   });
 
+  const [orderedEntries, setOrderedEntries] = useState<AwardEntry[]>([]);
+  const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setOrderedEntries(entries);
+  }, [entries]);
+
   const saveCategoryMutation = useMutation({
     mutationFn: async (data: { isEdit: boolean; id?: string; category: Partial<AwardCategory> }) => {
       if (data.isEdit && data.id) {
@@ -470,6 +478,25 @@ export default function AdminAwards() {
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message || "Failed to declare winner", variant: "destructive" });
+    },
+  });
+
+  const updateEntryOrderMutation = useMutation({
+    mutationFn: async (nextEntries: AwardEntry[]) => {
+      const updates = nextEntries.map((e, idx) => ({ id: e.id, displayOrder: idx }));
+      await Promise.all(
+        updates.map((u) => db.awards.entries.update(u.id, { displayOrder: u.displayOrder }))
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["awardEntries", selectedPeriodId] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update nominee order",
+        variant: "destructive",
+      });
     },
   });
 
@@ -910,6 +937,7 @@ export default function AdminAwards() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10" />
                         <TableHead>Nominee</TableHead>
                         <TableHead>Votes</TableHead>
                         <TableHead>Status</TableHead>
@@ -917,12 +945,47 @@ export default function AdminAwards() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {entries.map((entry) => (
+                      {orderedEntries.map((entry) => (
                         <TableRow 
                           key={entry.id} 
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleEditEntry(entry)}
+                          onDragOver={(e) => {
+                            if (!draggingEntryId) return;
+                            e.preventDefault();
+                          }}
+                          onDrop={() => {
+                            if (!draggingEntryId) return;
+                            if (draggingEntryId === entry.id) return;
+
+                            const fromIndex = orderedEntries.findIndex((e) => e.id === draggingEntryId);
+                            const toIndex = orderedEntries.findIndex((e) => e.id === entry.id);
+                            if (fromIndex < 0 || toIndex < 0) return;
+
+                            const next = [...orderedEntries];
+                            const [moved] = next.splice(fromIndex, 1);
+                            if (!moved) return;
+                            next.splice(toIndex, 0, moved);
+                            setOrderedEntries(next);
+                            setDraggingEntryId(null);
+                            updateEntryOrderMutation.mutate(next);
+                          }}
                         >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                setDraggingEntryId(entry.id);
+                              }}
+                              onDragEnd={() => setDraggingEntryId(null)}
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                              aria-label="Drag to reorder"
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </button>
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               {(entry.artistImageUrl || entry.trackCoverUrl) && (

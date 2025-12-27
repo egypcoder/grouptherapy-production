@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
@@ -5,6 +7,7 @@ import { PageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SiLinkedin, SiX, SiInstagram } from "react-icons/si";
+import { db, type StaticPage } from "@/lib/database";
 import type { TeamMember } from "@shared/schema";
 
 const demoTeam: Partial<TeamMember>[] = [
@@ -55,12 +58,97 @@ const milestones = [
   { year: "2024", title: "Today", description: "Continuing to push boundaries in electronic music" },
 ];
 
+type AboutPageModel = {
+  heroTitle?: string;
+  heroSubtitle?: string;
+  missionHeading?: string;
+  missionText?: string;
+  stats?: Array<{ value: string; label: string }>;
+  timelineHeading?: string;
+  milestones?: Array<{ year: string; title: string; description: string }>;
+  teamHeading?: string;
+  teamMembers?: Array<Partial<TeamMember>>;
+  ctaHeading?: string;
+  ctaDescription?: string;
+  ctaPrimaryText?: string;
+  ctaSecondaryText?: string;
+};
+
+function parseAboutModel(raw: string): AboutPageModel | null {
+  const trimmed = (raw || "").trim();
+  if (!trimmed || !trimmed.startsWith("{")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as AboutPageModel;
+  } catch {
+    return null;
+  }
+}
+
+const defaultAboutModel: AboutPageModel = {
+  heroTitle: "About Us",
+  heroSubtitle: "The story behind the sound",
+  missionHeading: "Our Mission",
+  missionText:
+    "GroupTherapy Records is more than a record label – it's a movement. We're dedicated to discovering, nurturing, and amplifying the most innovative voices in electronic music. From underground clubs to festival main stages, we're building a community that celebrates the transformative power of sound.",
+  stats: [
+    { value: "200+", label: "Releases" },
+    { value: "50+", label: "Artists" },
+    { value: "1M+", label: "Monthly Listeners" },
+    { value: "100+", label: "Events" },
+  ],
+  timelineHeading: "Our Journey",
+  milestones,
+  teamHeading: "Meet the Team",
+  teamMembers: demoTeam,
+  ctaHeading: "Want to work with us?",
+  ctaDescription:
+    "Whether you're an artist looking for a home, a promoter seeking talent, or a brand interested in partnerships – we'd love to hear from you.",
+  ctaPrimaryText: "Get in Touch",
+  ctaSecondaryText: "Press Kit",
+};
+
 export default function AboutPage() {
+  const { data: aboutPage } = useQuery<StaticPage | null>({
+    queryKey: ["staticPage", "about"],
+    queryFn: () => db.staticPages.getBySlug("about"),
+  });
+
+  const aboutModel = useMemo(() => {
+    return aboutPage?.content ? parseAboutModel(aboutPage.content) : null;
+  }, [aboutPage?.content]);
+
+  const heroTitle = aboutModel?.heroTitle ?? "About Us";
+  const heroSubtitle = aboutModel?.heroSubtitle ?? "The story behind the sound";
+  const missionHeading = aboutModel?.missionHeading ?? "Our Mission";
+  const missionText =
+    aboutModel?.missionText ??
+    "GroupTherapy Records is more than a record label – it's a movement. We're dedicated to discovering, nurturing, and amplifying the most innovative voices in electronic music. From underground clubs to festival main stages, we're building a community that celebrates the transformative power of sound.";
+  const stats =
+    aboutModel?.stats ??
+    [
+      { value: "200+", label: "Releases" },
+      { value: "50+", label: "Artists" },
+      { value: "1M+", label: "Monthly Listeners" },
+      { value: "100+", label: "Events" },
+    ];
+  const timelineHeading = aboutModel?.timelineHeading ?? "Our Journey";
+  const timelineMilestones = aboutModel?.milestones ?? milestones;
+  const teamHeading = aboutModel?.teamHeading ?? "Meet the Team";
+  const teamMembers = (aboutModel?.teamMembers?.length ? aboutModel.teamMembers : demoTeam) as Partial<TeamMember>[];
+  const ctaHeading = aboutModel?.ctaHeading ?? "Want to work with us?";
+  const ctaDescription =
+    aboutModel?.ctaDescription ??
+    "Whether you're an artist looking for a home, a promoter seeking talent, or a brand interested in partnerships – we'd love to hear from you.";
+  const ctaPrimaryText = aboutModel?.ctaPrimaryText ?? "Get in Touch";
+  const ctaSecondaryText = aboutModel?.ctaSecondaryText ?? "Press Kit";
+
   return (
     <div className="min-h-screen">
       <PageHero
-        title="About Us"
-        subtitle="The story behind the sound"
+        title={heroTitle}
+        subtitle={heroSubtitle}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -72,12 +160,9 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="max-w-3xl mx-auto text-center"
           >
-            <h2 className="text-3xl lg:text-4xl font-bold mb-6">Our Mission</h2>
+            <h2 className="text-3xl lg:text-4xl font-bold mb-6">{missionHeading}</h2>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              GroupTherapy Records is more than a record label – it's a movement. We're dedicated 
-              to discovering, nurturing, and amplifying the most innovative voices in electronic 
-              music. From underground clubs to festival main stages, we're building a community 
-              that celebrates the transformative power of sound.
+              {missionText}
             </p>
           </motion.div>
         </section>
@@ -85,12 +170,7 @@ export default function AboutPage() {
         {/* Stats */}
         <section className="mb-20">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { value: "200+", label: "Releases" },
-              { value: "50+", label: "Artists" },
-              { value: "1M+", label: "Monthly Listeners" },
-              { value: "100+", label: "Events" },
-            ].map((stat, index) => (
+            {stats.map((stat, index) => (
               <motion.div
                 key={stat.label}
                 initial={{ opacity: 0, y: 20 }}
@@ -119,14 +199,14 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-3xl font-bold mb-12 text-center"
           >
-            Our Journey
+            {timelineHeading}
           </motion.h2>
           <div className="relative">
             {/* Timeline line */}
             <div className="absolute left-1/2 transform -translate-x-1/2 w-0.5 h-full bg-border hidden lg:block" />
             
             <div className="space-y-8 lg:space-y-0">
-              {milestones.map((milestone, index) => (
+              {timelineMilestones.map((milestone, index) => (
                 <motion.div
                   key={milestone.year}
                   initial={{ opacity: 0, y: 20 }}
@@ -166,12 +246,12 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-3xl font-bold mb-12 text-center"
           >
-            Meet the Team
+            {teamHeading}
           </motion.h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {demoTeam.map((member, index) => (
+            {teamMembers.map((member, index) => (
               <motion.div
-                key={member.id}
+                key={member.id || String(index)}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -191,21 +271,18 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="bg-card rounded-md p-8 lg:p-12 text-center"
           >
-            <h2 className="text-2xl lg:text-3xl font-bold mb-4">Want to work with us?</h2>
-            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Whether you're an artist looking for a home, a promoter seeking talent, 
-              or a brand interested in partnerships – we'd love to hear from you.
-            </p>
+            <h2 className="text-2xl lg:text-3xl font-bold mb-4">{ctaHeading}</h2>
+            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">{ctaDescription}</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/contact">
                 <Button size="lg" className="gap-2" data-testid="button-contact-cta">
-                  Get in Touch
+                  {ctaPrimaryText}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/press">
                 <Button size="lg" variant="outline" data-testid="button-press-cta">
-                  Press Kit
+                  {ctaSecondaryText}
                 </Button>
               </Link>
             </div>

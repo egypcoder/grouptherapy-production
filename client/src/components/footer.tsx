@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { SiSpotify, SiInstagram, SiX, SiYoutube, SiSoundcloud } from "react-icons/si";
+import { SiSpotify, SiInstagram, SiX, SiYoutube, SiSoundcloud, SiTiktok } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/database";
 import { Loader2, ArrowRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 const footerLinks = {
   music: [
@@ -29,18 +30,27 @@ const footerLinks = {
   ],
 };
 
-const socialLinks = [
-  { icon: SiSpotify, href: "#", label: "Spotify" },
-  { icon: SiInstagram, href: "#", label: "Instagram" },
-  { icon: SiX, href: "#", label: "X" },
-  { icon: SiYoutube, href: "#", label: "YouTube" },
-  { icon: SiSoundcloud, href: "#", label: "SoundCloud" },
-];
-
 export function Footer() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  const { data: siteSettings } = useQuery({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
+  const socialLinks = useMemo(() => {
+    const links = siteSettings?.socialLinks;
+    return [
+      { icon: SiSpotify, href: links?.spotify, label: "Spotify" },
+      { icon: SiInstagram, href: links?.instagram, label: "Instagram" },
+      { icon: SiX, href: links?.x, label: "X" },
+      { icon: SiYoutube, href: links?.youtube, label: "YouTube" },
+      { icon: SiSoundcloud, href: links?.soundcloud, label: "SoundCloud" },
+      { icon: SiTiktok, href: links?.tiktok, label: "TikTok" },
+    ].filter((item) => !!item.href);
+  }, [siteSettings?.socialLinks]);
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
@@ -174,7 +184,7 @@ export function Footer() {
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
-                  href={social.href}
+                  href={social.href!}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={social.label}

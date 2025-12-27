@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, ExternalLink, Search, Grid, List } from "lucide-react";
 import { Link } from "wouter";
@@ -48,6 +48,18 @@ export default function ReleasesPage() {
   const [sortBy, setSortBy] = useState("newest");
 
   const PAGE_SIZE = 48;
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const queryParams = useMemo(
+    () => ({
+      searchQuery,
+      selectedType,
+      sortBy,
+      pageSize: PAGE_SIZE,
+    }),
+    [searchQuery, selectedType, sortBy]
+  );
+
   const {
     data: releasesPages,
     fetchNextPage,
@@ -55,8 +67,15 @@ export default function ReleasesPage() {
     isFetchingNextPage,
     isLoading,
   } = useInfiniteQuery<Release[]>({
-    queryKey: ["releases", "published", { pageSize: PAGE_SIZE }],
-    queryFn: ({ pageParam }) => db.releases.getPublishedPage(PAGE_SIZE, (pageParam as number) ?? 0),
+    queryKey: ["releases", "published", queryParams],
+    queryFn: ({ pageParam }) =>
+      db.releases.searchPublishedPage({
+        limit: PAGE_SIZE,
+        offset: (pageParam as number) ?? 0,
+        searchQuery,
+        type: selectedType,
+        sortBy: sortBy as "newest" | "oldest" | "title",
+      }),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       if (!lastPage || lastPage.length < PAGE_SIZE) return undefined;
@@ -66,32 +85,28 @@ export default function ReleasesPage() {
 
   const releases = releasesPages?.pages?.flat() ?? [];
 
-  const filteredReleases = releases.filter((release) => {
-    const matchesSearch =
-      release.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      release.artistName?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType =
-      selectedType === "All" ||
-      release.type?.toLowerCase() === selectedType.toLowerCase();
-    return matchesSearch && matchesType;
-  });
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    if (!hasNextPage) return;
 
-  const sortedReleases = [...filteredReleases].sort((a, b) => {
-    if (sortBy === "newest") {
-      return new Date(b.releaseDate || 0).getTime() - new Date(a.releaseDate || 0).getTime();
-    }
-    if (sortBy === "oldest") {
-      return new Date(a.releaseDate || 0).getTime() - new Date(b.releaseDate || 0).getTime();
-    }
-    if (sortBy === "title") {
-      return (a.title || "").localeCompare(b.title || "");
-    }
-    return 0;
-  });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        if (isFetchingNextPage) return;
+        fetchNextPage();
+      },
+      { rootMargin: "800px 0px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const releasesByMonth = (() => {
     const map = new Map<string, Release[]>();
-    for (const release of sortedReleases as Release[]) {
+    for (const release of releases as Release[]) {
       const key = getMonthKey(release.releaseDate ?? null);
       const current = map.get(key);
       if (current) {
@@ -119,7 +134,7 @@ export default function ReleasesPage() {
   const musicGroupSchema = generateStructuredData("MusicGroup", {
     name: "GroupTherapy Records",
     genre: ["Electronic", "House", "Techno", "Deep House", "Drum & Bass"],
-    album: sortedReleases.slice(0, 10).map((release) => ({
+    album: releases.slice(0, 10).map((release) => ({
       "@type": "MusicAlbum",
       name: release.title,
       byArtist: {
@@ -214,7 +229,7 @@ export default function ReleasesPage() {
           <Skeleton className="h-4 w-44 mb-6" />
         ) : (
           <p className="text-sm text-muted-foreground mb-6">
-            Showing {sortedReleases.length} releases
+            Showing {releases.length} releases
           </p>
         )}
 
@@ -249,7 +264,7 @@ export default function ReleasesPage() {
               ))}
             </div>
           )
-        ) : sortedReleases.length === 0 ? (
+        ) : releases.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No releases found</p>
           </div>
@@ -295,17 +310,12 @@ export default function ReleasesPage() {
           </div>
         )}
 
-        {!isLoading && hasNextPage && (
+        {!isLoading && (
           <div className="mt-10 flex justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isFetchingNextPage}
-              onClick={() => fetchNextPage()}
-              data-testid="button-load-more-releases"
-            >
-              {isFetchingNextPage ? "Loading…" : "Load more"}
-            </Button>
+            <div ref={sentinelRef} className="h-10 w-full" />
+            {isFetchingNextPage && (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            )}
           </div>
         )}
       </div>

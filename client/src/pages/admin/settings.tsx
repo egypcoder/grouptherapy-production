@@ -7,9 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
-import { db, type StaticPage } from "@/lib/database";
+import { db } from "@/lib/database";
 import { Loader2 } from "lucide-react";
-import { MarkdownEditor } from "@/components/markdown-editor";
 
 export default function AdminSettings() {
   const { toast } = useToast();
@@ -25,20 +24,12 @@ export default function AdminSettings() {
     address: "",
     addressSubtext: "",
     description: "GroupTherapy is a cutting-edge electronic music label...",
-    spotify: "https://spotify.com/grouptherapy",
-    instagram: "https://instagram.com/grouptherapy",
-    soundcloud: "https://soundcloud.com/grouptherapy",
-  });
-
-  const [aboutContent, setAboutContent] = useState({
-    mission: "",
-    content: "",
-  });
-
-  // Fetch About page from database
-  const { data: aboutPage, isLoading } = useQuery<StaticPage | null>({
-    queryKey: ["staticPage", "about"],
-    queryFn: () => db.staticPages.getBySlug("about"),
+    spotify: "",
+    instagram: "",
+    soundcloud: "",
+    x: "",
+    youtube: "",
+    tiktok: "",
   });
 
   const { data: siteSettings } = useQuery({
@@ -56,55 +47,14 @@ export default function AdminSettings() {
       phoneSubtext: siteSettings.contactPhoneSubtext || prev.phoneSubtext,
       address: siteSettings.contactAddress || prev.address,
       addressSubtext: siteSettings.contactAddressSubtext || prev.addressSubtext,
+      spotify: siteSettings.socialLinks?.spotify || prev.spotify,
+      instagram: siteSettings.socialLinks?.instagram || prev.instagram,
+      soundcloud: siteSettings.socialLinks?.soundcloud || prev.soundcloud,
+      x: siteSettings.socialLinks?.x || prev.x,
+      youtube: siteSettings.socialLinks?.youtube || prev.youtube,
+      tiktok: siteSettings.socialLinks?.tiktok || prev.tiktok,
     }));
   }, [siteSettings]);
-
-  // Update local state when About page data is loaded
-  useEffect(() => {
-    if (aboutPage) {
-      // Extract mission and content from the about page content
-      const content = aboutPage.content || "";
-      const missionMatch = content.match(/<h3>Our Mission<\/h3><p>(.*?)<\/p>/s);
-      const mission = missionMatch?.[1] ?? "";
-
-      setAboutContent({
-        mission,
-        content: content,
-      });
-    }
-  }, [aboutPage]);
-
-  // Mutation to update About page
-  const updateAboutMutation = useMutation({
-    mutationFn: async (data: { mission: string; content: string }) => {
-      if (!aboutPage) throw new Error("About page not found");
-
-      // Construct the content with mission statement
-      const updatedContent = data.content.includes("<h3>Our Mission</h3>")
-        ? data.content
-        : `<h2>About GroupTherapy</h2><p>GroupTherapy is a cutting-edge electronic music label dedicated to discovering and promoting the most innovative sounds in electronic music.</p><h3>Our Mission</h3><p>${data.mission}</p><h3>What We Do</h3><p>From releasing groundbreaking music to hosting unforgettable events and running our 24/7 radio station, we are committed to building a global community of music lovers.</p>`;
-
-      return db.staticPages.update(aboutPage.id, {
-        content: updatedContent,
-        title: "About GroupTherapy",
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["staticPage", "about"] });
-      queryClient.invalidateQueries({ queryKey: ["staticPages"] });
-      toast({
-        title: "Success",
-        description: "About page has been updated successfully.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update About page",
-        variant: "destructive",
-      });
-    },
-  });
 
   const updateSiteSettingsMutation = useMutation({
     mutationFn: async (data: {
@@ -114,6 +64,12 @@ export default function AdminSettings() {
       phoneSubtext: string;
       address: string;
       addressSubtext: string;
+      spotify: string;
+      instagram: string;
+      soundcloud: string;
+      x: string;
+      youtube: string;
+      tiktok: string;
     }) => {
       return db.siteSettings.update({
         contactEmail: data.email,
@@ -122,6 +78,14 @@ export default function AdminSettings() {
         contactPhoneSubtext: data.phoneSubtext,
         contactAddress: data.address,
         contactAddressSubtext: data.addressSubtext,
+        socialLinks: {
+          spotify: data.spotify || undefined,
+          instagram: data.instagram || undefined,
+          soundcloud: data.soundcloud || undefined,
+          x: data.x || undefined,
+          youtube: data.youtube || undefined,
+          tiktok: data.tiktok || undefined,
+        },
       });
     },
     onSuccess: () => {
@@ -148,13 +112,12 @@ export default function AdminSettings() {
       phoneSubtext: settings.phoneSubtext,
       address: settings.address,
       addressSubtext: settings.addressSubtext,
-    });
-  };
-
-  const handleSaveAbout = () => {
-    updateAboutMutation.mutate({
-      mission: aboutContent.mission,
-      content: aboutContent.content,
+      spotify: settings.spotify,
+      instagram: settings.instagram,
+      soundcloud: settings.soundcloud,
+      x: settings.x,
+      youtube: settings.youtube,
+      tiktok: settings.tiktok,
     });
   };
 
@@ -283,11 +246,35 @@ export default function AdminSettings() {
                 />
               </div>
               <div>
+                <Label htmlFor="x">X URL</Label>
+                <Input
+                  id="x"
+                  value={settings.x}
+                  onChange={(e) => setSettings({ ...settings, x: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="youtube">YouTube URL</Label>
+                <Input
+                  id="youtube"
+                  value={settings.youtube}
+                  onChange={(e) => setSettings({ ...settings, youtube: e.target.value })}
+                />
+              </div>
+              <div>
                 <Label htmlFor="soundcloud">SoundCloud URL</Label>
                 <Input
                   id="soundcloud"
                   value={settings.soundcloud}
                   onChange={(e) => setSettings({ ...settings, soundcloud: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="tiktok">TikTok URL</Label>
+                <Input
+                  id="tiktok"
+                  value={settings.tiktok}
+                  onChange={(e) => setSettings({ ...settings, tiktok: e.target.value })}
                 />
               </div>
             </CardContent>
@@ -304,63 +291,6 @@ export default function AdminSettings() {
             )}
           </Button>
         </div>
-
-        {/* About Page Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle>About Page Content</CardTitle>
-            <CardDescription>Manage the content for the About page</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : (
-              <>
-                <div>
-                  <Label htmlFor="mission">Mission Statement</Label>
-                  <Textarea
-                    id="mission"
-                    rows={3}
-                    value={aboutContent.mission}
-                    onChange={(e) => setAboutContent({ ...aboutContent, mission: e.target.value })}
-                    placeholder="Our mission statement..."
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This will be displayed in the "Our Mission" section
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="aboutContent">Full Page Content (Markdown)</Label>
-                  <MarkdownEditor
-                    value={aboutContent.content}
-                    onChange={(value) => setAboutContent({ ...aboutContent, content: value })}
-                    placeholder="Enter content for the About page using Markdown..."
-                    minHeight="300px"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use Markdown formatting. If you only update the mission, the rest of the page will use the default template.
-                  </p>
-                </div>
-                <Button
-                  onClick={handleSaveAbout}
-                  disabled={updateAboutMutation.isPending}
-                  size="lg"
-                >
-                  {updateAboutMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save About Page"
-                  )}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </AdminLayout>
   );

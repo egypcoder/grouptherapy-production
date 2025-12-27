@@ -11,6 +11,7 @@ import {
   Vote,
 } from "lucide-react";
 import { FaSoundcloud, FaSpotify } from "react-icons/fa";
+import { SiApplemusic } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -185,6 +186,19 @@ export function AwardEntryCard({
                 }}
               >
                 <FaSpotify className="h-4 w-4" />
+              </Button>
+            )}
+            {entry.appleMusicUrl && (
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 rounded-full border-border/50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(entry.appleMusicUrl!, "_blank");
+                }}
+              >
+                <SiApplemusic className="h-4 w-4" />
               </Button>
             )}
             {entry.soundcloudUrl && (

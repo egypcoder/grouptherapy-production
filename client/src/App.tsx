@@ -25,6 +25,7 @@ import EventDetailPage from "@/pages/event-detail";
 import ArtistsPage from "@/pages/artists";
 import ArtistDetailPage from "@/pages/artist-detail";
 import VideosPage from "@/pages/videos";
+import StaticPageView from "@/pages/static-page";
 import AboutPage from "@/pages/about";
 import ContactPage from "@/pages/contact";
 import NewsPage from "@/pages/news";
@@ -32,7 +33,6 @@ import PostDetailPage from "@/pages/post-detail";
 import PressPage from "@/pages/press";
 import CareersPage from "@/pages/careers";
 import ToursPage from "@/pages/tours";
-import StaticPageView from "@/pages/static-page";
 import PlaylistsPage from "@/pages/playlists";
 import AwardsPage from "@/pages/awards";
 

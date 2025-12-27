@@ -405,6 +405,14 @@ export interface SiteSettings {
   contactPhoneSubtext?: string;
   contactAddress?: string;
   contactAddressSubtext?: string;
+  socialLinks?: {
+    spotify?: string;
+    instagram?: string;
+    x?: string;
+    youtube?: string;
+    soundcloud?: string;
+    tiktok?: string;
+  };
   heroTag?: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -522,6 +530,49 @@ export const db = {
         .eq('published', true)
         .order('release_date', { ascending: false })
         .range(from, to);
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async searchPublishedPage(params: {
+      limit?: number;
+      offset?: number;
+      searchQuery?: string;
+      type?: string;
+      sortBy?: 'newest' | 'oldest' | 'title';
+    }): Promise<Release[]> {
+      if (!supabase) return [];
+
+      const limit = params.limit ?? 24;
+      const offset = params.offset ?? 0;
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+
+      const searchQuery = (params.searchQuery ?? '').trim();
+      const type = (params.type ?? '').trim();
+
+      let query = supabase
+        .from('releases')
+        .select('*')
+        .eq('published', true);
+
+      if (searchQuery) {
+        const safeQuery = searchQuery.replace(/,/g, ' ');
+        query = query.or(`title.ilike.%${safeQuery}%,artist_name.ilike.%${safeQuery}%`);
+      }
+
+      if (type && type.toLowerCase() !== 'all') {
+        query = query.eq('type', type);
+      }
+
+      if (params.sortBy === 'oldest') {
+        query = query.order('release_date', { ascending: true, nullsFirst: false });
+      } else if (params.sortBy === 'title') {
+        query = query.order('title', { ascending: true }).order('release_date', { ascending: false, nullsFirst: false });
+      } else {
+        query = query.order('release_date', { ascending: false, nullsFirst: false });
+      }
+
+      const { data, error } = await query.range(from, to);
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },
@@ -1134,15 +1185,42 @@ export const db = {
     entries: {
       async getByPeriodId(periodId: string): Promise<AwardEntry[]> {
         if (!supabase) return [];
-        const { data, error } = await supabase.from('award_entries').select('*').eq('period_id', periodId).order('vote_count', { ascending: false });
+        const { data, error } = await supabase
+          .from('award_entries')
+          .select('*, artists ( name, bio, image_url )')
+          .eq('period_id', periodId)
+          .order('display_order', { ascending: true })
+          .order('vote_count', { ascending: false });
         if (error) throw error;
-        return (data || []).map(convertSnakeToCamel);
+        return (data || []).map((row: any) => {
+          const converted: any = convertSnakeToCamel(row);
+          const artist: any = converted.artists;
+
+          const entry: any = { ...converted };
+          if (!entry.artistName && artist?.name) entry.artistName = artist.name;
+          if (!entry.artistBio && artist?.bio) entry.artistBio = artist.bio;
+          if (!entry.artistImageUrl && artist?.imageUrl) entry.artistImageUrl = artist.imageUrl;
+          delete entry.artists;
+          return entry as AwardEntry;
+        });
       },
       async getById(id: string): Promise<AwardEntry | null> {
         if (!supabase) return null;
-        const { data, error } = await supabase.from('award_entries').select('*').eq('id', id).single();
+        const { data, error } = await supabase
+          .from('award_entries')
+          .select('*, artists ( name, bio, image_url )')
+          .eq('id', id)
+          .single();
         if (error) return null;
-        return convertSnakeToCamel(data);
+        const converted: any = convertSnakeToCamel(data);
+        const artist: any = converted.artists;
+
+        const entry: any = { ...converted };
+        if (!entry.artistName && artist?.name) entry.artistName = artist.name;
+        if (!entry.artistBio && artist?.bio) entry.artistBio = artist.bio;
+        if (!entry.artistImageUrl && artist?.imageUrl) entry.artistImageUrl = artist.imageUrl;
+        delete entry.artists;
+        return entry as AwardEntry;
       },
       async create(entry: Partial<AwardEntry>): Promise<AwardEntry> {
         if (!supabase) throw new Error('Database not configured');
@@ -1420,9 +1498,25 @@ export const db = {
       }
 
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+      const weekStart = new Date(todayStart);
+      weekStart.setDate(weekStart.getDate() - 6);
+
+      const monthStart = new Date(todayStart);
+      monthStart.setDate(monthStart.getDate() - 29);
+
+      const trendStart = new Date(todayStart);
+      trendStart.setDate(trendStart.getDate() - 89);
+
+      const todayStartIso = todayStart.toISOString();
+      const tomorrowStartIso = tomorrowStart.toISOString();
+      const weekStartIso = weekStart.toISOString();
+      const monthStartIso = monthStart.toISOString();
+      const trendStartIso = trendStart.toISOString();
 
       const [
         pageViewsResult,
@@ -1445,25 +1539,25 @@ export const db = {
         radioShowsResult
       ] = await Promise.all([
         supabase.from('page_views').select('id', { count: 'exact', head: true }),
-        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', today),
-        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
-        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', monthAgo),
+        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', todayStartIso).lt('created_at', tomorrowStartIso),
+        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', weekStartIso).lt('created_at', tomorrowStartIso),
+        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
         supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'release_click'),
         supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'event_ticket_click'),
         supabase.from('radio_sessions').select('duration_seconds'),
         supabase
           .from('radio_tracks')
           .select('played_at, created_at')
-          .or(`played_at.gte.${today},created_at.gte.${today}`),
+          .or(`played_at.gte.${todayStartIso},created_at.gte.${todayStartIso}`),
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
         supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }).eq('active', true),
         supabase.from('contacts').select('id', { count: 'exact', head: true }),
         supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('status', 'new'),
         supabase.from('events').select('rsvp_count'),
-        supabase.from('page_views').select('page_path').gte('created_at', monthAgo),
-        supabase.from('analytics_events').select('entity_id, entity_name').eq('event_type', 'release_click').gte('created_at', monthAgo),
-        supabase.from('analytics_events').select('entity_id, entity_name, metadata').eq('event_type', 'event_ticket_click').gte('created_at', monthAgo),
-        supabase.from('page_views').select('referrer').gte('created_at', monthAgo).not('referrer', 'is', null),
+        supabase.from('page_views').select('page_path').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
+        supabase.from('analytics_events').select('entity_id, entity_name').eq('event_type', 'release_click').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
+        supabase.from('analytics_events').select('entity_id, entity_name, metadata').eq('event_type', 'event_ticket_click').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
+        supabase.from('page_views').select('referrer').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso).not('referrer', 'is', null),
         supabase.from('radio_sessions').select('show_id, duration_seconds')
       ]);
 
@@ -1472,7 +1566,7 @@ export const db = {
       const totalRadioDuration = (radioSessionsResult.data || []).reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
       const totalRsvps = (eventsResult.data || []).reduce((acc, e) => acc + (e.rsvp_count || 0), 0);
 
-      const todayStartForRadio = new Date(today);
+      const todayStartForRadio = new Date(todayStartIso);
       const radioTracksToday = (radioTracksTodayResult.data || []).filter((t: any) => {
         const dtRaw = t.played_at || t.created_at;
         if (!dtRaw) return false;
@@ -1559,31 +1653,40 @@ export const db = {
       const pageViewsByDayData = await supabase
         .from('page_views')
         .select('created_at')
-        .gte('created_at', monthAgo)
+        .gte('created_at', trendStartIso)
         .order('created_at', { ascending: true });
 
       const dailyCounts: Record<string, number> = {};
       (pageViewsByDayData.data || []).forEach(pv => {
-        const date = new Date(pv.created_at).toISOString().split('T')[0];
-        if (date) {
-          dailyCounts[date] = (dailyCounts[date] || 0) + 1;
-        }
+        if (!pv.created_at) return;
+        const dt = new Date(pv.created_at);
+        if (Number.isNaN(dt.getTime())) return;
+        const date = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+        dailyCounts[date] = (dailyCounts[date] || 0) + 1;
       });
       const pageViewsByDay = Object.entries(dailyCounts)
         .map(([date, views]) => ({ date, views }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      const todayStart = new Date(today);
+      const pageViewsTodayData = await supabase
+        .from('page_views')
+        .select('created_at')
+        .gte('created_at', todayStartIso)
+        .lt('created_at', tomorrowStartIso)
+        .order('created_at', { ascending: true });
+
+      const todayStartForViews = new Date(todayStartIso);
       const hourlyCounts: Record<number, number> = {};
       for (let hour = 0; hour < 24; hour++) {
         hourlyCounts[hour] = 0;
       }
-      (pageViewsByDayData.data || []).forEach((pv) => {
+      (pageViewsTodayData.data || []).forEach((pv) => {
+        if (!pv.created_at) return;
         const dt = new Date(pv.created_at);
-        if (dt >= todayStart) {
-          const hour = dt.getHours();
-          hourlyCounts[hour] = (hourlyCounts[hour] || 0) + 1;
-        }
+        if (Number.isNaN(dt.getTime())) return;
+        if (dt < todayStartForViews) return;
+        const hour = dt.getHours();
+        hourlyCounts[hour] = (hourlyCounts[hour] || 0) + 1;
       });
       const pageViewsTodayByHour = Array.from({ length: 24 }, (_, hour) => ({
         hour,
@@ -1594,6 +1697,12 @@ export const db = {
       nowHourStart.setMinutes(0, 0, 0);
       const last24Start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
+      const pageViewsLast24Data = await supabase
+        .from('page_views')
+        .select('created_at')
+        .gte('created_at', last24Start.toISOString())
+        .order('created_at', { ascending: true });
+
       const last24HourStarts = Array.from({ length: 24 }, (_, idx) =>
         new Date(nowHourStart.getTime() - (23 - idx) * 60 * 60 * 1000)
       );
@@ -1602,15 +1711,16 @@ export const db = {
         last24Counts[dt.toISOString()] = 0;
       });
 
-      (pageViewsByDayData.data || []).forEach((pv) => {
+      (pageViewsLast24Data.data || []).forEach((pv) => {
+        if (!pv.created_at) return;
         const dt = new Date(pv.created_at);
-        if (dt >= last24Start) {
-          const bucket = new Date(dt);
-          bucket.setMinutes(0, 0, 0);
-          const key = bucket.toISOString();
-          if (key in last24Counts) {
-            last24Counts[key] = (last24Counts[key] || 0) + 1;
-          }
+        if (Number.isNaN(dt.getTime())) return;
+        if (dt < last24Start) return;
+        const bucket = new Date(dt);
+        bucket.setMinutes(0, 0, 0);
+        const key = bucket.toISOString();
+        if (key in last24Counts) {
+          last24Counts[key] = (last24Counts[key] || 0) + 1;
         }
       });
 

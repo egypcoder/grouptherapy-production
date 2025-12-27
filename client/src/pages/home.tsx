@@ -357,8 +357,8 @@ const defaultStatsItems: StatItem[] = [
 
 export default function HomePage() {
   const { data: releases } = useQuery<Release[]>({
-    queryKey: ["releases", "published", { limit: 24 }],
-    queryFn: () => db.releases.getPublishedPage(24, 0),
+    queryKey: ["releases", "published", { limit: 10 }],
+    queryFn: () => db.releases.getPublishedPage(10, 0),
   });
 
   const { data: events } = useQuery<Event[]>({

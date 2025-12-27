@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
@@ -26,7 +25,6 @@ export default function AdminTours() {
     imageUrl: "",
     startDate: "",
     endDate: "",
-    currency: "USD",
     published: true,
   });
 
@@ -92,7 +90,6 @@ export default function AdminTours() {
       imageUrl: tour.imageUrl || "",
       startDate: startDateStr,
       endDate: endDateStr,
-      currency: tour.currency || "USD",
       published: tour.published ?? true,
     });
     setIsDialogOpen(true);
@@ -114,7 +111,6 @@ export default function AdminTours() {
       imageUrl: formData.imageUrl,
       startDate: formData.startDate,
       endDate: formData.endDate || undefined,
-      currency: formData.currency || "USD",
       published: formData.published,
     };
     
@@ -134,7 +130,6 @@ export default function AdminTours() {
       imageUrl: "",
       startDate: "",
       endDate: "",
-      currency: "USD",
       published: true,
     });
   };
@@ -181,9 +176,6 @@ export default function AdminTours() {
                       <Calendar className="h-3 w-3" />
                       {tour.startDate && new Date(tour.startDate).toLocaleDateString()}
                       {tour.endDate && ` - ${new Date(tour.endDate).toLocaleDateString()}`}
-                      {tour.currency && (
-                        <Badge variant="outline" className="ml-2">{tour.currency}</Badge>
-                      )}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -257,24 +249,6 @@ export default function AdminTours() {
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                   />
                 </div>
-              </div>
-              <div>
-                <Label htmlFor="currency">Currency</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) => setFormData({ ...formData, currency: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                    <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                    <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div>
                 <Label htmlFor="description">Description</Label>

@@ -319,6 +319,7 @@ CREATE TABLE IF NOT EXISTS site_settings (
   contact_phone_subtext TEXT,
   contact_address TEXT,
   contact_address_subtext TEXT,
+  social_links JSONB,
   hero_background_image TEXT,
   hero_background_video TEXT,
   hero_background_type TEXT DEFAULT 'image',

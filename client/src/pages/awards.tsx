@@ -70,7 +70,7 @@ export default function AwardsPage() {
   });
 
   const { data: periodsWithEntries = [], isLoading } = useQuery<PeriodWithEntries[]>({
-    queryKey: ["awardPeriodsWithEntries", periods],
+    queryKey: ["awardPeriodsWithEntries", periods, categories],
     queryFn: async () => {
       const result: PeriodWithEntries[] = [];
       for (const period of periods) {
@@ -80,7 +80,7 @@ export default function AwardsPage() {
       }
       return result;
     },
-    enabled: periods.length > 0,
+    enabled: periods.length > 0 && categories.length > 0,
   });
 
   const activeVotingPeriods = periodsWithEntries.filter((p) => p.votingOpen);
@@ -361,7 +361,7 @@ function VotingPeriodSection({
             >
               <AwardEntryCard
                 entry={entry}
-                categoryType={period.category?.type || "artist"}
+                categoryType={period.category?.type}
                 onVote={() => onVote(entry.id, period.id)}
                 hasVoted={hasVoted}
                 isVoting={isVoting}
