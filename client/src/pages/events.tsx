@@ -99,7 +99,7 @@ export default function EventsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: events = [], isLoading } = useQuery<Event[]>({
-    queryKey: ["events"],
+    queryKey: ["events", "all"],
     queryFn: () => db.events.getAll(),
   });
 

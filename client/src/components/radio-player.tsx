@@ -323,7 +323,7 @@ export function GlobalRadioPlayer() {
       >
         <motion.div
           className={cn(
-            "flex items-center gap-2 p-2 rounded-full bg-card/95 backdrop-blur-lg border border-border shadow-lg",
+            "flex items-center gap-2 p-2 rounded-full bg-card/85 backdrop-blur-lg border border-border shadow-lg",
             isPlaying && "ring-2 ring-primary/50",
           )}
           whileHover={{ scale: 1.05 }}
@@ -374,7 +374,7 @@ export function GlobalRadioPlayer() {
         animate={{ y: 0 }}
         exit={{ y: 100 }}
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border transition-all duration-300",
+          "fixed bottom-0 left-0 right-0 z-50 bg-card/85 backdrop-blur-lg border-t border-border transition-all duration-300",
           isExpanded
             ? "h-auto pb-[env(safe-area-inset-bottom)]"
             : "h-[calc(5rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)]",

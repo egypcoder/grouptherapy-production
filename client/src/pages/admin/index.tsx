@@ -51,6 +51,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import favicon from "/favicon.png";
 
 const sidebarLinks = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -72,7 +73,6 @@ const sidebarLinks = [
   { href: "/admin/settings", icon: Settings, label: "Settings" },
   { href: "/admin/seo-settings", icon: Globe, label: "SEO Settings" },
 ];
-
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -102,9 +102,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         >
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
-        <span className="font-semibold text-sm">
-          GROUP<span className="text-primary">THERAPY</span>
-        </span>
+         <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
+            <img src={favicon} className="w-6 h-6" alt="GroupTherapy Records Logo" />
+              <span className="text-md font-semibold tracking-tight">
+                GROUP<span className="text-primary transition-colors">THERAPY</span>
+              </span>
+            </Link>
         <ThemeToggle />
       </header>
 
@@ -117,8 +120,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="flex flex-col h-full">
           <div className="h-14 flex items-center px-5 border-b border-sidebar-border/50">
-            <Link href="/" className="font-semibold">
-              GROUP<span className="text-primary">THERAPY</span>
+                 <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
+            <img src={favicon} className="w-6 h-6" alt="GroupTherapy Records Logo" />
+              <span className="text-md font-semibold tracking-tight">
+                GROUP<span className="text-primary transition-colors">THERAPY</span>
+              </span>
             </Link>
           </div>
 

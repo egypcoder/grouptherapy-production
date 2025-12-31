@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Search,
@@ -270,6 +270,7 @@ export default function AdminReleases() {
   const [, setLocation] = useLocation();
   const [matchNew] = useRoute("/admin/releases/new");
   const [matchEdit, params] = useRoute("/admin/releases/:id");
+  const PAGE_SIZE = 10;
   
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -281,6 +282,8 @@ export default function AdminReleases() {
   const [quickAddLink, setQuickAddLink] = useState("");
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const [metadataFetched, setMetadataFetched] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const { data: releases } = useQuery<Release[]>({
     queryKey: ["releases"],
@@ -404,6 +407,31 @@ export default function AdminReleases() {
       (filterStatus === "draft" && !release.published);
     return matchesSearch && matchesType && matchesStatus;
   });
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [PAGE_SIZE, searchQuery, filterType, filterStatus]);
+
+  const hasMore = visibleCount < filteredReleases.length;
+  const pagedReleases = filteredReleases.slice(0, visibleCount);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    if (!hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (!first?.isIntersecting) return;
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredReleases.length));
+      },
+      { rootMargin: "800px 0px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [PAGE_SIZE, filteredReleases.length, hasMore]);
 
   const togglePublishMutation = useMutation({
     mutationFn: async ({ id, published }: { id: string; published: boolean }) => {
@@ -565,7 +593,7 @@ export default function AdminReleases() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReleases.map((release) => (
+                {pagedReleases.map((release) => (
                   <TableRow 
                     key={release.id} 
                     data-testid={`row-release-${release.id}`}
@@ -668,6 +696,12 @@ export default function AdminReleases() {
             {filteredReleases.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 No releases found
+              </div>
+            )}
+
+            {filteredReleases.length > 0 && (
+              <div className="px-4 py-6">
+                <div ref={sentinelRef} className="h-10 w-full" />
               </div>
             )}
           </CardContent>

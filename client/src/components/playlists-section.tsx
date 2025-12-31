@@ -197,36 +197,10 @@ export function PlaylistsSection({
         <DialogContent className="sm:max-w-3xl sm:p-0 sm:overflow-hidden sm:bg-card sm:border-border/50 sm:rounded-2xl">
           {selectedPlaylist && (
             <>
-              <div className="p-6 border-b border-border/50">
-                <div className="flex items-start gap-4">
-                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-muted flex-shrink-0">
-                    {selectedPlaylist.coverUrl ? (
-                      <img
-                        src={resolveMediaUrl(selectedPlaylist.coverUrl, "thumb")}
-                        alt={selectedPlaylist.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-muted">
-                        <Music2 className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-lg font-semibold mb-1">{selectedPlaylist.title}</h2>
-                    <p className="text-sm text-muted-foreground mb-2">{selectedPlaylist.description}</p>
-                    {selectedPlaylist.trackCount && selectedPlaylist.trackCount > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <ListMusic className="h-3 w-3" />
-                        {selectedPlaylist.trackCount} tracks
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+           
               <div className="p-6">
                 {getSpotifyEmbedId(selectedPlaylist) ? (
-                  <SpotifyEmbed playlistId={getSpotifyEmbedId(selectedPlaylist)!} />
+                  <SpotifyEmbed playlistId={getSpotifyEmbedId(selectedPlaylist)!}/>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <Music2 className="h-10 w-10 mx-auto mb-4 opacity-50" />

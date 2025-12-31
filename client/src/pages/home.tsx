@@ -362,7 +362,7 @@ export default function HomePage() {
   });
 
   const { data: events } = useQuery<Event[]>({
-    queryKey: ["events"],
+    queryKey: ["events", "upcoming"],
     queryFn: () => db.events.getUpcoming(),
   });
 

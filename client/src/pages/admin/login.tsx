@@ -57,11 +57,12 @@ export default function AdminLogin() {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-10">
-          <Link href="/">
-            <span className="inline-block text-2xl font-semibold tracking-tight mb-2 cursor-pointer">
-              GROUP<span className="text-primary">THERAPY</span>
-            </span>
-          </Link>
+             <Link href="/" className="flex items-center gap-1 group mb-2" data-testid="link-logo">
+            <img src="favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
+              <span className="text-lg lg:text-xl font-semibold tracking-tight">
+                GROUP<span className="text-primary transition-colors">THERAPY</span>
+              </span>
+            </Link>
           <p className="text-muted-foreground">Sign in to the admin panel</p>
         </div>
 
