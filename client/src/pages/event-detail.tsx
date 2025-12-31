@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import { EventCountdown } from "@/components/event-countdown";
+import { resolveMediaUrl } from "@/lib/media";
 
 function getCurrencySymbol(currency?: string): string {
   const symbols: Record<string, string> = {
@@ -130,7 +131,7 @@ export default function EventDetailPage() {
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
           {event.imageUrl ? (
             <motion.img
-              src={event.imageUrl}
+              src={resolveMediaUrl(event.imageUrl, "full")}
               alt={event.title}
               className="w-full h-full object-cover"
               style={{ y: heroImageY, scale: heroImageScale }}
@@ -230,7 +231,7 @@ export default function EventDetailPage() {
                         <div className="w-16 h-16 rounded-full overflow-hidden bg-muted flex-shrink-0">
                           {artist.imageUrl ? (
                             <img
-                              src={artist.imageUrl}
+                              src={resolveMediaUrl(artist.imageUrl, "thumb")}
                               alt={artist.name}
                               className="w-full h-full object-cover"
                             />

@@ -13,6 +13,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Artist } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function AdminArtists() {
   const { toast } = useToast();
@@ -159,7 +160,7 @@ export default function AdminArtists() {
                 <div className="flex items-start gap-4">
                   <div className="w-16 h-16 bg-muted rounded-full overflow-hidden flex-shrink-0">
                     {artist.imageUrl ? (
-                      <img src={artist.imageUrl} alt={artist.name} className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(artist.imageUrl, "thumb")} alt={artist.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <User className="h-6 w-6 text-muted-foreground" />

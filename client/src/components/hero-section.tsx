@@ -4,6 +4,7 @@ import { Play, ArrowRight, Radio } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useRadio } from "@/lib/radio-context";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface HeroProps {
   heroTag?: string;
@@ -56,7 +57,7 @@ export function HeroSection({
           </video>
         ) : backgroundImage ? (
           <motion.img
-            src={backgroundImage}
+            src={resolveMediaUrl(backgroundImage, "full")}
             alt=""
             className="w-full h-full object-cover"
             initial={{ scale: 1.1 }}
@@ -278,7 +279,7 @@ export function PageHero({
       <div className="absolute inset-0 z-0">
         {backgroundImage ? (
           <motion.img
-            src={backgroundImage}
+            src={resolveMediaUrl(backgroundImage, "hero")}
             alt=""
             className="w-full h-full object-cover"
             style={{ y: imageY, scale: imageScale }}

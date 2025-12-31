@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { db, Playlist } from "@/lib/database";
 import { cn } from "@/lib/utils";
 import { SiSpotify } from "react-icons/si";
+import { resolveMediaUrl } from "@/lib/media";
 
 function extractSpotifyId(url: string): string | null {
   if (!url) return null;
@@ -93,48 +94,7 @@ export default function PlaylistsPage() {
         <DialogContent className="sm:max-w-4xl sm:p-0 sm:overflow-hidden sm:bg-transparent sm:border-none">
           {selectedPlaylist && (
             <div className="bg-card rounded-xl overflow-hidden">
-              <div className="p-6 border-b">
-                <div className="flex items-start gap-4">
-                  <div className="w-20 h-20 sm:w-32 sm:h-32 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                    {selectedPlaylist.coverUrl ? (
-                      <img
-                        src={selectedPlaylist.coverUrl}
-                        alt={selectedPlaylist.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-muted">
-                        <Music2 className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl sm:text-2xl font-bold mb-2 truncate">{selectedPlaylist.title}</h2>
-                    <p className="text-muted-foreground mb-3">{selectedPlaylist.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {selectedPlaylist.trackCount && selectedPlaylist.trackCount > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Music2 className="h-4 w-4" />
-                          {selectedPlaylist.trackCount} tracks
-                        </span>
-                      )}
-                      {selectedPlaylist.spotifyUrl && (
-                        <a
-                          href={selectedPlaylist.spotifyUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[#1DB954] hover:underline"
-                        >
-                          <SiSpotify className="h-4 w-4" />
-                          Open in Spotify
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="p-6">
+              <div className="p-6 mt-2">
                 {getSpotifyEmbedId(selectedPlaylist) ? (
                   <SpotifyEmbed 
                     playlistId={getSpotifyEmbedId(selectedPlaylist)!} 
@@ -175,7 +135,7 @@ function PlaylistCard({ playlist, onPlay }: { playlist: Playlist; onPlay: () => 
       <div className="relative aspect-square rounded-lg overflow-hidden bg-muted mb-3 shadow-lg">
         {playlist.coverUrl ? (
           <img
-            src={playlist.coverUrl}
+            src={resolveMediaUrl(playlist.coverUrl, "card")}
             alt={playlist.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

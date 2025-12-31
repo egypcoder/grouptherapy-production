@@ -36,9 +36,9 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MetricsChart } from "@/components/metrics-chart";
 import { AnalyticsChart } from "@/components/analytics-chart";
-import { cn } from "@/lib/utils";
+import { cn, parseDateTime } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { queryFunctions } from "@/lib/queryClient";
+import { queryClient, queryFunctions } from "@/lib/queryClient";
 import type { Release, Event, Post, RadioShow, Artist, Contact, AnalyticsSummary, NewsletterSubscriber, Playlist, Video as VideoType, Career, Tour } from "@/lib/database";
 import { useAuth } from "@/lib/auth-context";
 import { subscribeToListenerCount } from "@/lib/firebase";
@@ -345,7 +345,7 @@ export default function AdminDashboard() {
   }, []);
 
   const publishedReleases = releases.filter(r => r.published);
-  const upcomingEvents = events.filter(e => new Date(e.date) > new Date());
+  const upcomingEvents = events.filter(e => (parseDateTime(e.date)?.getTime() ?? 0) > Date.now());
   const activeSubscribers = newsletterSubs.filter(s => s.active);
 
   const primaryStats = [
@@ -411,7 +411,7 @@ export default function AdminDashboard() {
     { 
       label: "Radio Listeners", 
       value: liveListenerCount !== null ? liveListenerCount.toString() : "-", 
-      change: `${analytics?.radioTracksToday || 0} tracks total today`, 
+      change: `Listeners Now`, 
       icon: Radio,
       color: "text-red-500",
       href: "/admin/radio"

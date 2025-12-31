@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
+import { resolveMediaUrl } from "@/lib/media";
 
 function renderMarkdown(markdown: string): string {
   if (!markdown) return "";
@@ -165,7 +166,7 @@ export default function PostDetailPage() {
         {post.coverUrl && (
           <div className="absolute inset-0 h-[50vh] overflow-hidden">
             <motion.img
-              src={post.coverUrl}
+              src={resolveMediaUrl(post.coverUrl, "full")}
               alt={post.title}
               className="w-full h-full object-cover"
               style={{ y: heroImageY, scale: heroImageScale }}
@@ -284,7 +285,7 @@ export default function PostDetailPage() {
                           {relatedPost.coverUrl && (
                             <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
                               <img
-                                src={relatedPost.coverUrl}
+                                src={resolveMediaUrl(relatedPost.coverUrl, "thumb")}
                                 alt={relatedPost.title}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               />

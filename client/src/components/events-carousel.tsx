@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight, MapPin, Calendar, ArrowRight } from "lucide-
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { isEventPast, parseDateTime } from "@/lib/utils";
 import type { Event } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 // Helper function to get currency symbol
 function getCurrencySymbol(currency?: string): string {
@@ -35,8 +36,8 @@ export function EventsCarousel({
   
   // Sort by date (upcoming first)
   const sortedEvents = [...featuredEvents].sort((a, b) => {
-    const dateA = a.date ? new Date(a.date).getTime() : 0;
-    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    const dateA = parseDateTime(a.date)?.getTime() ?? 0;
+    const dateB = parseDateTime(b.date)?.getTime() ?? 0;
     return dateA - dateB;
   });
 
@@ -128,7 +129,7 @@ export function EventsCarousel({
         >
           {sortedEvents.map((event, index) => {
             const { month, day } = formatDate(event.date!);
-            const isPast = event.date ? new Date(event.date) < new Date() : false;
+            const isPast = isEventPast(event);
 
             return (
               <motion.div
@@ -146,7 +147,7 @@ export function EventsCarousel({
                     <div className="relative aspect-[16/10] overflow-hidden">
                       {event.imageUrl ? (
                         <img
-                          src={event.imageUrl}
+                          src={resolveMediaUrl(event.imageUrl, "card")}
                           alt={event.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           loading="lazy"

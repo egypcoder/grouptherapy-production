@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { SiSpotify, SiInstagram, SiSoundcloud } from "react-icons/si";
 import { useQuery } from "@tanstack/react-query";
 import { db, type Artist } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function ArtistsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,7 +157,7 @@ function ArtistCard({ artist, featured = false }: { artist: Artist; featured?: b
         <div className="relative aspect-[4/5] overflow-hidden">
           {artist.imageUrl ? (
             <img
-              src={artist.imageUrl}
+              src={resolveMediaUrl(artist.imageUrl, featured ? "card" : "thumb")}
               alt={artist.name}
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               loading="lazy"
@@ -217,7 +218,7 @@ function ArtistCard({ artist, featured = false }: { artist: Artist; featured?: b
         <div className="relative aspect-square rounded-md overflow-hidden bg-muted mb-3">
           {artist.imageUrl ? (
             <img
-              src={artist.imageUrl}
+              src={resolveMediaUrl(artist.imageUrl, "thumb")}
               alt={artist.name}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"

@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { SiSpotify, SiInstagram, SiSoundcloud } from "react-icons/si";
 import type { Artist } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface FeaturedArtistsProps {
   artists?: Artist[];
@@ -65,7 +66,7 @@ function ArtistCard({ artist }: { artist: Artist }) {
       <div className="relative aspect-[4/5] overflow-hidden">
         {artist.imageUrl ? (
           <motion.img
-            src={artist.imageUrl}
+            src={resolveMediaUrl(artist.imageUrl, "card")}
             alt={artist.name}
             className="w-full h-full object-cover"
             loading="lazy"

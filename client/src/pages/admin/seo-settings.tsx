@@ -10,6 +10,7 @@ import { AdminLayout } from "./index";
 import { db, SeoSettings } from "@/lib/database";
 import { Loader2, Save, Code, Image, FileText, Globe, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { resolveMediaUrl } from "@/lib/media";
 
 const defaultOrganizationSchema = {
   "@type": "Organization",
@@ -301,7 +302,7 @@ export default function AdminSeoSettings() {
                   {formData.ogImage && (
                     <div className="border rounded-lg overflow-hidden">
                       <img
-                        src={formData.ogImage}
+                        src={resolveMediaUrl(formData.ogImage, "card")}
                         alt="OG Preview"
                         className="w-full h-32 object-cover"
                         onError={(e) => {
@@ -325,7 +326,7 @@ export default function AdminSeoSettings() {
                   {formData.twitterImage && (
                     <div className="border rounded-lg overflow-hidden">
                       <img
-                        src={formData.twitterImage}
+                        src={resolveMediaUrl(formData.twitterImage, "card")}
                         alt="Twitter Preview"
                         className="w-full h-32 object-cover"
                         onError={(e) => {

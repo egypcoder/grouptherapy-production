@@ -15,6 +15,7 @@ import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Testimonial } from "@/lib/database";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function AdminTestimonials() {
   const { toast } = useToast();
@@ -204,7 +205,7 @@ export default function AdminTestimonials() {
                     </div>
                     
                     <Avatar className="h-14 w-14 flex-shrink-0">
-                      <AvatarImage src={testimonial.avatarUrl} alt={testimonial.name} />
+                      <AvatarImage src={resolveMediaUrl(testimonial.avatarUrl, "thumb")} alt={testimonial.name} />
                       <AvatarFallback className="bg-primary/20 text-primary text-lg">
                         {testimonial.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>

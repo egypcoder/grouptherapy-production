@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Quote, Star } from "lucide-react";
+import { Star } from "lucide-react";
+import { resolveMediaUrl } from "../lib/media";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 import { queryFunctions } from "@/lib/queryClient";
@@ -84,7 +85,7 @@ export function TestimonialsSection() {
                 
                 <div className="flex items-center gap-3 pt-4 border-t border-border/50">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={getAvatarUrl(testimonial)} alt={testimonial.name} />
+                    <AvatarImage src={(testimonial as any).avatarUrl ? resolveMediaUrl((testimonial as any).avatarUrl, "thumb") : undefined} alt={testimonial.name} />
                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                       {testimonial.name.split(' ').map((n) => n.charAt(0)).join('')}
                     </AvatarFallback>

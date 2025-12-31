@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { uploadImage, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface ImageUploadProps {
   onUploadComplete: (url: string) => void;
@@ -106,7 +107,7 @@ export function ImageUpload({
         <Card className="relative overflow-hidden">
           <div className={cn("relative", aspectClasses[aspectRatio])}>
             <img
-              src={preview}
+              src={preview.startsWith("data:") ? preview : resolveMediaUrl(preview, "card")}
               alt="Preview"
               className="w-full h-full object-cover"
             />

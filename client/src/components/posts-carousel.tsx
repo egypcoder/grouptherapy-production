@@ -4,6 +4,7 @@ import { ArrowRight, Radio } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import type { Post } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface PostsCarouselProps {
   posts: Post[];
@@ -99,7 +100,7 @@ function PostCard({ post }: { post: Post }) {
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {post.coverUrl ? (
             <img
-              src={post.coverUrl}
+              src={resolveMediaUrl(post.coverUrl, "card")}
               alt={post.title}
               className="w-full h-full object-cover"
               loading="lazy"

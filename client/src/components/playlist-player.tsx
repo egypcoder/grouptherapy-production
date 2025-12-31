@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/media";
 
 export interface PlaylistTrack {
   id: string;
@@ -341,7 +342,7 @@ export function PlaylistPlayer({
                     <div className="w-10 h-10 rounded overflow-hidden bg-muted flex-shrink-0">
                       {track.coverUrl ? (
                         <img
-                          src={track.coverUrl}
+                          src={resolveMediaUrl(track.coverUrl, "thumb")}
                           alt={track.title}
                           className="w-full h-full object-cover"
                         />

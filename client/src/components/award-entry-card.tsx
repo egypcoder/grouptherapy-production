@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { AwardEntry } from "@/lib/database";
 import { useRadio } from "@/lib/radio-context";
+import { resolveMediaUrl } from "@/lib/media";
 
 const STOP_PREVIEW_EVENT = "gt:stop-preview-audio";
 
@@ -117,7 +118,7 @@ export function AwardEntryCard({
       <div className="relative aspect-square overflow-hidden bg-muted">
         {imageUrl ? (
           <img
-            src={imageUrl}
+            src={resolveMediaUrl(imageUrl, "card")}
             alt={title || "Entry"}
             className="w-full h-full object-cover"
             loading="lazy"

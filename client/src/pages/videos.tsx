@@ -10,6 +10,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { db, type Video } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 const categories = [
   { value: "all", label: "All Videos" },
@@ -241,7 +242,7 @@ function VideoCard({
       <div className={`relative overflow-hidden rounded-md bg-muted mb-3 ${featured ? "aspect-video" : "aspect-video"}`}>
         {video.thumbnailUrl ? (
           <img
-            src={video.thumbnailUrl}
+            src={resolveMediaUrl(video.thumbnailUrl, featured ? "hero" : "card")}
             alt={video.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

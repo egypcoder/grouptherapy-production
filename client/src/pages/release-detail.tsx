@@ -9,6 +9,7 @@ import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { resolveMediaUrl } from "@/lib/media";
 
 function trackReleaseClick(release: Release, platform: string) {
   db.analytics.trackEvent('release_click', {
@@ -100,7 +101,7 @@ export default function ReleaseDetailPage() {
         <div className="absolute inset-0 h-[50vh] overflow-hidden">
           {release.coverUrl ? (
             <motion.img
-              src={release.coverUrl}
+              src={resolveMediaUrl(release.coverUrl, "full")}
               alt={release.title}
               className="w-full h-full object-cover blur-xl scale-110"
               style={{ y: heroImageY, scale: heroImageScale }}
@@ -128,7 +129,7 @@ export default function ReleaseDetailPage() {
               <div className="w-64 h-64 md:w-80 md:h-80 rounded-lg overflow-hidden shadow-2xl flex-shrink-0">
                 {release.coverUrl ? (
                   <img
-                    src={release.coverUrl}
+                    src={resolveMediaUrl(release.coverUrl, "hero")}
                     alt={release.title}
                     className="w-full h-full object-cover"
                   />
@@ -234,7 +235,7 @@ export default function ReleaseDetailPage() {
                 <div className="w-20 h-20 rounded-full overflow-hidden bg-muted flex-shrink-0">
                   {artist.imageUrl ? (
                     <img
-                      src={artist.imageUrl}
+                      src={resolveMediaUrl(artist.imageUrl, "thumb")}
                       alt={artist.name}
                       className="w-full h-full object-cover"
                     />

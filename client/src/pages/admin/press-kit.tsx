@@ -13,6 +13,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, PressAsset } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function AdminPressKit() {
   const { toast } = useToast();
@@ -147,7 +148,7 @@ export default function AdminPressKit() {
                 <div className="flex items-start gap-3">
                   <div className="w-16 h-16 bg-muted rounded flex items-center justify-center flex-shrink-0">
                     {asset.fileUrl && asset.category === "logo" ? (
-                      <img src={asset.fileUrl} alt={asset.title} className="w-full h-full object-contain p-1" />
+                      <img src={resolveMediaUrl(asset.fileUrl, "thumb")} alt={asset.title} className="w-full h-full object-contain p-1" />
                     ) : (
                       <FileText className="h-8 w-8 text-muted-foreground" />
                     )}

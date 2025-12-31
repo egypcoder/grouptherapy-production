@@ -95,9 +95,10 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 md:px-8 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-6">
           <div className="lg:col-span-4">
-            <Link href="/" className="inline-block mb-5" data-testid="link-footer-logo">
-              <span className="text-lg font-semibold tracking-tight">
-                GROUP<span className="text-primary">THERAPY</span>
+              <Link href="/" className="flex items-center gap-1 group mb-2" data-testid="link-logo">
+            <img src="favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
+              <span className="text-lg lg:text-xl font-semibold tracking-tight">
+                GROUP<span className="text-primary transition-colors">THERAPY</span>
               </span>
             </Link>
             <p className="text-xs text-muted-foreground mb-6 max-w-sm leading-relaxed">

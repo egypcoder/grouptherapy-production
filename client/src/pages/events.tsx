@@ -10,11 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { cn, isEventPast, parseDateTime } from "@/lib/utils";
 import { useRoute, useLocation } from "wouter";
 import { queryFunctions } from "@/lib/queryClient";
 import { db, type Event } from "@/lib/database";
 import { EventCountdown } from "@/components/event-countdown";
+import { resolveMediaUrl } from "@/lib/media";
 
 // Helper function to get currency symbol
 function getCurrencySymbol(currency?: string): string {
@@ -103,11 +104,13 @@ export default function EventsPage() {
   });
 
   const filteredEvents = events.filter((event) => {
+    if (!event.published) return false;
+
     const matchesSearch =
       event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.city?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const isPast = event.date ? new Date(event.date) < new Date() : false;
+    const isPast = isEventPast(event);
     
     if (filter === "upcoming") return matchesSearch && !isPast;
     if (filter === "past") return matchesSearch && isPast;
@@ -115,8 +118,8 @@ export default function EventsPage() {
   });
 
   const sortedEvents = [...filteredEvents].sort((a, b) => {
-    const dateA = new Date(a.date || 0).getTime();
-    const dateB = new Date(b.date || 0).getTime();
+    const dateA = parseDateTime(a.date)?.getTime() ?? 0;
+    const dateB = parseDateTime(b.date)?.getTime() ?? 0;
     return filter === "past" ? dateB - dateA : dateA - dateB;
   });
 
@@ -197,7 +200,7 @@ export default function EventsPage() {
               <div key={i} className="h-96 bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : events.length === 0 ? (
+        ) : sortedEvents.length === 0 ? (
           <div className="text-center py-16">
             <CalendarIcon className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-2xl font-semibold mb-2">No Events Announced</h2>
@@ -256,8 +259,8 @@ function EventCard({
   formatDate: (date: Date | string | null) => string;
   formatTime: (date: Date | string | null) => string;
 }) {
-  const isPast = event.date ? new Date(event.date) < new Date() : false;
-  const dateObj = event.date ? new Date(event.date) : null;
+  const isPast = isEventPast(event);
+  const dateObj = parseDateTime(event.date);
   const month = dateObj ? dateObj.toLocaleDateString("en-US", { month: "short" }) : "";
   const day = dateObj ? dateObj.getDate().toString() : "";
 
@@ -273,7 +276,7 @@ function EventCard({
         <div className="relative aspect-[16/10] overflow-hidden">
           {event.imageUrl ? (
             <img
-              src={event.imageUrl}
+              src={resolveMediaUrl(event.imageUrl, "card")}
               alt={event.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
@@ -380,8 +383,8 @@ function EventListCard({
   formatDate: (date: Date | string | null) => string;
   formatTime: (date: Date | string | null) => string;
 }) {
-  const isPast = event.date ? new Date(event.date) < new Date() : false;
-  const dateObj = event.date ? new Date(event.date) : null;
+  const isPast = isEventPast(event);
+  const dateObj = parseDateTime(event.date);
 
   return (
     <Link href={`/events/${event.slug || event.id}`}>
@@ -396,7 +399,7 @@ function EventListCard({
           <div className="relative w-full sm:w-48 aspect-video sm:aspect-square flex-shrink-0 overflow-hidden">
             {event.imageUrl ? (
               <img
-                src={event.imageUrl}
+                src={resolveMediaUrl(event.imageUrl, "card")}
                 alt={event.title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />

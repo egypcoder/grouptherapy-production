@@ -3,6 +3,7 @@ import { MapPin, Calendar, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { isEventPast, parseDateTime } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 
 interface EventsSectionProps {
@@ -59,8 +60,8 @@ export function EventsSection({
         // Sort by featured first, then by date
         if (a.featured && !b.featured) return -1;
         if (!a.featured && b.featured) return 1;
-        const dateA = a.date ? new Date(a.date).getTime() : 0;
-        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        const dateA = parseDateTime(a.date)?.getTime() ?? 0;
+        const dateB = parseDateTime(b.date)?.getTime() ?? 0;
         return dateA - dateB;
       })
     : demoEvents;
@@ -78,7 +79,7 @@ export function EventsSection({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {displayEvents.slice(0, 3).map((event, index) => {
         const { month, day } = formatDate(event.date!);
-        const isPast = event.date ? new Date(event.date) < new Date() : false;
+        const isPast = isEventPast(event);
 
         return (
           <motion.div

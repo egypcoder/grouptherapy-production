@@ -12,6 +12,7 @@ import { RadioChat } from "@/components/radio-chat";
 import { useRadio } from "@/lib/radio-context";
 import { db, RadioShow} from "@/lib/database";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/media";
 
 const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -126,7 +127,7 @@ export default function RadioPage() {
                 <div className="relative z-10 w-32 h-32 lg:w-48 lg:h-48 rounded-full bg-card shadow-xl flex items-center justify-center">
                   {currentTrack?.coverUrl ? (
                     <img
-                      src={currentTrack.coverUrl}
+                      src={resolveMediaUrl(currentTrack.coverUrl, "card")}
                       alt=""
                       className="w-full h-full rounded-full object-cover"
                     />
@@ -323,7 +324,7 @@ function ShowCard({ show, isSchedule = false }: { show: RadioShow; isSchedule?: 
         <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
           {show.hostImageUrl ? (
             <img
-              src={show.hostImageUrl}
+              src={resolveMediaUrl(show.hostImageUrl, "thumb")}
               alt={show.hostName}
               className="w-full h-full object-cover"
             />
@@ -445,7 +446,7 @@ function StreamCard({ track, onPlay }: { track: RadioTrack; onPlay: () => void }
         <div className="relative w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
           {displayCover ? (
             <img
-              src={displayCover}
+              src={resolveMediaUrl(displayCover, "thumb")}
               alt={displayTitle}
               className="w-full h-full object-cover"
             />

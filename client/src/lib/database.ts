@@ -616,7 +616,19 @@ export const db = {
     },
     async getUpcoming(): Promise<Event[]> {
       if (!supabase) return [];
-      const { data, error } = await supabase.from('events').select('*').eq('published', true).gte('date', new Date().toISOString()).order('featured', { ascending: false }).order('date', { ascending: true });
+
+      // `events.date` / `events.end_date` are stored as Postgres `timestamp` (no timezone).
+      // Passing an ISO string with a timezone (e.g. trailing `Z`) can cause Postgres to
+      // timezone-convert during casts, resulting in incorrect filtering.
+      const nowStr = new Date().toISOString().replace('Z', '');
+
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('published', true)
+        .or(`end_date.gte.${nowStr},and(end_date.is.null,date.gte.${nowStr})`)
+        .order('featured', { ascending: false })
+        .order('date', { ascending: true });
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },

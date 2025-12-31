@@ -8,7 +8,9 @@ import { db, type Artist, type Release, type Event } from "@/lib/database";
 import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseDateTime } from "@/lib/utils";
 import { format } from "date-fns";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function ArtistDetailPage() {
   const [match, params] = useRoute("/artists/:slug");
@@ -50,7 +52,7 @@ export default function ArtistDetailPage() {
   ) ?? [];
 
   const artistEvents = allEvents?.filter(
-    (e) => e.published && e.artistIds?.includes(artist?.id ?? "") && new Date(e.date) >= new Date(),
+    (e) => e.published && e.artistIds?.includes(artist?.id ?? "") && (parseDateTime(e.date)?.getTime() ?? 0) >= Date.now(),
   ) ?? [];
 
   const artistSchema = artist
@@ -105,7 +107,7 @@ export default function ArtistDetailPage() {
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
           {artist.imageUrl ? (
             <motion.img
-              src={artist.imageUrl}
+              src={resolveMediaUrl(artist.imageUrl, "full")}
               alt={artist.name}
               className="w-full h-full object-cover"
               style={{ y: heroImageY, scale: heroImageScale }}
@@ -133,7 +135,7 @@ export default function ArtistDetailPage() {
               <div className="w-48 h-48 md:w-64 md:h-64 rounded-lg overflow-hidden shadow-2xl flex-shrink-0">
                 {artist.imageUrl ? (
                   <img
-                    src={artist.imageUrl}
+                    src={resolveMediaUrl(artist.imageUrl, "card")}
                     alt={artist.name}
                     className="w-full h-full object-cover"
                   />
@@ -237,7 +239,7 @@ export default function ArtistDetailPage() {
                   <div className="relative aspect-square rounded-lg overflow-hidden bg-muted mb-3">
                     {release.coverUrl ? (
                       <img
-                        src={release.coverUrl}
+                        src={resolveMediaUrl(release.coverUrl, "card")}
                         alt={release.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         loading="lazy"
@@ -299,7 +301,7 @@ export default function ArtistDetailPage() {
                   {event.imageUrl && (
                     <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
                       <img
-                        src={event.imageUrl}
+                        src={resolveMediaUrl(event.imageUrl, "thumb")}
                         alt={event.title}
                         className="w-full h-full object-cover"
                       />

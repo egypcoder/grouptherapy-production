@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
+import { isEventPast } from "@/lib/utils";
 import { db, Event } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 
@@ -330,7 +331,7 @@ export default function AdminEvents() {
               </TableHeader>
               <TableBody>
                 {filteredEvents.map((event) => {
-                  const isPast = event.date ? new Date(event.date) < new Date() : false;
+                  const isPast = isEventPast(event);
                   return (
                     <TableRow 
                       key={event.id} 

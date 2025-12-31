@@ -22,6 +22,7 @@ import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, RadioShow, RadioTrack } from "@/lib/database";
 import { subscribeToListenerCount } from "@/lib/firebase";
+import { resolveMediaUrl } from "@/lib/media";
 
 const daysOfWeek = [
   { value: 0, label: "Sunday" },
@@ -612,7 +613,7 @@ export default function AdminRadioShows() {
                                     <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 bg-muted rounded-full overflow-hidden flex-shrink-0">
                                         {show.hostImageUrl ? (
-                                          <img src={show.hostImageUrl} alt={show.hostName} className="w-full h-full object-cover" />
+                                          <img src={resolveMediaUrl(show.hostImageUrl, "thumb")} alt={show.hostName} className="w-full h-full object-cover" />
                                         ) : (
                                           <div className="w-full h-full flex items-center justify-center">
                                             <Radio className="h-4 w-4 text-muted-foreground" />
@@ -696,7 +697,7 @@ export default function AdminRadioShows() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-muted rounded overflow-hidden flex-shrink-0">
                           {track.coverUrl ? (
-                            <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
+                            <img src={resolveMediaUrl(track.coverUrl, "thumb")} alt={track.title} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Music className="h-4 w-4 text-muted-foreground" />
@@ -742,14 +743,14 @@ export default function AdminRadioShows() {
         </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogContent className="w-full max-w-full sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">
                 {editingShow ? "Edit Show" : "Add New Show"}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-6 py-4">
+            <div className="space-y-6 py-4 w-full min-w-0 overflow-x-hidden">
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <CloudDownload className="h-4 w-4 text-orange-500" />

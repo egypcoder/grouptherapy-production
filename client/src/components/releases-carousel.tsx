@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Release } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface ReleasesCarouselProps {
   releases: Release[];
@@ -202,7 +203,7 @@ function ReleaseCard({ release }: { release: Release }) {
         <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted mb-4">
           {release.coverUrl ? (
             <img
-              src={release.coverUrl}
+              src={resolveMediaUrl(release.coverUrl, "card")}
               alt={release.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"

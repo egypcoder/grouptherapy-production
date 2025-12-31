@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Plus,
@@ -51,6 +52,7 @@ import { AudioUpload } from "@/components/audio-upload";
 import { AdminLayout } from "./index";
 import { queryClient } from "@/lib/queryClient";
 import { db, AwardCategory, AwardPeriod, AwardEntry } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface CategoryFormData {
   name: string;
@@ -340,10 +342,23 @@ export default function AdminAwards() {
 
   const [orderedEntries, setOrderedEntries] = useState<AwardEntry[]>([]);
   const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null);
+  const orderedEntriesRef = useRef<AwardEntry[]>([]);
+  const dragStateRef = useRef<{ entryId: string | null; didMove: boolean }>({
+    entryId: null,
+    didMove: false,
+  });
+  const bodyStyleRef = useRef<{ userSelect: string; cursor: string }>({ userSelect: "", cursor: "" });
 
   useEffect(() => {
     setOrderedEntries(entries);
+    orderedEntriesRef.current = entries;
+    dragStateRef.current = { entryId: null, didMove: false };
+    setDraggingEntryId(null);
   }, [entries]);
+
+  useEffect(() => {
+    orderedEntriesRef.current = orderedEntries;
+  }, [orderedEntries]);
 
   const saveCategoryMutation = useMutation({
     mutationFn: async (data: { isEdit: boolean; id?: string; category: Partial<AwardCategory> }) => {
@@ -370,6 +385,73 @@ export default function AdminAwards() {
       });
     },
   });
+
+  const moveEntry = (fromEntryId: string, toEntryId: string) => {
+    setOrderedEntries((prev) => {
+      const fromIndex = prev.findIndex((e) => e.id === fromEntryId);
+      const toIndex = prev.findIndex((e) => e.id === toEntryId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+      if (fromIndex === toIndex) return prev;
+
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      orderedEntriesRef.current = next;
+      return next;
+    });
+  };
+
+  const handleEntryPointerDown = (event: ReactPointerEvent<HTMLButtonElement>, entryId: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    dragStateRef.current = { entryId, didMove: false };
+    setDraggingEntryId(entryId);
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    bodyStyleRef.current = {
+      userSelect: document.body.style.userSelect,
+      cursor: document.body.style.cursor,
+    };
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "grabbing";
+  };
+
+  const handleEntryPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const draggingId = dragStateRef.current.entryId;
+    if (!draggingId) return;
+
+    const target = document.elementFromPoint(event.clientX, event.clientY);
+    const rowEl = target?.closest?.('[data-entry-row="true"]') as HTMLElement | null;
+    const overId = rowEl?.getAttribute("data-entry-id");
+    if (!overId) return;
+    if (overId === draggingId) return;
+
+    dragStateRef.current.didMove = true;
+    moveEntry(draggingId, overId);
+  };
+
+  const handleEntryPointerEnd = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const didMove = dragStateRef.current.didMove;
+    dragStateRef.current = { entryId: null, didMove: false };
+    setDraggingEntryId(null);
+
+    document.body.style.userSelect = bodyStyleRef.current.userSelect;
+    document.body.style.cursor = bodyStyleRef.current.cursor;
+
+    if (didMove) {
+      updateEntryOrderMutation.mutate(orderedEntriesRef.current);
+    }
+  };
 
   const deleteCategoryMutation = useMutation({
     mutationFn: (id: string) => db.awards.categories.delete(id),
@@ -948,39 +1030,26 @@ export default function AdminAwards() {
                       {orderedEntries.map((entry) => (
                         <TableRow 
                           key={entry.id} 
+                          data-entry-row="true"
+                          data-entry-id={entry.id}
                           className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => handleEditEntry(entry)}
-                          onDragOver={(e) => {
-                            if (!draggingEntryId) return;
-                            e.preventDefault();
-                          }}
-                          onDrop={() => {
-                            if (!draggingEntryId) return;
-                            if (draggingEntryId === entry.id) return;
-
-                            const fromIndex = orderedEntries.findIndex((e) => e.id === draggingEntryId);
-                            const toIndex = orderedEntries.findIndex((e) => e.id === entry.id);
-                            if (fromIndex < 0 || toIndex < 0) return;
-
-                            const next = [...orderedEntries];
-                            const [moved] = next.splice(fromIndex, 1);
-                            if (!moved) return;
-                            next.splice(toIndex, 0, moved);
-                            setOrderedEntries(next);
-                            setDraggingEntryId(null);
-                            updateEntryOrderMutation.mutate(next);
+                          onClick={() => {
+                            if (draggingEntryId) return;
+                            handleEditEntry(entry);
                           }}
                         >
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              draggable
-                              onDragStart={(e) => {
+                              onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
-                                setDraggingEntryId(entry.id);
                               }}
-                              onDragEnd={() => setDraggingEntryId(null)}
-                              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                              onPointerDown={(e) => handleEntryPointerDown(e, entry.id)}
+                              onPointerMove={handleEntryPointerMove}
+                              onPointerUp={handleEntryPointerEnd}
+                              onPointerCancel={handleEntryPointerEnd}
+                              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 touch-none"
                               aria-label="Drag to reorder"
                             >
                               <GripVertical className="h-4 w-4" />
@@ -990,7 +1059,7 @@ export default function AdminAwards() {
                             <div className="flex items-center gap-3">
                               {(entry.artistImageUrl || entry.trackCoverUrl) && (
                                 <img
-                                  src={entry.artistImageUrl || entry.trackCoverUrl}
+                                  src={resolveMediaUrl(entry.artistImageUrl || entry.trackCoverUrl, "thumb")}
                                   alt=""
                                   className="w-10 h-10 rounded-full object-cover"
                                 />
@@ -1059,9 +1128,9 @@ export default function AdminAwards() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {entries.length === 0 && (
+                      {orderedEntries.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                             No nominees found for this period. Add some to get started.
                           </TableCell>
                         </TableRow>

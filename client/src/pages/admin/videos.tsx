@@ -15,6 +15,7 @@ import { VideoUpload } from "@/components/video-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Video } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 type VideoPlatform = "youtube" | "vimeo" | null;
 
@@ -273,7 +274,7 @@ export default function AdminVideos() {
                 <div className="flex items-start gap-4">
                   <div className="w-32 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
                     {video.thumbnailUrl ? (
-                      <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(video.thumbnailUrl, "card")} alt={video.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <VideoIcon className="h-8 w-8 text-muted-foreground" />
@@ -406,7 +407,7 @@ export default function AdminVideos() {
                 {isAutoFilled && formData.thumbnailUrl && (
                   <div className="mb-2">
                     <img 
-                      src={formData.thumbnailUrl} 
+                      src={resolveMediaUrl(formData.thumbnailUrl, "card")} 
                       alt="Video thumbnail" 
                       className="w-full max-w-xs rounded border"
                     />

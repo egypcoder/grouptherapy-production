@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { resolveMediaUrl } from "../lib/media";
 import { MapPin, Calendar, Ticket, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export default function ToursPage() {
                           {tour.imageUrl && (
                             <div className="h-48 overflow-hidden">
                               <img
-                                src={tour.imageUrl}
+                                src={resolveMediaUrl(tour.imageUrl, "card")}
                                 alt={tour.title}
                                 className="w-full h-full object-cover"
                               />

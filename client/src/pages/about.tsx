@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { resolveMediaUrl } from "../lib/media";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
@@ -299,7 +300,7 @@ function TeamCard({ member }: { member: TeamMember }) {
       <div className="relative aspect-square overflow-hidden">
         {member.imageUrl ? (
           <img
-            src={member.imageUrl}
+            src={resolveMediaUrl(member.imageUrl, "thumb")}
             alt={member.name}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />

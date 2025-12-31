@@ -25,6 +25,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { useRadio } from "@/lib/radio-context";
 import { Link } from "wouter";
+import { resolveMediaUrl } from "@/lib/media";
 
 function formatTime(seconds: number): string {
   if (!seconds || !isFinite(seconds)) return "0:00";
@@ -404,7 +405,7 @@ export function GlobalRadioPlayer() {
               >
                 {currentTrack?.coverUrl ? (
                   <img
-                    src={currentTrack.coverUrl}
+                    src={resolveMediaUrl(currentTrack.coverUrl, "thumb")}
                     alt={currentTrack.title}
                     className="w-full h-full object-cover"
                   />
@@ -679,7 +680,7 @@ export function GlobalRadioPlayer() {
                             <div className="relative w-10 h-10 rounded-md bg-muted overflow-hidden">
                               {track.coverUrl ? (
                                 <img
-                                  src={track.coverUrl}
+                                  src={resolveMediaUrl(track.coverUrl, "thumb")}
                                   alt=""
                                   className="w-full h-full object-cover"
                                 />

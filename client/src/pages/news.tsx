@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { db, type Post } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 const categories = ["all", "news", "releases", "events", "interviews", "features"];
 
@@ -198,7 +199,7 @@ function FeaturedPostCard({
         <div className="relative aspect-[16/9] overflow-hidden bg-muted">
           {post.coverUrl ? (
             <img
-              src={post.coverUrl}
+              src={resolveMediaUrl(post.coverUrl, "hero")}
               alt={post.title}
               className="w-full h-full object-cover"
               loading="lazy"
@@ -252,7 +253,7 @@ function PostCard({
         <div className="relative aspect-[3/2] overflow-hidden bg-muted">
           {post.coverUrl ? (
             <img
-              src={post.coverUrl}
+              src={resolveMediaUrl(post.coverUrl, "card")}
               alt={post.title}
               className="w-full h-full object-cover"
               loading="lazy"

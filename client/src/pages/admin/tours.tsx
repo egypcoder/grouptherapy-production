@@ -13,6 +13,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Tour, TourDate } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 export default function AdminTours() {
   const { toast } = useToast();
@@ -159,7 +160,7 @@ export default function AdminTours() {
                 <div className="flex items-start gap-4">
                   <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                     {tour.imageUrl ? (
-                      <img src={tour.imageUrl} alt={tour.title} className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(tour.imageUrl, "thumb")} alt={tour.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <MapPin className="h-8 w-8 text-muted-foreground" />

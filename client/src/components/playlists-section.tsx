@@ -6,6 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SiSpotify } from "react-icons/si";
 import { SpotifyEmbed } from "@/components/playlist-player";
 import type { Playlist } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface PlaylistsSectionProps {
   playlists?: Playlist[];
@@ -201,7 +202,7 @@ export function PlaylistsSection({
                   <div className="w-20 h-20 rounded-xl overflow-hidden bg-muted flex-shrink-0">
                     {selectedPlaylist.coverUrl ? (
                       <img
-                        src={selectedPlaylist.coverUrl}
+                        src={resolveMediaUrl(selectedPlaylist.coverUrl, "thumb")}
                         alt={selectedPlaylist.title}
                         className="w-full h-full object-cover"
                       />
@@ -253,7 +254,7 @@ function PlaylistCard({ playlist, onPlay }: { playlist: Playlist; onPlay: () => 
       <div className="relative aspect-square rounded-2xl overflow-hidden bg-muted mb-3">
         {playlist.coverUrl ? (
           <img
-            src={playlist.coverUrl}
+            src={resolveMediaUrl(playlist.coverUrl, "card")}
             alt={playlist.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

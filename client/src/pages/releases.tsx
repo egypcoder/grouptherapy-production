@@ -11,8 +11,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { db, type Release } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
-const releaseTypes = ["All", "Album", "EP", "Single"];
+const releaseTypes = [
+  { label: "All", value: "all" },
+  { label: "Album", value: "album" },
+  { label: "EP", value: "ep" },
+  { label: "Single", value: "single" },
+] as const;
 
 function getMonthKey(value: string | Date | null | undefined): string {
   if (!value) return "unknown";
@@ -33,7 +39,7 @@ function getMonthLabel(monthKey: string): string {
 function MonthSpacer({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 my-8">
-      <span className="ml-0 sm:-ml-20 text-sm font-semibold tracking-widest text-primary uppercase whitespace-nowrap">
+      <span className="sm:ml-0 md:ml-0 lg:-ml-20 text-sm font-semibold tracking-widest text-primary uppercase whitespace-nowrap">
         {label}
       </span>
       <div className="h-px flex-1 bg-border/70" />
@@ -44,7 +50,7 @@ function MonthSpacer({ label }: { label: string }) {
 export default function ReleasesPage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState("All");
+  const [selectedType, setSelectedType] = useState<(typeof releaseTypes)[number]["value"]>("all");
   const [sortBy, setSortBy] = useState("newest");
 
   const PAGE_SIZE = 48;
@@ -177,14 +183,17 @@ export default function ReleasesPage() {
 
           <div className="flex flex-wrap gap-2">
             {/* Type Filter */}
-            <Select value={selectedType} onValueChange={setSelectedType}>
+            <Select
+              value={selectedType}
+              onValueChange={(value) => setSelectedType(value as (typeof releaseTypes)[number]["value"])}
+            >
               <SelectTrigger className="w-[120px]" data-testid="select-type">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
                 {releaseTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -337,7 +346,7 @@ function ReleaseGridCard({ release }: { release: Release }) {
         <div className="relative aspect-square rounded-md overflow-hidden bg-muted mb-3">
           {release.coverUrl ? (
             <img
-              src={release.coverUrl}
+              src={resolveMediaUrl(release.coverUrl, "card")}
               alt={release.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
@@ -398,7 +407,7 @@ function ReleaseListCard({ release }: { release: Release }) {
         <div className="relative w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
           {release.coverUrl ? (
             <img
-              src={release.coverUrl}
+              src={resolveMediaUrl(release.coverUrl, "thumb")}
               alt={release.title}
               className="w-full h-full object-cover"
             />

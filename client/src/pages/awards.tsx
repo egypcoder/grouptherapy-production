@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown } from "lucide-react";
+import { resolveMediaUrl } from "../lib/media";
 import { PageHero } from "@/components/hero-section";
 import { SEOHead } from "@/components/seo-head";
 import { Card, CardContent } from "@/components/ui/card";
@@ -398,7 +399,7 @@ function WinnerCard({
       <div className="relative aspect-square overflow-hidden">
         {imageUrl ? (
           <img
-            src={imageUrl}
+            src={resolveMediaUrl(imageUrl, "thumb")}
             alt={title || "Winner"}
             className="w-full h-full object-cover"
             loading="lazy"

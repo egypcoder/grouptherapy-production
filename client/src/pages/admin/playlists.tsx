@@ -13,6 +13,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Playlist } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 import {
   Table,
   TableBody,
@@ -422,7 +423,7 @@ export default function AdminPlaylists() {
                       <div className="w-10 h-10 rounded overflow-hidden bg-muted flex items-center justify-center">
                         {playlist.coverUrl ? (
                           <img
-                            src={playlist.coverUrl}
+                            src={resolveMediaUrl(playlist.coverUrl, "thumb")}
                             alt={playlist.title}
                             className="w-full h-full object-cover"
                           />

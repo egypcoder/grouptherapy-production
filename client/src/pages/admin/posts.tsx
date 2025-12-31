@@ -57,6 +57,7 @@ import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Post } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface PostFormData {
   title: string;
@@ -424,7 +425,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
                           {post.coverUrl ? (
-                            <img src={post.coverUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={resolveMediaUrl(post.coverUrl, "thumb")} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <FileText className="h-5 w-5 text-muted-foreground" />
                           )}

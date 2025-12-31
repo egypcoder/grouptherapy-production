@@ -54,6 +54,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, Release } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface FetchedMetadata {
   title: string;
@@ -575,7 +576,7 @@ export default function AdminReleases() {
                       <div className="w-10 h-10 rounded overflow-hidden bg-muted">
                         {release.coverUrl ? (
                           <img
-                            src={release.coverUrl}
+                            src={resolveMediaUrl(release.coverUrl, "thumb")}
                             alt={release.title}
                             className="w-full h-full object-cover"
                           />
