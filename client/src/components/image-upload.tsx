@@ -1,12 +1,12 @@
 
-import { useState, useRef } from "react";
-import { Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, Loader2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { uploadImage, isCloudinaryConfigured } from "@/lib/cloudinary";
+import { uploadImage } from "@/lib/cloudinary";
 import { resolveMediaUrl } from "@/lib/media";
 
 interface ImageUploadProps {
@@ -15,6 +15,7 @@ interface ImageUploadProps {
   folder?: string;
   currentImage?: string;
   aspectRatio?: "square" | "video" | "banner";
+  onUploadingChange?: (uploading: boolean) => void;
 }
 
 export function ImageUpload({
@@ -22,13 +23,18 @@ export function ImageUpload({
   bucket = "media",
   folder = "uploads",
   currentImage,
-  aspectRatio = "square"
+  aspectRatio = "square",
+  onUploadingChange,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setPreview(currentImage || null);
+  }, [currentImage]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,6 +59,7 @@ export function ImageUpload({
     }
 
     setUploading(true);
+    onUploadingChange?.(true);
     setUploadProgress(0);
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result as string);
@@ -75,6 +82,7 @@ export function ImageUpload({
       setPreview(null);
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
       setUploadProgress(0);
     }
   };
@@ -84,6 +92,9 @@ export function ImageUpload({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+
+    onUploadComplete("");
+    onUploadingChange?.(false);
   };
 
   const aspectClasses = {

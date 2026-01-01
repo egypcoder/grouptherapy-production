@@ -1101,12 +1101,29 @@ export const db = {
     async update(settings: Partial<SeoSettings>): Promise<SeoSettings> {
       if (!supabase) throw new Error('Database not configured');
       const { data: existing } = await supabase.from('seo_settings').select('id').limit(1).single();
+
+      const {
+        organizationSchema,
+        websiteSchema,
+        musicGroupSchema,
+        ...rest
+      } = settings;
+
+      const payload: any = {
+        ...convertCamelToSnake(rest),
+        updated_at: new Date().toISOString(),
+      };
+
+      if (organizationSchema !== undefined) payload.organization_schema = organizationSchema;
+      if (websiteSchema !== undefined) payload.website_schema = websiteSchema;
+      if (musicGroupSchema !== undefined) payload.music_group_schema = musicGroupSchema;
+
       if (existing) {
-        const { data, error } = await supabase.from('seo_settings').update({ ...convertCamelToSnake(settings), updated_at: new Date().toISOString() }).eq('id', existing.id).select().single();
+        const { data, error } = await supabase.from('seo_settings').update(payload).eq('id', existing.id).select().single();
         if (error) throw error;
         return convertSnakeToCamel(data);
       } else {
-        const { data, error } = await supabase.from('seo_settings').insert(convertCamelToSnake(settings)).select().single();
+        const { data, error } = await supabase.from('seo_settings').insert(payload).select().single();
         if (error) throw error;
         return convertSnakeToCamel(data);
       }

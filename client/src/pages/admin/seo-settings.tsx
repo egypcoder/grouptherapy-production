@@ -10,7 +10,7 @@ import { AdminLayout } from "./index";
 import { db, SeoSettings } from "@/lib/database";
 import { Loader2, Save, Code, Image, FileText, Globe, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { resolveMediaUrl } from "@/lib/media";
+import { ImageUpload } from "@/components/image-upload";
 
 const defaultOrganizationSchema = {
   "@type": "Organization",
@@ -41,6 +41,9 @@ const defaultMusicGroupSchema = {
 export default function AdminSeoSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [isOgUploading, setIsOgUploading] = useState(false);
+  const [isTwitterUploading, setIsTwitterUploading] = useState(false);
 
   const [formData, setFormData] = useState({
     defaultTitle: "",
@@ -156,6 +159,15 @@ export default function AdminSeoSettings() {
   }, [formData.organizationSchema, formData.websiteSchema, formData.musicGroupSchema]);
 
   const handleSave = () => {
+    if (isOgUploading || isTwitterUploading) {
+      toast({
+        title: "Upload in progress",
+        description: "Please wait for the image upload(s) to finish before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const hasJsonErrors = Object.values(jsonErrors).some(error => error !== "");
     if (hasJsonErrors) {
       toast({
@@ -218,7 +230,7 @@ export default function AdminSeoSettings() {
             <h1 className="text-3xl font-bold">SEO Settings</h1>
             <p className="text-muted-foreground">Manage search engine optimization and structured data</p>
           </div>
-          <Button onClick={handleSave} disabled={updateMutation.isPending}>
+          <Button onClick={handleSave} disabled={updateMutation.isPending || isOgUploading || isTwitterUploading}>
             {updateMutation.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -289,52 +301,44 @@ export default function AdminSeoSettings() {
             <CardContent className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-3">
-                  <Label htmlFor="ogImage">Open Graph Image URL</Label>
+                  <Label>Open Graph Image</Label>
+                  <ImageUpload
+                    currentImage={formData.ogImage}
+                    onUploadComplete={(url) => setFormData({ ...formData, ogImage: url })}
+                    onUploadingChange={setIsOgUploading}
+                    bucket="media"
+                    folder="seo"
+                    aspectRatio="video"
+                  />
                   <Input
                     id="ogImage"
-                    placeholder="https://example.com/og-image.jpg"
+                    placeholder="Or paste an image URL (https://...)"
                     value={formData.ogImage}
                     onChange={(e) => setFormData({ ...formData, ogImage: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
                     Recommended: 1200×630 pixels
                   </p>
-                  {formData.ogImage && (
-                    <div className="border rounded-lg overflow-hidden">
-                      <img
-                        src={resolveMediaUrl(formData.ogImage, "card")}
-                        alt="OG Preview"
-                        className="w-full h-32 object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
                 <div className="space-y-3">
-                  <Label htmlFor="twitterImage">Twitter Image URL</Label>
+                  <Label>Twitter Image</Label>
+                  <ImageUpload
+                    currentImage={formData.twitterImage}
+                    onUploadComplete={(url) => setFormData({ ...formData, twitterImage: url })}
+                    onUploadingChange={setIsTwitterUploading}
+                    bucket="media"
+                    folder="seo"
+                    aspectRatio="video"
+                  />
                   <Input
                     id="twitterImage"
-                    placeholder="https://example.com/twitter-image.jpg"
+                    placeholder="Or paste an image URL (https://...)"
                     value={formData.twitterImage}
                     onChange={(e) => setFormData({ ...formData, twitterImage: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
                     Recommended: 1200×600 pixels
                   </p>
-                  {formData.twitterImage && (
-                    <div className="border rounded-lg overflow-hidden">
-                      <img
-                        src={resolveMediaUrl(formData.twitterImage, "card")}
-                        alt="Twitter Preview"
-                        className="w-full h-32 object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
               <div>
@@ -474,7 +478,11 @@ export default function AdminSeoSettings() {
           </Card>
 
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={updateMutation.isPending} size="lg">
+            <Button
+              onClick={handleSave}
+              disabled={updateMutation.isPending || isOgUploading || isTwitterUploading}
+              size="lg"
+            >
               {updateMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (

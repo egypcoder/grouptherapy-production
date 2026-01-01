@@ -1,6 +1,9 @@
-
+ 
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { db } from "@/lib/database";
+import { resolveMediaUrl } from "@/lib/media";
 
 interface SEOProps {
   title?: string;
@@ -17,10 +20,10 @@ interface SEOProps {
 }
 
 export function SEOHead({
-  title = "GroupTherapy Records - Electronic Music Label",
-  description = "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.",
-  keywords = ["electronic music", "record label", "house music", "techno", "DJ", "music events", "music releases", "independent label"],
-  image = "https://grouptherapy.com/og-image.jpg",
+  title,
+  description,
+  keywords,
+  image,
   type = "website",
   author,
   publishedTime,
@@ -33,27 +36,51 @@ export function SEOHead({
   const fullUrl = `https://grouptherapy.com${location}`;
   const canonical = canonicalUrl || fullUrl;
 
+  const { data: seoSettings } = useQuery({
+    queryKey: ["seoSettings"],
+    queryFn: () => db.seoSettings.get(),
+  });
+
+  const resolvedTitle = title ?? seoSettings?.defaultTitle ?? "GroupTherapy Records - Electronic Music Label";
+  const resolvedDescription =
+    description ??
+    seoSettings?.defaultDescription ??
+    "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
+  const resolvedKeywords =
+    keywords ??
+    (seoSettings?.defaultKeywords?.length ? seoSettings.defaultKeywords : undefined) ??
+    ["electronic music", "record label", "house music", "techno", "DJ", "music events", "music releases", "independent label"];
+
+  const ogImageRaw = image ?? seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
+  const twitterImageRaw = image ?? seoSettings?.twitterImage ?? seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
+  const resolvedOgImage = resolveMediaUrl(ogImageRaw, "full");
+  const resolvedTwitterImage = resolveMediaUrl(twitterImageRaw, "full");
+
+  const twitterHandle = seoSettings?.twitterHandle?.trim() || undefined;
+  const resolvedStructuredData = structuredData ?? undefined;
+
   useEffect(() => {
     // Set document title
-    document.title = title;
+    document.title = resolvedTitle;
 
     // Update meta tags
-    updateMetaTag("description", description);
-    updateMetaTag("keywords", keywords.join(", "));
+    updateMetaTag("description", resolvedDescription);
+    updateMetaTag("keywords", resolvedKeywords.join(", "));
     
     // Open Graph tags
-    updateMetaTag("og:title", title, "property");
-    updateMetaTag("og:description", description, "property");
-    updateMetaTag("og:image", image, "property");
+    updateMetaTag("og:title", resolvedTitle, "property");
+    updateMetaTag("og:description", resolvedDescription, "property");
+    updateMetaTag("og:image", resolvedOgImage, "property");
     updateMetaTag("og:url", fullUrl, "property");
     updateMetaTag("og:type", type, "property");
     updateMetaTag("og:site_name", "GroupTherapy Records", "property");
 
     // Twitter Card tags
     updateMetaTag("twitter:card", "summary_large_image");
-    updateMetaTag("twitter:title", title);
-    updateMetaTag("twitter:description", description);
-    updateMetaTag("twitter:image", image);
+    updateMetaTag("twitter:title", resolvedTitle);
+    updateMetaTag("twitter:description", resolvedDescription);
+    updateMetaTag("twitter:image", resolvedTwitterImage);
+    if (twitterHandle) updateMetaTag("twitter:site", twitterHandle);
 
     // Additional SEO tags
     if (author) updateMetaTag("author", author);
@@ -71,10 +98,25 @@ export function SEOHead({
     }
 
     // Structured data
-    if (structuredData) {
-      updateStructuredData(structuredData);
+    if (resolvedStructuredData) {
+      updateStructuredData(resolvedStructuredData);
     }
-  }, [title, description, keywords, image, fullUrl, type, author, publishedTime, modifiedTime, canonical, noindex, structuredData]);
+  }, [
+    resolvedTitle,
+    resolvedDescription,
+    resolvedKeywords,
+    resolvedOgImage,
+    resolvedTwitterImage,
+    twitterHandle,
+    fullUrl,
+    type,
+    author,
+    publishedTime,
+    modifiedTime,
+    canonical,
+    noindex,
+    resolvedStructuredData,
+  ]);
 
   return null;
 }
