@@ -24,7 +24,8 @@ export function SEOHead({
   noindex = false,
 }: SEOProps) {
   const [location] = useLocation();
-  const fullUrl = `https://grouptherapy.com${location}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://grouptherapy.com";
+  const fullUrl = `${origin}${location}`;
   const canonical = canonicalUrl || fullUrl;
 
   const { data: seoSettings } = useQuery({
@@ -40,10 +41,16 @@ export function SEOHead({
     (seoSettings?.defaultKeywords?.length ? seoSettings.defaultKeywords : undefined) ??
     ["electronic music", "record label", "house music", "techno", "DJ", "music events", "music releases", "independent label"];
 
-  const ogImageRaw = seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
-  const twitterImageRaw = seoSettings?.twitterImage ?? seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
+  const ogImageRaw = seoSettings?.ogImage ?? `${origin}/favicon.png`;
+  const twitterImageRaw = seoSettings?.twitterImage ?? seoSettings?.ogImage ?? `${origin}/favicon.png`;
   const resolvedOgImage = resolveMediaUrl(ogImageRaw, "full");
   const resolvedTwitterImage = resolveMediaUrl(twitterImageRaw, "full");
+
+  const ogLogoRaw =
+    (seoSettings?.organizationSchema && typeof (seoSettings.organizationSchema as any).logo === "string"
+      ? ((seoSettings.organizationSchema as any).logo as string)
+      : undefined) ?? `${origin}/favicon.png`;
+  const resolvedOgLogo = resolveMediaUrl(ogLogoRaw, "full");
 
   const twitterHandle = seoSettings?.twitterHandle?.trim() || undefined;
 
@@ -68,6 +75,7 @@ export function SEOHead({
     updateMetaTag("og:title", resolvedTitle, "property");
     updateMetaTag("og:description", resolvedDescription, "property");
     updateMetaTag("og:image", resolvedOgImage, "property");
+    updateMetaTag("og:logo", resolvedOgLogo, "property");
     updateMetaTag("og:url", fullUrl, "property");
     updateMetaTag("og:type", "website", "property");
     updateMetaTag("og:site_name", "GroupTherapy Records", "property");
@@ -98,6 +106,7 @@ export function SEOHead({
     resolvedDescription,
     resolvedKeywords,
     resolvedOgImage,
+    resolvedOgLogo,
     resolvedTwitterImage,
     twitterHandle,
     fullUrl,

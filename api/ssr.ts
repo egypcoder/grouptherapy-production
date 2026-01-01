@@ -51,6 +51,7 @@ function buildSeoBlock(args: {
   canonical: string;
   ogUrl: string;
   ogImage: string;
+  ogLogo: string;
   twitterImage: string;
   twitterHandle?: string;
   structuredData?: object;
@@ -62,6 +63,7 @@ function buildSeoBlock(args: {
     canonical,
     ogUrl,
     ogImage,
+    ogLogo,
     twitterImage,
     twitterHandle,
     structuredData,
@@ -78,6 +80,7 @@ function buildSeoBlock(args: {
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(description)}" />
 <meta property="og:image" content="${escapeHtml(ogImage)}" />
+<meta property="og:logo" content="${escapeHtml(ogLogo)}" />
 <meta property="og:url" content="${escapeHtml(ogUrl)}" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escapeHtml(title)}" />
@@ -86,6 +89,12 @@ function buildSeoBlock(args: {
 ${twitterHandle ? `<meta name="twitter:site" content="${escapeHtml(twitterHandle)}" />` : ""}
 <link rel="canonical" href="${escapeHtml(canonical)}" />
 ${structuredData ? `<script id="structured-data" type="application/ld+json">${sd}</script>` : ""}`;
+}
+
+function extractOgLogo(data: any, baseUrl: string): string {
+  const candidate = data?.organization_schema?.logo;
+  if (typeof candidate === "string" && candidate.trim().length) return candidate;
+  return `${baseUrl}/favicon.png`;
 }
 
 export default async function handler(req: Req, res: Res) {
@@ -112,10 +121,32 @@ export default async function handler(req: Req, res: Res) {
     const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
+      const title = "GroupTherapy Records - Electronic Music Label";
+      const description =
+        "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
+      const keywords = "electronic music, record label, house music, techno";
+      const ogImage = `${baseUrl}/favicon.png`;
+      const ogLogo = `${baseUrl}/favicon.png`;
+      const twitterImage = `${baseUrl}/favicon.png`;
+
+      const seoBlock = buildSeoBlock({
+        title,
+        description,
+        keywords,
+        canonical,
+        ogUrl: canonical,
+        ogImage,
+        ogLogo,
+        twitterImage,
+      });
+
+      const cleaned = stripSeo(template);
+      const withSeo = cleaned.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n${seoBlock}\n`);
+
       res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
-      res.send(template);
+      res.send(withSeo);
       return;
     }
 
@@ -128,10 +159,32 @@ export default async function handler(req: Req, res: Res) {
       .maybeSingle();
 
     if (!data) {
+      const title = "GroupTherapy Records - Electronic Music Label";
+      const description =
+        "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
+      const keywords = "electronic music, record label, house music, techno";
+      const ogImage = `${baseUrl}/favicon.png`;
+      const ogLogo = `${baseUrl}/favicon.png`;
+      const twitterImage = `${baseUrl}/favicon.png`;
+
+      const seoBlock = buildSeoBlock({
+        title,
+        description,
+        keywords,
+        canonical,
+        ogUrl: canonical,
+        ogImage,
+        ogLogo,
+        twitterImage,
+      });
+
+      const cleaned = stripSeo(template);
+      const withSeo = cleaned.replace(/<head(\s[^>]*)?>/i, (m) => `${m}\n${seoBlock}\n`);
+
       res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
-      res.send(template);
+      res.send(withSeo);
       return;
     }
 
@@ -144,6 +197,7 @@ export default async function handler(req: Req, res: Res) {
       : "electronic music, record label, house music, techno";
 
     const ogImage = data.og_image || `${baseUrl}/favicon.png`;
+    const ogLogo = extractOgLogo(data, baseUrl);
     const twitterImage = data.twitter_image || data.og_image || `${baseUrl}/favicon.png`;
     const twitterHandle = data.twitter_handle || undefined;
 
@@ -162,6 +216,7 @@ export default async function handler(req: Req, res: Res) {
       canonical,
       ogUrl: canonical,
       ogImage,
+      ogLogo,
       twitterImage,
       twitterHandle,
       structuredData,

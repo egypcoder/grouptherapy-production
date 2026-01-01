@@ -9,8 +9,14 @@
     { "source": "/favicon.ico", "destination": "/favicon.ico" },
     { "source": "/favicon.png", "destination": "/favicon.png" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
-    { "source": "/robots.txt", "destination": "/robots.txt" },
-    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
+    { "source": "/robots.txt", "destination": "/api/robots" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/sitemap-pages.xml", "destination": "/api/sitemap-pages" },
+    { "source": "/sitemap-posts.xml", "destination": "/api/sitemap-posts" },
+    { "source": "/sitemap-releases.xml", "destination": "/api/sitemap-releases" },
+    { "source": "/sitemap-events.xml", "destination": "/api/sitemap-events" },
+    { "source": "/sitemap-artists.xml", "destination": "/api/sitemap-artists" },
+    { "source": "/sitemap-videos.xml", "destination": "/api/sitemap-videos" },
     { "source": "/(.*)", "destination": "/api/ssr?path=$1" }
   ],
   "headers": [
