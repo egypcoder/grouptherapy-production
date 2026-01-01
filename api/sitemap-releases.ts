@@ -49,14 +49,16 @@ function urlsetWithImages(
 }
 
 export default async function handler(req: Req, res: Res) {
-  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapy.com";
-  const proto = firstHeader(req.headers["x-forwarded-proto"]) || "https";
+  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapyeg.com";
+  const proto = firstHeader(req.headers["x-forwarded-proto"]) || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
     res.status(200);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
@@ -67,11 +69,13 @@ export default async function handler(req: Req, res: Res) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data, error } = await supabase
     .from("releases")
-    .select("slug, updated_at, created_at, cover_url, title, release_date")
+    .select("slug, created_at, cover_url, title, release_date")
     .eq("published", true)
     .order("release_date", { ascending: false });
 
   if (error || !data) {
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
     res.status(200);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
@@ -80,13 +84,15 @@ export default async function handler(req: Req, res: Res) {
   }
 
   const urls = data.map((r: any) => {
-    const lastmod = r.updated_at || r.release_date || r.created_at;
+    const lastmod = r.release_date || r.created_at;
     return {
       loc: `${baseUrl}/releases/${r.slug}`,
       lastmod: lastmod ? new Date(lastmod).toISOString() : undefined,
       images: r.cover_url ? [{ loc: r.cover_url, title: r.title || undefined }] : [],
     };
   });
+
+  if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
   res.status(200);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");

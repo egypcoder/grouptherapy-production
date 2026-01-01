@@ -35,8 +35,10 @@ function sitemapIndex(urls: { loc: string; lastmod?: string }[]): string {
 }
 
 export default async function handler(req: Req, res: Res) {
-  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapy.com";
-  const proto = firstHeader(req.headers["x-forwarded-proto"]) || "https";
+  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapyeg.com";
+  const proto =
+    firstHeader(req.headers["x-forwarded-proto"]) ||
+    (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
 
   const now = new Date().toISOString();
@@ -49,6 +51,8 @@ export default async function handler(req: Req, res: Res) {
     { loc: `${baseUrl}/sitemap-artists.xml`, lastmod: now },
     { loc: `${baseUrl}/sitemap-videos.xml`, lastmod: now },
   ]);
+
+  if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "6");
 
   res.status(200);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");

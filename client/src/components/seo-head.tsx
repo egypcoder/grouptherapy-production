@@ -1,5 +1,5 @@
  
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/lib/database";
@@ -24,7 +24,7 @@ export function SEOHead({
   noindex = false,
 }: SEOProps) {
   const [location] = useLocation();
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://grouptherapy.com";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://grouptherapyeg.com";
   const fullUrl = `${origin}${location}`;
   const canonical = canonicalUrl || fullUrl;
 
@@ -33,24 +33,161 @@ export function SEOHead({
     queryFn: () => db.seoSettings.get(),
   });
 
-  const resolvedTitle = seoSettings?.defaultTitle ?? "GroupTherapy Records - Electronic Music Label";
-  const resolvedDescription =
+  const siteName =
+    (seoSettings?.organizationSchema && typeof (seoSettings.organizationSchema as any).name === "string"
+      ? String((seoSettings.organizationSchema as any).name)
+      : undefined) ||
+    (seoSettings?.websiteSchema && typeof (seoSettings.websiteSchema as any).name === "string"
+      ? String((seoSettings.websiteSchema as any).name)
+      : undefined) ||
+    "GroupTherapy Records";
+
+  const route = useMemo(() => {
+    const loc = typeof location === "string" ? location : "/";
+    const clean = loc.split("?")[0] || "/";
+    const cleanNoHash = clean.split("#")[0] || "/";
+    const seg = cleanNoHash.split("/").filter(Boolean);
+    const first = seg[0] || "";
+    const second = seg[1] || "";
+
+    if (!first) return { kind: "home" as const };
+
+    if (first === "news" && second) return { kind: "post" as const, slug: second };
+    if (first === "releases" && second) return { kind: "release" as const, slug: second };
+    if (first === "events" && second) return { kind: "event" as const, slug: second };
+    if (first === "artists" && second) return { kind: "artist" as const, slug: second };
+
+    if (["terms", "privacy", "cookies"].includes(first)) return { kind: "static" as const, slug: first };
+
+    return { kind: "section" as const, slug: first };
+  }, [location]);
+
+  const { data: post } = useQuery({
+    queryKey: ["seoRoute", "post", (route as any).slug],
+    queryFn: () => db.posts.getBySlug((route as any).slug),
+    enabled: route.kind === "post" && !!(route as any).slug,
+  });
+
+  const { data: release } = useQuery({
+    queryKey: ["seoRoute", "release", (route as any).slug],
+    queryFn: () => db.releases.getBySlug((route as any).slug),
+    enabled: route.kind === "release" && !!(route as any).slug,
+  });
+
+  const { data: event } = useQuery({
+    queryKey: ["seoRoute", "event", (route as any).slug],
+    queryFn: () => db.events.getBySlug((route as any).slug),
+    enabled: route.kind === "event" && !!(route as any).slug,
+  });
+
+  const { data: artist } = useQuery({
+    queryKey: ["seoRoute", "artist", (route as any).slug],
+    queryFn: () => db.artists.getBySlug((route as any).slug),
+    enabled: route.kind === "artist" && !!(route as any).slug,
+  });
+
+  const { data: staticPage } = useQuery({
+    queryKey: ["seoRoute", "static", (route as any).slug],
+    queryFn: () => db.staticPages.getBySlug((route as any).slug),
+    enabled: route.kind === "static" && !!(route as any).slug,
+  });
+
+  const stripAndTruncate = (value: string | undefined, maxLen = 160): string | undefined => {
+    if (!value) return undefined;
+    const text = value
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!text) return undefined;
+    return text.length > maxLen ? `${text.slice(0, maxLen - 1).trim()}…` : text;
+  };
+
+  const sectionMeta = (slug: string | undefined): { title?: string; description?: string } => {
+    switch (slug) {
+      case "news":
+        return { title: `News | ${siteName}`, description: "Latest updates, announcements, and stories." };
+      case "releases":
+        return { title: `Releases | ${siteName}`, description: "Discover new and featured music releases." };
+      case "events":
+        return { title: `Events | ${siteName}`, description: "Upcoming shows, parties, and community gatherings." };
+      case "artists":
+        return { title: `Artists | ${siteName}`, description: "Explore our roster and featured artists." };
+      case "videos":
+        return { title: `Videos | ${siteName}`, description: "Watch music videos, live sets, and label content." };
+      case "playlists":
+        return { title: `Playlists | ${siteName}`, description: "Curated playlists and mixes." };
+      case "radio":
+        return { title: `Radio | ${siteName}`, description: "Live radio and recorded shows." };
+      case "about":
+        return { title: `About | ${siteName}`, description: "Learn more about the label and our mission." };
+      case "contact":
+        return { title: `Contact | ${siteName}`, description: "Get in touch with the team." };
+      case "press":
+        return { title: `Press | ${siteName}`, description: "Press resources, assets, and contact information." };
+      case "careers":
+        return { title: `Careers | ${siteName}`, description: "Open roles and opportunities." };
+      case "tours":
+        return { title: `Tours | ${siteName}`, description: "Tours and appearances." };
+      default:
+        return {};
+    }
+  };
+
+  const fallbackTitle = seoSettings?.defaultTitle ?? "GroupTherapy Records - Electronic Music Label";
+  const fallbackDescription =
     seoSettings?.defaultDescription ??
     "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
+
+  const routeTitle = (() => {
+    if (route.kind === "post" && post) return `${post.metaTitle || post.title} | ${siteName}`;
+    if (route.kind === "release" && release) return `${release.title} | ${siteName}`;
+    if (route.kind === "event" && event) return `${event.title} | ${siteName}`;
+    if (route.kind === "artist" && artist) return `${artist.name} | ${siteName}`;
+    if (route.kind === "static" && staticPage) return `${staticPage.title} | ${siteName}`;
+    if (route.kind === "home") return fallbackTitle;
+    if (route.kind === "section") return sectionMeta((route as any).slug).title;
+    return undefined;
+  })();
+
+  const routeDescription = (() => {
+    if (route.kind === "post" && post) return post.metaDescription || post.excerpt || stripAndTruncate(post.content);
+    if (route.kind === "release" && release)
+      return stripAndTruncate(`${release.artistName} • ${release.type}${release.releaseDate ? ` • ${release.releaseDate}` : ""}`, 160);
+    if (route.kind === "event" && event)
+      return event.description || stripAndTruncate(`${event.city}${event.country ? `, ${event.country}` : ""} • ${event.date}`);
+    if (route.kind === "artist" && artist) return stripAndTruncate(artist.bio) || fallbackDescription;
+    if (route.kind === "static" && staticPage) return stripAndTruncate(staticPage.content) || fallbackDescription;
+    if (route.kind === "section") return sectionMeta((route as any).slug).description;
+    return undefined;
+  })();
+
+  const resolvedTitle = routeTitle || fallbackTitle;
+  const resolvedDescription = routeDescription || fallbackDescription;
   const resolvedKeywords =
     (seoSettings?.defaultKeywords?.length ? seoSettings.defaultKeywords : undefined) ??
     ["electronic music", "record label", "house music", "techno", "DJ", "music events", "music releases", "independent label"];
 
-  const ogImageRaw = seoSettings?.ogImage ?? `${origin}/favicon.png`;
-  const twitterImageRaw = seoSettings?.twitterImage ?? seoSettings?.ogImage ?? `${origin}/favicon.png`;
+  const routeImage = (() => {
+    if (route.kind === "post" && post) return post.ogImageUrl || post.coverUrl;
+    if (route.kind === "release" && release) return release.coverUrl;
+    if (route.kind === "event" && event) return event.imageUrl;
+    if (route.kind === "artist" && artist) return artist.imageUrl;
+    return undefined;
+  })();
+
+  const ogImageRaw = routeImage || seoSettings?.ogImage || `${origin}/favicon.png`;
+  const twitterImageRaw = routeImage || seoSettings?.twitterImage || seoSettings?.ogImage || `${origin}/favicon.png`;
   const resolvedOgImage = resolveMediaUrl(ogImageRaw, "full");
   const resolvedTwitterImage = resolveMediaUrl(twitterImageRaw, "full");
 
-  const ogLogoRaw =
-    (seoSettings?.organizationSchema && typeof (seoSettings.organizationSchema as any).logo === "string"
-      ? ((seoSettings.organizationSchema as any).logo as string)
-      : undefined) ?? `${origin}/favicon.png`;
-  const resolvedOgLogo = resolveMediaUrl(ogLogoRaw, "full");
+  const ogType = (() => {
+    if (route.kind === "post") return "article";
+    if (route.kind === "release") return "music.album";
+    if (route.kind === "artist") return "profile";
+    return "website";
+  })();
+
+  const resolvedOgLogo = `${origin}/favicon.png`;
 
   const twitterHandle = seoSettings?.twitterHandle?.trim() || undefined;
 
@@ -77,8 +214,8 @@ export function SEOHead({
     updateMetaTag("og:image", resolvedOgImage, "property");
     updateMetaTag("og:logo", resolvedOgLogo, "property");
     updateMetaTag("og:url", fullUrl, "property");
-    updateMetaTag("og:type", "website", "property");
-    updateMetaTag("og:site_name", "GroupTherapy Records", "property");
+    updateMetaTag("og:type", ogType, "property");
+    updateMetaTag("og:site_name", siteName, "property");
 
     // Twitter Card tags
     updateMetaTag("twitter:card", "summary_large_image");
@@ -110,6 +247,8 @@ export function SEOHead({
     resolvedTwitterImage,
     twitterHandle,
     fullUrl,
+    ogType,
+    siteName,
     canonical,
     noindex,
     resolvedStructuredData,

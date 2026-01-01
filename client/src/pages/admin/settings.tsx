@@ -15,15 +15,12 @@ export default function AdminSettings() {
   const queryClient = useQueryClient();
 
   const [settings, setSettings] = useState({
-    siteName: "GroupTherapy Records",
-    tagline: "Electronic Music Label",
     email: "",
     emailSubtext: "",
     phone: "",
     phoneSubtext: "",
     address: "",
     addressSubtext: "",
-    description: "GroupTherapy is a cutting-edge electronic music label...",
     spotify: "",
     instagram: "",
     soundcloud: "",
@@ -137,30 +134,8 @@ export default function AdminSettings() {
               <CardDescription>Basic site information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="siteName">Site Name</Label>
-                <Input
-                  id="siteName"
-                  value={settings.siteName}
-                  onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="tagline">Tagline</Label>
-                <Input
-                  id="tagline"
-                  value={settings.tagline}
-                  onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  rows={4}
-                  value={settings.description}
-                  onChange={(e) => setSettings({ ...settings, description: e.target.value })}
-                />
+              <div className="text-sm text-muted-foreground">
+                Global site name/tagline and SEO descriptions are managed in the SEO Settings page.
               </div>
             </CardContent>
           </Card>

@@ -49,14 +49,16 @@ function urlsetWithImages(
 }
 
 export default async function handler(req: Req, res: Res) {
-  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapy.com";
-  const proto = firstHeader(req.headers["x-forwarded-proto"]) || "https";
+  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapyeg.com";
+  const proto = firstHeader(req.headers["x-forwarded-proto"]) || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
     res.status(200);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
@@ -67,11 +69,13 @@ export default async function handler(req: Req, res: Res) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data, error } = await supabase
     .from("posts")
-    .select("slug, updated_at, published_at, created_at, cover_url, og_image_url, title")
+    .select("slug, published_at, created_at, cover_url, og_image_url, title")
     .eq("published", true)
     .order("published_at", { ascending: false });
 
   if (error || !data) {
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
     res.status(200);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
@@ -80,7 +84,7 @@ export default async function handler(req: Req, res: Res) {
   }
 
   const urls = data.map((p: any) => {
-    const lastmod = p.updated_at || p.published_at || p.created_at;
+    const lastmod = p.published_at || p.created_at;
     const img = p.og_image_url || p.cover_url;
     return {
       loc: `${baseUrl}/news/${p.slug}`,
@@ -88,6 +92,8 @@ export default async function handler(req: Req, res: Res) {
       images: img ? [{ loc: img, title: p.title || undefined }] : [],
     };
   });
+
+  if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
   res.status(200);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");

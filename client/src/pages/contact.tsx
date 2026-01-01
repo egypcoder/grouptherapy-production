@@ -60,7 +60,7 @@ export default function ContactPage() {
     if (siteSettings) return siteSettings;
     if (isSiteSettingsLoading) return null;
     return {
-      contactEmail: "hello@grouptherapy.com",
+      contactEmail: "hello@grouptherapyeg.com",
       contactEmailSubtext: "",
       contactPhone: "",
       contactPhoneSubtext: "",

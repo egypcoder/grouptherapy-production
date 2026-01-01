@@ -71,14 +71,16 @@ function urlsetWithImagesAndVideos(
 }
 
 export default async function handler(req: Req, res: Res) {
-  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapy.com";
-  const proto = firstHeader(req.headers["x-forwarded-proto"]) || "https";
+  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapyeg.com";
+  const proto = firstHeader(req.headers["x-forwarded-proto"]) || (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
     res.status(200);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
@@ -89,11 +91,13 @@ export default async function handler(req: Req, res: Res) {
   const supabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data, error } = await supabase
     .from("videos")
-    .select("slug, created_at, updated_at, title, description, thumbnail_url, video_url, youtube_id")
+    .select("slug, created_at, title, description, thumbnail_url, video_url, youtube_id, vimeo_id")
     .eq("published", true)
     .order("created_at", { ascending: false });
 
   if (error || !data) {
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
+    if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
     res.status(200);
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
@@ -102,13 +106,17 @@ export default async function handler(req: Req, res: Res) {
   }
 
   const mostRecent = data
-    .map((v: any) => v.updated_at || v.created_at)
+    .map((v: any) => v.created_at)
     .filter(Boolean)
     .map((d: any) => new Date(d).getTime())
     .reduce((acc: number, ts: number) => (ts > acc ? ts : acc), 0);
 
   const videos = data.map((v: any) => {
-    const playerLoc = v.youtube_id ? `https://www.youtube.com/watch?v=${v.youtube_id}` : undefined;
+    const playerLoc = v.youtube_id
+      ? `https://www.youtube.com/watch?v=${v.youtube_id}`
+      : v.vimeo_id
+        ? `https://vimeo.com/${v.vimeo_id}`
+        : undefined;
     const contentLoc = v.video_url || undefined;
     return {
       thumbnailLoc: v.thumbnail_url || undefined,
@@ -136,6 +144,8 @@ export default async function handler(req: Req, res: Res) {
       videos,
     },
   ];
+
+  if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
   res.status(200);
   res.setHeader("Content-Type", "application/xml; charset=utf-8");

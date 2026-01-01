@@ -14,7 +14,7 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
 }
 
 export default async function handler(req: Req, res: Res) {
-  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapy.com";
+  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "grouptherapyeg.com";
   const proto = firstHeader(req.headers["x-forwarded-proto"]) || "https";
   const baseUrl = `${proto}://${host}`;
 
