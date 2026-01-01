@@ -8,7 +8,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PlaylistPlayer, SpotifyEmbed, type PlaylistTrack } from "@/components/playlist-player";
-import { SEOHead } from "@/components/seo-head";
 import { useQuery } from "@tanstack/react-query";
 import { db, Playlist } from "@/lib/database";
 import { cn } from "@/lib/utils";
@@ -41,12 +40,6 @@ export default function PlaylistsPage() {
 
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title="Curated Playlists | GroupTherapy Records"
-        description="Listen to handpicked playlists curated by GroupTherapy Records. Discover new music across genres."
-        keywords={["playlists", "curated music", "electronic music", "spotify playlists"]}
-      />
-
       <PageHero
         title="Curated Playlists"
         subtitle="Handpicked selections for every mood and moment"

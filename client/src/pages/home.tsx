@@ -9,7 +9,6 @@ import { AwardEntryCard } from "@/components/award-entry-card";
 import { FeaturedArtists } from "@/components/featured-artists";
 import { NewsletterSection } from "@/components/newsletter-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
@@ -420,34 +419,8 @@ export default function HomePage() {
     label: stat.label,
   }));
 
-  const organizationSchema = generateStructuredData("Organization", {
-    name: "GroupTherapy Records",
-    url: "https://grouptherapy.com",
-    logo: "https://grouptherapy.com/logo.png",
-    description:
-      "Independent electronic music record label pushing the boundaries of sound",
-    sameAs: [
-      "https://www.instagram.com/grouptherapyrecords",
-      "https://twitter.com/grouptherapy",
-      "https://www.youtube.com/grouptherapyrecords",
-    ],
-  });
-
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title="GroupTherapy Records | Electronic Music Label"
-        description="Discover the future of electronic music with GroupTherapy Records. Stream new releases, find upcoming events, listen to 24/7 radio."
-        keywords={[
-          "electronic music label",
-          "house music",
-          "techno",
-          "DJ events",
-          "music releases",
-        ]}
-        structuredData={organizationSchema}
-      />
-
       <HeroSection
         heroTag={heroTag}
         title={heroTitle}

@@ -4,7 +4,6 @@ import { ArrowLeft, Calendar, MapPin, Clock, Ticket, Users, ExternalLink } from 
 import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 import { db, type Event, type Artist } from "@/lib/database";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,29 +70,6 @@ export default function EventDetailPage() {
     });
   };
 
-  const eventSchema = event ? generateStructuredData("Event", {
-    name: event.title,
-    description: event.description,
-    startDate: event.date,
-    endDate: event.endDate || event.date,
-    location: {
-      "@type": "Place",
-      name: event.venue,
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: event.address,
-        addressLocality: event.city,
-        addressCountry: event.country,
-      },
-    },
-    image: event.imageUrl,
-    offers: event.ticketUrl ? {
-      "@type": "Offer",
-      url: event.ticketUrl,
-      price: event.ticketPrice,
-    } : undefined,
-  }) : null;
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -120,13 +96,6 @@ export default function EventDetailPage() {
 
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title={`${event.title} - GroupTherapy Records`}
-        description={event.description || `${event.title} at ${event.venue}, ${event.city}`}
-        keywords={[event.title, event.venue, event.city, "event", "concert"]}
-        structuredData={eventSchema}
-      />
-
       <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
           {event.imageUrl ? (

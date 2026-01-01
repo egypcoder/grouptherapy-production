@@ -5,7 +5,6 @@ import { SiSpotify, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 import { db, type Release, type Artist } from "@/lib/database";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -53,17 +52,6 @@ export default function ReleaseDetailPage() {
     enabled: !!release?.artistId,
   });
 
-  const releaseSchema = release ? generateStructuredData("MusicAlbum", {
-    name: release.title,
-    byArtist: {
-      "@type": "MusicGroup",
-      name: release.artistName,
-    },
-    image: release.coverUrl,
-    datePublished: release.releaseDate,
-    albumProductionType: release.type,
-  }) : null;
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -90,13 +78,6 @@ export default function ReleaseDetailPage() {
 
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title={`${release.title} by ${release.artistName} - GroupTherapy Records`}
-        description={`Listen to ${release.title} by ${release.artistName} on GroupTherapy Records`}
-        keywords={[release.title, release.artistName, release.type, "music", "electronic"]}
-        structuredData={releaseSchema}
-      />
-
       <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[50vh] overflow-hidden">
           {release.coverUrl ? (

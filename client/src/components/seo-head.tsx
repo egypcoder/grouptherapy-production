@@ -20,17 +20,8 @@ interface SEOProps {
 }
 
 export function SEOHead({
-  title,
-  description,
-  keywords,
-  image,
-  type = "website",
-  author,
-  publishedTime,
-  modifiedTime,
   canonicalUrl,
   noindex = false,
-  structuredData,
 }: SEOProps) {
   const [location] = useLocation();
   const fullUrl = `https://grouptherapy.com${location}`;
@@ -41,23 +32,29 @@ export function SEOHead({
     queryFn: () => db.seoSettings.get(),
   });
 
-  const resolvedTitle = title ?? seoSettings?.defaultTitle ?? "GroupTherapy Records - Electronic Music Label";
+  const resolvedTitle = seoSettings?.defaultTitle ?? "GroupTherapy Records - Electronic Music Label";
   const resolvedDescription =
-    description ??
     seoSettings?.defaultDescription ??
     "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
   const resolvedKeywords =
-    keywords ??
     (seoSettings?.defaultKeywords?.length ? seoSettings.defaultKeywords : undefined) ??
     ["electronic music", "record label", "house music", "techno", "DJ", "music events", "music releases", "independent label"];
 
-  const ogImageRaw = image ?? seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
-  const twitterImageRaw = image ?? seoSettings?.twitterImage ?? seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
+  const ogImageRaw = seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
+  const twitterImageRaw = seoSettings?.twitterImage ?? seoSettings?.ogImage ?? "https://grouptherapy.com/og-image.jpg";
   const resolvedOgImage = resolveMediaUrl(ogImageRaw, "full");
   const resolvedTwitterImage = resolveMediaUrl(twitterImageRaw, "full");
 
   const twitterHandle = seoSettings?.twitterHandle?.trim() || undefined;
-  const resolvedStructuredData = structuredData ?? undefined;
+
+  const resolvedStructuredData = (() => {
+    const schemas = [seoSettings?.organizationSchema, seoSettings?.websiteSchema, seoSettings?.musicGroupSchema].filter(Boolean);
+    if (!schemas.length) return undefined;
+    return {
+      "@context": "https://schema.org",
+      "@graph": schemas,
+    };
+  })();
 
   useEffect(() => {
     // Set document title
@@ -72,7 +69,7 @@ export function SEOHead({
     updateMetaTag("og:description", resolvedDescription, "property");
     updateMetaTag("og:image", resolvedOgImage, "property");
     updateMetaTag("og:url", fullUrl, "property");
-    updateMetaTag("og:type", type, "property");
+    updateMetaTag("og:type", "website", "property");
     updateMetaTag("og:site_name", "GroupTherapy Records", "property");
 
     // Twitter Card tags
@@ -81,11 +78,6 @@ export function SEOHead({
     updateMetaTag("twitter:description", resolvedDescription);
     updateMetaTag("twitter:image", resolvedTwitterImage);
     if (twitterHandle) updateMetaTag("twitter:site", twitterHandle);
-
-    // Additional SEO tags
-    if (author) updateMetaTag("author", author);
-    if (publishedTime) updateMetaTag("article:published_time", publishedTime, "property");
-    if (modifiedTime) updateMetaTag("article:modified_time", modifiedTime, "property");
 
     // Canonical URL
     updateLinkTag("canonical", canonical);
@@ -109,10 +101,6 @@ export function SEOHead({
     resolvedTwitterImage,
     twitterHandle,
     fullUrl,
-    type,
-    author,
-    publishedTime,
-    modifiedTime,
     canonical,
     noindex,
     resolvedStructuredData,

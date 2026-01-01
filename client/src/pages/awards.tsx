@@ -4,7 +4,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown } from "lucide-react";
 import { resolveMediaUrl } from "../lib/media";
 import { PageHero } from "@/components/hero-section";
-import { SEOHead } from "@/components/seo-head";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -125,12 +124,6 @@ export default function AwardsPage() {
 
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title="Therapy Awards - GroupTherapy Records | Vote for Your Favorites"
-        description="Vote for your favorite artists and tracks in the Therapy Awards. Celebrate the best in electronic music with GroupTherapy Records."
-        keywords={["music awards", "electronic music voting", "artist awards", "track of the month", "music competition"]}
-      />
-
       <section className="relative min-h-[52vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="w-full h-full bg-gradient-to-b from-primary/10 via-background to-background" />

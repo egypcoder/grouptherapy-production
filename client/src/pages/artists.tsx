@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Search, Users } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { PageHero } from "@/components/hero-section";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiSpotify, SiInstagram, SiSoundcloud } from "react-icons/si";
@@ -23,33 +22,8 @@ export default function ArtistsPage() {
     artist.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const artistsSchema = generateStructuredData("ItemList", {
-    itemListElement: artists.slice(0, 20).map((artist, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      item: {
-        "@type": "MusicGroup",
-        name: artist.name,
-        description: artist.bio,
-        image: artist.imageUrl,
-        sameAs: [
-          artist.socialLinks?.spotify,
-          artist.socialLinks?.instagram,
-          artist.socialLinks?.soundcloud,
-        ].filter(Boolean),
-      },
-    })),
-  });
-
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title="Artists - GroupTherapy Records | Electronic Music Producers & DJs"
-        description="Explore our roster of talented electronic music artists, producers, and DJs. From house to techno, discover the innovative talent shaping the future of dance music."
-        keywords={["electronic music artists", "DJ roster", "house music producers", "techno artists", "music talent", "electronic producers"]}
-        structuredData={artistsSchema}
-      />
-      
       <PageHero
         title="Artists"
         subtitle="Meet the talent behind the sound"

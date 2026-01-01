@@ -15,6 +15,7 @@ import { ChatProvider } from "@/lib/chat-context";
 import { ChatMiniNotification } from "@/components/chat-mini-notification";
 import { ChatFullMode } from "@/components/chat-full-mode";
 import { db } from "@/lib/database";
+import { SEOHead } from "@/components/seo-head";
 
 import HomePage from "@/pages/home";
 import RadioPage from "@/pages/radio";
@@ -85,6 +86,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navigation />
+      <SEOHead />
       <ChatProvider>
         <main className="min-h-screen">{children}</main>
         <ChatFullMode />

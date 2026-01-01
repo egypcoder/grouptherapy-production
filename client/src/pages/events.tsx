@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { MapPin, Calendar, Ticket, Clock, Filter, Grid, List as ListIcon, Map, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";

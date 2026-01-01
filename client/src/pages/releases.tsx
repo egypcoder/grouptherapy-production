@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Play, ExternalLink, Search, Grid, List } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -137,30 +136,8 @@ export default function ReleasesPage() {
     }));
   })();
 
-  const musicGroupSchema = generateStructuredData("MusicGroup", {
-    name: "GroupTherapy Records",
-    genre: ["Electronic", "House", "Techno", "Deep House", "Drum & Bass"],
-    album: releases.slice(0, 10).map((release) => ({
-      "@type": "MusicAlbum",
-      name: release.title,
-      byArtist: {
-        "@type": "MusicGroup",
-        name: release.artistName,
-      },
-      datePublished: release.releaseDate,
-      image: release.coverUrl,
-    })),
-  });
-
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title="Music Releases - GroupTherapy Records | Electronic Music Albums & EPs"
-        description="Browse the complete catalog of electronic music releases from GroupTherapy Records. Discover new albums, EPs, and singles from innovative artists in house, techno, and more."
-        keywords={["electronic music releases", "house music albums", "techno EPs", "new music", "music catalog", "electronic albums", "DJ music"]}
-        structuredData={musicGroupSchema}
-      />
-      
       <PageHero
         title="Releases"
         subtitle="Explore our complete catalog of releases"

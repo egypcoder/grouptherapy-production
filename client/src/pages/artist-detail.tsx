@@ -5,7 +5,6 @@ import { SiSpotify, SiInstagram, SiSoundcloud, SiYoutube, SiX } from "react-icon
 import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 import { db, type Artist, type Release, type Event } from "@/lib/database";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseDateTime } from "@/lib/utils";
@@ -55,20 +54,6 @@ export default function ArtistDetailPage() {
     (e) => e.published && e.artistIds?.includes(artist?.id ?? "") && (parseDateTime(e.date)?.getTime() ?? 0) >= Date.now(),
   ) ?? [];
 
-  const artistSchema = artist
-    ? generateStructuredData("MusicGroup", {
-        name: artist.name,
-        description: artist.bio,
-        image: artist.imageUrl,
-        sameAs: [
-          artist.socialLinks?.spotify,
-          artist.socialLinks?.instagram,
-          artist.socialLinks?.soundcloud,
-          artist.socialLinks?.youtube,
-          artist.socialLinks?.twitter,
-        ].filter(Boolean),
-      })
-    : null;
 
   if (artistLoading) {
     return (
@@ -96,13 +81,6 @@ export default function ArtistDetailPage() {
 
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title={`${artist.name} - GroupTherapy Records`}
-        description={artist.bio || `Discover ${artist.name} on GroupTherapy Records`}
-        keywords={[artist.name, "electronic music", "DJ", "producer"]}
-        structuredData={artistSchema}
-      />
-
       <div ref={heroRef} className="relative">
         <div className="absolute inset-0 h-[60vh] overflow-hidden">
           {artist.imageUrl ? (

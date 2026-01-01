@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Search, Calendar, Tag, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -46,31 +45,8 @@ export default function NewsPage() {
     });
   };
 
-  const blogSchema = generateStructuredData("Blog", {
-    name: "GroupTherapy Radar",
-    description: "News, interviews, and stories from the world of electronic music",
-    blogPost: posts.slice(0, 10).map((post) => ({
-      "@type": "BlogPosting",
-      headline: post.title,
-      description: post.excerpt,
-      image: post.coverUrl,
-      datePublished: post.publishedAt,
-      author: {
-        "@type": "Person",
-        name: post.authorName,
-      },
-    })),
-  });
-
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title="News & Articles - GroupTherapy Radar | Electronic Music News"
-        description="Stay updated with the latest electronic music news, artist interviews, release announcements, and behind-the-scenes stories from GroupTherapy Records."
-        keywords={["electronic music news", "DJ interviews", "music industry news", "album announcements", "artist features", "music blog"]}
-        structuredData={blogSchema}
-      />
-      
       <PageHero
         title="GroupTherapy Radar"
         subtitle="News, interviews, and stories from the world of electronic music"

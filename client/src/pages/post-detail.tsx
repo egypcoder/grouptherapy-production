@@ -4,7 +4,6 @@ import { ArrowLeft, Calendar, User, Tag, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
 import { db, type Post } from "@/lib/database";
-import { SEOHead, generateStructuredData } from "@/components/seo-head";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -106,23 +105,6 @@ export default function PostDetailPage() {
     enabled: !!post?.category,
   });
 
-  const postSchema = post
-    ? generateStructuredData("Article", {
-        headline: post.title,
-        description: post.excerpt,
-        image: post.coverUrl || post.ogImageUrl,
-        datePublished: post.publishedAt || post.createdAt,
-        author: {
-          "@type": "Person",
-          name: post.authorName || "GroupTherapy Records",
-        },
-        publisher: {
-          "@type": "Organization",
-          name: "GroupTherapy Records",
-        },
-      })
-    : null;
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -151,17 +133,6 @@ export default function PostDetailPage() {
 
   return (
     <div className="min-h-screen">
-      <SEOHead
-        title={post.metaTitle || `${post.title} - GroupTherapy Records`}
-        description={
-          post.metaDescription ||
-          post.excerpt ||
-          `Read ${post.title} on GroupTherapy Records`
-        }
-        keywords={post.tags || [post.category, "news", "music"]}
-        structuredData={postSchema}
-      />
-
       <div ref={heroRef} className="relative">
         {post.coverUrl && (
           <div className="absolute inset-0 h-[50vh] overflow-hidden">
