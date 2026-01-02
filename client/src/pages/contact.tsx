@@ -138,7 +138,7 @@ export default function ContactPage() {
     <div className="min-h-screen">
       <PageHero
         title="Contact Us"
-        subtitle="Get in touch with the GroupTherapy team"
+        subtitle="Get in touch with the Group Therapy team"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

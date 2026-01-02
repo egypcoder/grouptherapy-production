@@ -168,8 +168,11 @@ function SectionHeader({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6 }}
-      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12"
+      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12 relative"
     >
+            <div className="absolute inset-0">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl z-0" />
+      </div>
       <div>
         <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
           {title} <span className="gradient-text">{highlight}</span>
@@ -439,9 +442,9 @@ export default function HomePage() {
       <section className="py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <SectionHeader
-            title="Fresh"
-            highlight="Drops"
-            description="The latest releases from our roster"
+            title="New"
+            highlight="Releases"
+            description="The latest releases from our comunity"
             action={{ label: "View All Releases", href: "/releases" }}
           />
         </div>
@@ -458,9 +461,9 @@ export default function HomePage() {
         <section className="py-16 md:py-24 bg-muted/30">
           <div className="max-w-7xl mx-auto px-6 md:px-8">
             <SectionHeader
-              title="Our"
+              title="Supported"
               highlight="Artists"
-              description="The creative minds behind the sound"
+              description="A curated showcase of the artists we believe in and support"
               action={{ label: "Meet The Artists", href: "/artists" }}
             />
           </div>
@@ -488,7 +491,7 @@ export default function HomePage() {
           <SectionHeader
             title="Curated"
             highlight="Playlists"
-            description="Handpicked selections for every mood"
+            description="A mix of official playlists and music we believe in"
             action={{ label: "View All Playlists", href: "/playlists" }}
           />
         </div>
@@ -500,7 +503,7 @@ export default function HomePage() {
           <SectionHeader
             title="Latest"
             highlight="News"
-            description="Stay updated with the latest from the label"
+            description="The Latest in Music, From Every Corner of the World"
             action={{ label: "View All News", href: "/news" }}
           />
         </div>

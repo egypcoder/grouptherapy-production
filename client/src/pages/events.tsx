@@ -144,9 +144,8 @@ export default function EventsPage() {
     <div className="min-h-screen">
       <PageHero
         title="Events"
-        subtitle="Experience GroupTherapy live"
+        subtitle="Your refrence for international music events and experiences"
       />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">

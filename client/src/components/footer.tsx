@@ -102,7 +102,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-xs text-muted-foreground mb-6 max-w-sm leading-relaxed">
-              The future of electronic music, curated for you. Join us on the journey.
+              Home of Artists
             </p>
 
             <form onSubmit={handleSubscribe} className="space-y-2.5">

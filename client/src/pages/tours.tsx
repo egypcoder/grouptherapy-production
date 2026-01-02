@@ -55,7 +55,7 @@ export default function ToursPage() {
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-4">Tours</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Catch our artists live around the world. Don't miss the opportunity to experience the music in person.
+              Catch Your artists live around the world. Don't miss the opportunity to experience the music in person.
             </p>
           </motion.div>
         </div>

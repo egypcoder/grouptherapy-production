@@ -48,8 +48,8 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen">
       <PageHero
-        title="GroupTherapy Radar"
-        subtitle="News, interviews, and stories from the world of electronic music"
+        title="News"
+        subtitle="The Latest in Music, From Every Corner of the World"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

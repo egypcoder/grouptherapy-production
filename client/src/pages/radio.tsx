@@ -88,7 +88,7 @@ export default function RadioPage() {
     <div className="min-h-screen">
       <PageHero
         title="GroupTherapy Radio"
-        subtitle="24/7 music streaming - tune in and turn up"
+        subtitle="24/7 curated radio shows, guest mixes, and discoveries"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
