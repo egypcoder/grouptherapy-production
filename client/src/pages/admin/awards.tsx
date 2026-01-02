@@ -822,7 +822,7 @@ export default function AdminAwards() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{category.name}</p>
-                          <p className="text-sm text-muted-foreground">{category.description}</p>
+                          <p className="text-sm text-muted-foreground select-none">{category.description}</p>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -1056,21 +1056,21 @@ export default function AdminAwards() {
                             </button>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 select-none">
                               {(entry.artistImageUrl || entry.trackCoverUrl) && (
                                 <img
                                   src={resolveMediaUrl(entry.artistImageUrl || entry.trackCoverUrl, "thumb")}
                                   alt=""
-                                  className="w-10 h-10 rounded-full object-cover"
+                                  className="w-10 h-10 rounded-full object-cover select-none"
                                 />
                               )}
                               <div>
                                 {getSelectedCategory()?.type === "artist" ? (
-                                  <p className="font-medium">{entry.artistName}</p>
+                                  <p className="font-medium select-none">{entry.artistName}</p>
                                 ) : (
                                   <>
                                     <p className="font-medium">{entry.trackTitle}</p>
-                                    <p className="text-sm text-muted-foreground">{entry.trackArtist}</p>
+                                    <p className="text-sm text-muted-foreground select-none">{entry.trackArtist}</p>
                                   </>
                                 )}
                               </div>
