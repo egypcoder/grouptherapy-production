@@ -111,6 +111,8 @@ ${structuredData ? `<script id="structured-data" type="application/ld+json">${sd
 }
 
 function extractOgLogo(data: any, baseUrl: string): string {
+  const raw = nonEmpty(data?.organization_schema?.logo) || nonEmpty(data?.website_schema?.logo);
+  if (raw) return toAbsoluteUrl(raw, baseUrl);
   return `${baseUrl}/favicon.png`;
 }
 

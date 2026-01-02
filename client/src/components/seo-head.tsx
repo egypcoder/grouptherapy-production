@@ -33,6 +33,16 @@ export function SEOHead({
     return trimmed.length ? trimmed : undefined;
   };
 
+  const isAbsoluteUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+  const toAbsoluteUrl = (value: string, baseUrl: string): string => {
+    const v = value.trim();
+    if (!v) return v;
+    if (isAbsoluteUrl(v)) return v;
+    if (v.startsWith("/")) return `${baseUrl}${v}`;
+    return `${baseUrl}/${v}`;
+  };
+
   const canonical = nonEmpty(canonicalUrl) || fullUrl;
 
   const { data: seoSettings } = useQuery({
@@ -205,7 +215,12 @@ export function SEOHead({
     return "website";
   })();
 
-  const resolvedOgLogo = `${origin}/favicon.png`;
+  const ogLogoRaw =
+    nonEmpty((seoSettings?.organizationSchema as any)?.logo) ||
+    nonEmpty((seoSettings?.websiteSchema as any)?.logo) ||
+    `${origin}/favicon.png`;
+
+  const resolvedOgLogo = resolveMediaUrl(toAbsoluteUrl(String(ogLogoRaw), origin), "full");
 
   const twitterHandle = nonEmpty(seoSettings?.twitterHandle);
 
