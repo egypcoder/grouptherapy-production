@@ -1,5 +1,4 @@
- 
-import { useEffect, useMemo } from "react";
+ import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { db } from "@/lib/database";
@@ -28,20 +27,22 @@ export function SEOHead({
   const rawLocation = typeof location === "string" ? location : "/";
   const cleanPath = (rawLocation.split("?").shift() ?? "/").split("#").shift() ?? "/";
   const fullUrl = `${origin}${cleanPath}`;
-  const canonical = canonicalUrl || fullUrl;
+  const nonEmpty = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : undefined;
+  };
 
-  const { data: seoSettings, isFetched: seoSettingsFetched } = useQuery({
+  const canonical = nonEmpty(canonicalUrl) || fullUrl;
+
+  const { data: seoSettings } = useQuery({
     queryKey: ["seoSettings"],
     queryFn: () => db.seoSettings.get(),
   });
 
   const siteName =
-    (seoSettings?.organizationSchema && typeof (seoSettings.organizationSchema as any).name === "string"
-      ? String((seoSettings.organizationSchema as any).name)
-      : undefined) ||
-    (seoSettings?.websiteSchema && typeof (seoSettings.websiteSchema as any).name === "string"
-      ? String((seoSettings.websiteSchema as any).name)
-      : undefined) ||
+    nonEmpty((seoSettings?.organizationSchema as any)?.name) ||
+    nonEmpty((seoSettings?.websiteSchema as any)?.name) ||
     "GroupTherapy Records";
 
   const route = useMemo(() => {
@@ -91,7 +92,7 @@ export function SEOHead({
   const { data: staticPage } = useQuery({
     queryKey: ["seoRoute", "static", (route as any).slug],
     queryFn: () => db.staticPages.getBySlug((route as any).slug),
-    enabled: route.kind === "static" && !!(route as any).slug,
+    enabled: (route.kind === "static" || route.kind === "section") && !!(route as any).slug,
   });
 
   const stripAndTruncate = (value: string | undefined, maxLen = 160): string | undefined => {
@@ -137,9 +138,9 @@ export function SEOHead({
     }
   };
 
-  const fallbackTitle = seoSettings?.defaultTitle ?? "GroupTherapy Records - Electronic Music Label";
+  const fallbackTitle = nonEmpty(seoSettings?.defaultTitle) || "GroupTherapy Records - Electronic Music Label";
   const fallbackDescription =
-    seoSettings?.defaultDescription ??
+    nonEmpty(seoSettings?.defaultDescription) ||
     "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
 
   const routeTitle = (() => {
@@ -147,7 +148,11 @@ export function SEOHead({
     if (route.kind === "release" && release) return `${release.title} | ${siteName}`;
     if (route.kind === "event" && event) return `${event.title} | ${siteName}`;
     if (route.kind === "artist" && artist) return `${artist.name} | ${siteName}`;
-    if (route.kind === "static" && staticPage) return `${staticPage.title} | ${siteName}`;
+    if ((route.kind === "static" || route.kind === "section") && staticPage) {
+      const t = nonEmpty((staticPage as any).metaTitle) || nonEmpty((staticPage as any).title);
+      if (!t) return undefined;
+      return nonEmpty((staticPage as any).metaTitle) ? t : `${t} | ${siteName}`;
+    }
     if (route.kind === "home") return fallbackTitle;
     if (route.kind === "section") return sectionMeta((route as any).slug).title;
     return undefined;
@@ -160,7 +165,16 @@ export function SEOHead({
     if (route.kind === "event" && event)
       return event.description || stripAndTruncate(`${event.city}${event.country ? `, ${event.country}` : ""} • ${event.date}`);
     if (route.kind === "artist" && artist) return stripAndTruncate(artist.bio) || fallbackDescription;
-    if (route.kind === "static" && staticPage) return stripAndTruncate(staticPage.content) || fallbackDescription;
+    if (route.kind === "static" && staticPage) {
+      return (
+        nonEmpty((staticPage as any).metaDescription) ||
+        stripAndTruncate((staticPage as any).content) ||
+        fallbackDescription
+      );
+    }
+    if (route.kind === "section" && staticPage) {
+      return nonEmpty((staticPage as any).metaDescription) || fallbackDescription;
+    }
     if (route.kind === "section") return sectionMeta((route as any).slug).description;
     return undefined;
   })();
@@ -193,7 +207,7 @@ export function SEOHead({
 
   const resolvedOgLogo = `${origin}/favicon.png`;
 
-  const twitterHandle = seoSettings?.twitterHandle?.trim() || undefined;
+  const twitterHandle = nonEmpty(seoSettings?.twitterHandle);
 
   const resolvedStructuredData = (() => {
     const schemas = [seoSettings?.organizationSchema, seoSettings?.websiteSchema, seoSettings?.musicGroupSchema].filter(Boolean);
@@ -205,8 +219,6 @@ export function SEOHead({
   })();
 
   useEffect(() => {
-    if (!seoSettingsFetched) return;
-
     // Set document title
     document.title = resolvedTitle;
 
@@ -214,6 +226,10 @@ export function SEOHead({
     updateMetaTag("title", resolvedTitle);
     updateMetaTag("description", resolvedDescription);
     updateMetaTag("keywords", resolvedKeywords.join(", "));
+
+    updateMetaTag("name", resolvedTitle, "itemprop");
+    updateMetaTag("description", resolvedDescription, "itemprop");
+    updateMetaTag("image", resolvedOgImage, "itemprop");
     
     // Open Graph tags
     updateMetaTag("og:title", resolvedTitle, "property");

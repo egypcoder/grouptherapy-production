@@ -29,11 +29,17 @@ function safeJsonForScriptTag(data: object): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
+function nonEmpty(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : undefined;
+}
+
 function stripSeo(html: string): string {
   html = html.replace(/<title[^>]*>[\s\S]*?<\/title>/gi, "");
 
   html = html.replace(
-    /<meta\s+[^>]*(?:name|property)=(?:\"|')?(?:title|description|keywords|robots|twitter:[^\"'>\s]+|og:[^\"'>\s]+)(?:\"|')?[^>]*>/gi,
+    /<meta\s+[^>]*(?:name|property|itemprop)=(?:\"|')?(?:title|description|keywords|robots|twitter:[^\"'>\s]+|og:[^\"'>\s]+|name|image)(?:\"|')?[^>]*>/gi,
     ""
   );
 
@@ -83,6 +89,9 @@ function buildSeoBlock(args: {
 <meta name="title" content="${escapeHtml(title)}" />
 <meta name="description" content="${escapeHtml(description)}" />
 <meta name="keywords" content="${escapeHtml(keywords)}" />
+<meta itemprop="name" content="${escapeHtml(title)}" />
+<meta itemprop="description" content="${escapeHtml(description)}" />
+<meta itemprop="image" content="${escapeHtml(ogImage)}" />
 ${robots ? `<meta name="robots" content="${escapeHtml(robots)}" />` : ""}
 <meta property="og:type" content="${escapeHtml(ogType)}" />
 <meta property="og:site_name" content="${escapeHtml(siteName)}" />
@@ -291,12 +300,15 @@ export default async function handler(req: Req, res: Res) {
 
     const siteName = extractSiteName(data);
 
-    const fallbackTitle = data.default_title || "GroupTherapy Records - Electronic Music Label";
+    const fallbackTitle = nonEmpty(data.default_title) || "GroupTherapy Records - Electronic Music Label";
     const fallbackDescription =
-      data.default_description ||
+      nonEmpty(data.default_description) ||
       "The sound of tomorrow, today. Discover cutting-edge electronic music from the world's most innovative artists. Releases, events, radio, and more.";
-    const baseKeywords = Array.isArray(data.default_keywords)
+    const defaultKeywords = Array.isArray(data.default_keywords)
       ? (data.default_keywords as unknown[]).map((k) => (typeof k === "string" ? k : "")).filter(Boolean)
+      : [];
+    const baseKeywords = defaultKeywords.length
+      ? defaultKeywords
       : ["electronic music", "record label", "house music", "techno"];
 
     let title = fallbackTitle;
@@ -429,11 +441,23 @@ export default async function handler(req: Req, res: Res) {
         routeKeywords = uniqKeywords([...baseKeywords, siteName, sp.title, first]);
       }
     } else if (first) {
-      const sectionResolved = sectionMeta(siteName, first);
-      if (sectionResolved.title) title = sectionResolved.title;
-      if (sectionResolved.description) description = sectionResolved.description;
+      const { data: sp } = await supabase
+        .from("static_pages")
+        .select("title, meta_title, meta_description, content")
+        .eq("slug", first)
+        .eq("published", true)
+        .limit(1)
+        .maybeSingle();
 
-      routeKeywords = uniqKeywords([...baseKeywords, siteName, first]);
+      const metaTitle = nonEmpty(sp?.meta_title);
+      const staticTitle = metaTitle || nonEmpty(sp?.title);
+      const staticDescription = nonEmpty(sp?.meta_description) || stripAndTruncate(sp?.content);
+
+      const sectionResolved = sectionMeta(siteName, first);
+      title = staticTitle ? (metaTitle ? staticTitle : `${staticTitle} | ${siteName}`) : (sectionResolved.title || title);
+      description = staticDescription || sectionResolved.description || description;
+
+      routeKeywords = uniqKeywords([...baseKeywords, siteName, first, staticTitle]);
     }
 
     const resolvedKeywords = (routeKeywords.length ? routeKeywords : baseKeywords).join(", ");
@@ -443,12 +467,12 @@ export default async function handler(req: Req, res: Res) {
 
     const robots = "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
 
-    const ogImageRaw = routeImage || data.og_image || `${baseUrl}/favicon.png`;
+    const ogImageRaw = routeImage || nonEmpty(data.og_image) || `${baseUrl}/favicon.png`;
     const ogImage = toAbsoluteUrl(String(ogImageRaw), baseUrl);
     const ogLogo = extractOgLogo(data, baseUrl);
-    const twitterImageRaw = routeImage || data.twitter_image || data.og_image || `${baseUrl}/favicon.png`;
+    const twitterImageRaw = routeImage || nonEmpty(data.twitter_image) || nonEmpty(data.og_image) || `${baseUrl}/favicon.png`;
     const twitterImage = toAbsoluteUrl(String(twitterImageRaw), baseUrl);
-    const twitterHandle = data.twitter_handle || undefined;
+    const twitterHandle = nonEmpty(data.twitter_handle);
 
     const schemas = [data.organization_schema, data.website_schema, data.music_group_schema].filter(Boolean);
     const structuredData = schemas.length

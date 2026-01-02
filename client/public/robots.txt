@@ -6,3 +6,5 @@ Allow: /
 # Disallow admin pages from search engines
 User-agent: *
 Disallow: /admin/
+
+Sitemap: https://grouptherapyeg.com/sitemap.xml
