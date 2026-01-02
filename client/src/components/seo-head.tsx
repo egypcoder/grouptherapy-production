@@ -25,10 +25,12 @@ export function SEOHead({
 }: SEOProps) {
   const [location] = useLocation();
   const origin = typeof window !== "undefined" ? window.location.origin : "https://grouptherapyeg.com";
-  const fullUrl = `${origin}${location}`;
+  const rawLocation = typeof location === "string" ? location : "/";
+  const cleanPath = (rawLocation.split("?").shift() ?? "/").split("#").shift() ?? "/";
+  const fullUrl = `${origin}${cleanPath}`;
   const canonical = canonicalUrl || fullUrl;
 
-  const { data: seoSettings } = useQuery({
+  const { data: seoSettings, isFetched: seoSettingsFetched } = useQuery({
     queryKey: ["seoSettings"],
     queryFn: () => db.seoSettings.get(),
   });
@@ -128,6 +130,8 @@ export function SEOHead({
         return { title: `Careers | ${siteName}`, description: "Open roles and opportunities." };
       case "tours":
         return { title: `Tours | ${siteName}`, description: "Tours and appearances." };
+      case "awards":
+        return { title: `Awards | ${siteName}`, description: "Awards and nominations." };
       default:
         return {};
     }
@@ -201,10 +205,13 @@ export function SEOHead({
   })();
 
   useEffect(() => {
+    if (!seoSettingsFetched) return;
+
     // Set document title
     document.title = resolvedTitle;
 
     // Update meta tags
+    updateMetaTag("title", resolvedTitle);
     updateMetaTag("description", resolvedDescription);
     updateMetaTag("keywords", resolvedKeywords.join(", "));
     
@@ -213,7 +220,7 @@ export function SEOHead({
     updateMetaTag("og:description", resolvedDescription, "property");
     updateMetaTag("og:image", resolvedOgImage, "property");
     updateMetaTag("og:logo", resolvedOgLogo, "property");
-    updateMetaTag("og:url", fullUrl, "property");
+    updateMetaTag("og:url", canonical, "property");
     updateMetaTag("og:type", ogType, "property");
     updateMetaTag("og:site_name", siteName, "property");
 
@@ -246,10 +253,9 @@ export function SEOHead({
     resolvedOgLogo,
     resolvedTwitterImage,
     twitterHandle,
-    fullUrl,
+    canonical,
     ogType,
     siteName,
-    canonical,
     noindex,
     resolvedStructuredData,
   ]);

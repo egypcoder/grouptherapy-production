@@ -41,15 +41,13 @@ export default async function handler(req: Req, res: Res) {
     (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
   const baseUrl = `${proto}://${host}`;
 
-  const now = new Date().toISOString();
-
   const xml = sitemapIndex([
-    { loc: `${baseUrl}/sitemap-pages.xml`, lastmod: now },
-    { loc: `${baseUrl}/sitemap-posts.xml`, lastmod: now },
-    { loc: `${baseUrl}/sitemap-releases.xml`, lastmod: now },
-    { loc: `${baseUrl}/sitemap-events.xml`, lastmod: now },
-    { loc: `${baseUrl}/sitemap-artists.xml`, lastmod: now },
-    { loc: `${baseUrl}/sitemap-videos.xml`, lastmod: now },
+    { loc: `${baseUrl}/sitemap-pages.xml` },
+    { loc: `${baseUrl}/sitemap-posts.xml` },
+    { loc: `${baseUrl}/sitemap-releases.xml` },
+    { loc: `${baseUrl}/sitemap-events.xml` },
+    { loc: `${baseUrl}/sitemap-artists.xml` },
+    { loc: `${baseUrl}/sitemap-videos.xml` },
   ]);
 
   if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "6");

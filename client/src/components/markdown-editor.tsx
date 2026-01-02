@@ -14,6 +14,7 @@ import {
   Eye,
   Edit,
 } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface MarkdownEditorProps {
   value: string;
@@ -72,6 +73,7 @@ export function MarkdownEditor({
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   
   const html = useMemo(() => renderMarkdown(value), [value]);
+  const sanitizedHtml = useMemo(() => sanitizeHtml(html), [html]);
   
   const insertText = useCallback((before: string, after: string = "", placeholder: string = "") => {
     const textarea = document.querySelector('#markdown-editor-textarea') as HTMLTextAreaElement;
@@ -235,7 +237,7 @@ export function MarkdownEditor({
         <div 
           className="prose prose-sm dark:prose-invert max-w-none p-4 bg-muted/10"
           style={{ minHeight }}
-          dangerouslySetInnerHTML={{ __html: html || '<p class="text-muted-foreground">Nothing to preview</p>' }}
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml || '<p class="text-muted-foreground">Nothing to preview</p>' }}
         />
       )}
     </div>
@@ -244,11 +246,12 @@ export function MarkdownEditor({
 
 export function MarkdownPreview({ content }: { content: string }) {
   const html = useMemo(() => renderMarkdown(content), [content]);
+  const sanitizedHtml = useMemo(() => sanitizeHtml(html), [html]);
   
   return (
     <div 
       className="prose prose-sm dark:prose-invert max-w-none min-h-[300px] p-4 border rounded-md bg-muted/30"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
 }

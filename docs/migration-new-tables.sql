@@ -4,6 +4,19 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- RLS helper: check Supabase user metadata role
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (
+    SELECT COALESCE(
+      (auth.jwt() -> 'user_metadata' ->> 'role') IN ('admin', 'editor'),
+      false
+    )
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -561,11 +574,11 @@ ALTER TABLE newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public subscribe newsletter" ON newsletter_subscribers;
 CREATE POLICY "Public subscribe newsletter" ON newsletter_subscribers FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Admin read subscribers" ON newsletter_subscribers;
-CREATE POLICY "Admin read subscribers" ON newsletter_subscribers FOR SELECT USING (true);
+CREATE POLICY "Admin read subscribers" ON newsletter_subscribers FOR SELECT USING (is_admin());
 DROP POLICY IF EXISTS "Admin manage subscribers" ON newsletter_subscribers;
-CREATE POLICY "Admin manage subscribers" ON newsletter_subscribers FOR UPDATE USING (true);
+CREATE POLICY "Admin manage subscribers" ON newsletter_subscribers FOR UPDATE USING (is_admin()) WITH CHECK (is_admin());
 DROP POLICY IF EXISTS "Admin delete subscribers" ON newsletter_subscribers;
-CREATE POLICY "Admin delete subscribers" ON newsletter_subscribers FOR DELETE USING (true);
+CREATE POLICY "Admin delete subscribers" ON newsletter_subscribers FOR DELETE USING (is_admin());
 
 -- SEO settings table
 CREATE TABLE IF NOT EXISTS seo_settings (
@@ -609,7 +622,7 @@ ALTER TABLE seo_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public read seo settings" ON seo_settings;
 CREATE POLICY "Public read seo settings" ON seo_settings FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin full access to seo_settings" ON seo_settings;
-CREATE POLICY "Admin full access to seo_settings" ON seo_settings FOR ALL USING (true);
+CREATE POLICY "Admin full access to seo_settings" ON seo_settings FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
 -- Award categories table
 CREATE TABLE IF NOT EXISTS award_categories (
@@ -787,7 +800,7 @@ ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can read site_settings" ON site_settings;
 CREATE POLICY "Public can read site_settings" ON site_settings FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Admin full access to site_settings" ON site_settings;
-CREATE POLICY "Admin full access to site_settings" ON site_settings FOR ALL USING (true);
+CREATE POLICY "Admin full access to site_settings" ON site_settings FOR ALL USING (is_admin()) WITH CHECK (is_admin());
 
 -- Analytics events table
 CREATE TABLE IF NOT EXISTS analytics_events (

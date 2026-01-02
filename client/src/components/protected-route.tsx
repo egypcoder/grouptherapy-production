@@ -12,8 +12,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (loading) return;
+    if (!isAuthenticated) {
       setLocation("/admin/login");
+      return;
     }
   }, [loading, isAuthenticated, setLocation]);
 

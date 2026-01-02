@@ -37,6 +37,7 @@ import { queryClient, queryFunctions } from "@/lib/queryClient";
 import { db, NewsletterSubscriber, SiteSettings } from "@/lib/database";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
 import { sendEmail, isEmailServiceConfigured, getEmailConfigInstructions, setEmailConfig } from "@/lib/email-service";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 interface EmailServiceConfig {
   service: string;
@@ -675,7 +676,7 @@ SUBJECT: [subject line here]
                 <CardContent>
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert"
-                    dangerouslySetInnerHTML={{ __html: emailData.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(emailData.content) }}
                   />
                 </CardContent>
               </Card>

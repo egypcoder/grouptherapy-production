@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { db } from "@/lib/database";
 import type { StaticPage } from "@/lib/database";
 import { Loader2 } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 export default function StaticPageView() {
   const [, params] = useRoute("/:slug");
@@ -46,7 +47,7 @@ export default function StaticPageView() {
           <h1 className="text-3xl md:text-4xl font-bold mb-8">{page.title}</h1>
           <div
             className="prose prose-lg dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: page.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.content) }}
           />
           {page.updatedAt && (
             <p className="mt-8 text-sm text-muted-foreground">

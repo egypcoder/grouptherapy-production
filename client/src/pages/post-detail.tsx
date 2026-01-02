@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { resolveMediaUrl } from "@/lib/media";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 function renderMarkdown(markdown: string): string {
   if (!markdown) return "";
@@ -219,7 +220,7 @@ export default function PostDetailPage() {
               <div
                 className="prose prose-lg prose-invert max-w-none text-foreground"
                 dangerouslySetInnerHTML={{
-                  __html: renderMarkdown(post.content),
+                  __html: sanitizeHtml(renderMarkdown(post.content)),
                 }}
               />
             )}

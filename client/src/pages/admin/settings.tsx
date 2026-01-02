@@ -127,20 +127,7 @@ export default function AdminSettings() {
         </div>
 
         <div className="grid gap-6">
-          {/* General Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>Basic site information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Global site name/tagline and SEO descriptions are managed in the SEO Settings page.
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
+          {/* contact Settings */}
           <Card>
             <CardHeader>
               <CardTitle>Contact Information</CardTitle>

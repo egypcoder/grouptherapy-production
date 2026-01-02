@@ -19,6 +19,7 @@ import { Link } from "wouter";
 import { VideoUpload } from "@/components/video-upload";
 import { ImageUpload } from "@/components/image-upload";
 import { MarkdownEditor } from "@/components/markdown-editor";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 type AboutPageModel = {
   heroTitle: string;
@@ -181,11 +182,12 @@ function renderMarkdown(markdown: string): string {
 
 function MarkdownPreview({ content }: { content: string }) {
   const html = useMemo(() => renderMarkdown(content), [content]);
+  const sanitizedHtml = useMemo(() => sanitizeHtml(html), [html]);
   
   return (
     <div 
       className="prose prose-sm dark:prose-invert max-w-none min-h-[300px] p-4 border rounded-md bg-muted/30"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
 }

@@ -40,7 +40,7 @@ function AuthContextBridge({ children }: { children: ReactNode }) {
     setLocation("/admin");
   };
 
-  const role = supabaseAuth.isAdmin ? "admin" : "user";
+  const role = supabaseAuth.isAuthenticated ? "admin" : "user";
 
   const value: AuthContextType = {
     isAuthenticated: supabaseAuth.isAuthenticated,

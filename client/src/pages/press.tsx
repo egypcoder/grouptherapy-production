@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PageHero } from "@/components/hero-section";
 import { Loader2 } from "lucide-react";
 import { db, type StaticPage } from "@/lib/database";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 export default function PressPage() {
   const {
@@ -44,7 +45,7 @@ export default function PressPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div
           className="prose prose-lg dark:prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: page.content || "" }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(page.content || "") }}
         />
       </div>
     </div>

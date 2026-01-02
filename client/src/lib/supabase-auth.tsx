@@ -77,7 +77,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     return { error };
   };
 
-  // All authenticated users are admins (no regular user role)
   const isAdmin = !!user;
 
   const value = {

@@ -358,7 +358,7 @@ export default async function handler(req: Req, res: Res) {
       if (r) {
         title = `${r.title} | ${siteName}`;
         description =
-          stripAndTruncate(`${r.artist_name} • ${r.type}${r.release_date ? ` • ${r.release_date}` : ""}", 160) ||
+          stripAndTruncate(`${r.artist_name} • ${r.type}${r.release_date ? ` • ${r.release_date}` : ""}`, 160) ||
           fallbackDescription;
         routeImage = r.cover_url || undefined;
         ogType = "music.album";
@@ -384,7 +384,7 @@ export default async function handler(req: Req, res: Res) {
       if (e) {
         title = `${e.title} | ${siteName}`;
         description =
-          e.description || stripAndTruncate(`${e.city}${e.country ? `, ${e.country}` : ""} • ${e.date}") || fallbackDescription;
+          e.description || stripAndTruncate(`${e.city}${e.country ? `, ${e.country}` : ""} • ${e.date}`) || fallbackDescription;
         routeImage = e.image_url || undefined;
 
         routeKeywords = uniqKeywords([
@@ -494,6 +494,6 @@ export default async function handler(req: Req, res: Res) {
     res.status(200);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
-    res.send(`<!doctype html><html><head><title>GroupTherapy</title><meta name="description" content="${escapeHtml(msg)}" /></head><body><div id="root"></div></body></html>`);
+    res.send(`<!doctype html><html><head><title>GroupTherapy</title><meta name="description" content="GroupTherapy Records" /></head><body><div id="root"></div></body></html>`);
   }
 }

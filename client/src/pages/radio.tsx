@@ -10,9 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { RadioChat } from "@/components/radio-chat";
 import { useRadio } from "@/lib/radio-context";
+import { useToast } from "@/hooks/use-toast";
 import { db, RadioShow} from "@/lib/database";
 import { cn } from "@/lib/utils";
 import { resolveMediaUrl } from "@/lib/media";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -501,7 +503,17 @@ function StreamCard({ track, onPlay }: { track: RadioTrack; onPlay: () => void }
         <div 
           className="ml-16 rounded-md overflow-hidden"
           dangerouslySetInnerHTML={{ 
-            __html: metadata.html.replace(/height="\d+"/, 'height="166"').replace(/width="\d+%?"/, 'width="100%"')
+            __html: sanitizeHtml(
+              metadata.html.replace(/height="\d+"/, 'height="166"').replace(/width="\d+%?"/, 'width="100%"'),
+              {
+                allowIframes: true,
+                allowedIframeSrcPrefixes: [
+                  "https://w.soundcloud.com/",
+                  "https://player.soundcloud.com/",
+                  "https://soundcloud.com/",
+                ],
+              }
+            )
           }} 
         />
       )}
