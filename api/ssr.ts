@@ -134,6 +134,13 @@ function stripAndTruncate(value: string | undefined, maxLen = 160): string | und
   return text.length > maxLen ? `${text.slice(0, maxLen - 1).trim()}…` : text;
 }
 
+function safeIsoDate(value: unknown): string | undefined {
+  if (!value) return undefined;
+  const d = new Date(String(value));
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toISOString();
+}
+
 function sectionMeta(siteName: string, slug: string): { title?: string; description?: string } {
   switch (slug) {
     case "news":
@@ -210,10 +217,27 @@ export default async function handler(req: Req, res: Res) {
     const baseUrl = `${proto}://${host}`;
     const canonical = `${baseUrl}${pathname}`;
 
-    const templateResp = await fetch(`${baseUrl}/index.html`, {
+    const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+    const robots = isAdminPath
+      ? "noindex, nofollow"
+      : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+
+    let template = "";
+    const templateResp = await fetch(`${baseUrl}/__ssr-template`, {
       headers: { "user-agent": "ssr-seo-bot" },
     });
-    const template = await templateResp.text();
+
+    if (templateResp.ok) {
+      template = await templateResp.text();
+    } else if (host.includes("localhost") || host.includes("127.0.0.1")) {
+      const fallbackResp = await fetch(`${baseUrl}/index.html`, {
+        headers: { "user-agent": "ssr-seo-bot" },
+      });
+      if (!fallbackResp.ok) throw new Error(`Failed to load template (status ${fallbackResp.status})`);
+      template = await fallbackResp.text();
+    } else {
+      throw new Error(`Failed to load template (status ${templateResp.status})`);
+    }
 
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -243,6 +267,7 @@ export default async function handler(req: Req, res: Res) {
         ogImage,
         ogLogo,
         twitterImage,
+        robots,
       });
 
       const cleaned = stripSeo(template);
@@ -251,6 +276,7 @@ export default async function handler(req: Req, res: Res) {
       res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
+      res.setHeader("X-Robots-Tag", robots);
       res.send(withSeo);
       return;
     }
@@ -288,6 +314,7 @@ export default async function handler(req: Req, res: Res) {
         ogImage,
         ogLogo,
         twitterImage,
+        robots,
       });
 
       const cleaned = stripSeo(template);
@@ -296,6 +323,7 @@ export default async function handler(req: Req, res: Res) {
       res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
+      res.setHeader("X-Robots-Tag", robots);
       res.send(withSeo);
       return;
     }
@@ -325,6 +353,7 @@ export default async function handler(req: Req, res: Res) {
     const second = seg[1] || "";
 
     let routeImage: string | undefined;
+    const contentSchemas: any[] = [];
 
     if (first === "news" && second) {
       const { data: p } = await supabase
@@ -352,13 +381,41 @@ export default async function handler(req: Req, res: Res) {
           p.title,
         ]);
 
-        const publishedTime = p.published_at || p.created_at;
+        const publishedTime = safeIsoDate(p.published_at || p.created_at);
         if (publishedTime) {
-          extraMeta += `\n<meta property="article:published_time" content="${escapeHtml(new Date(publishedTime).toISOString())}" />`;
+          extraMeta += `\n<meta property="article:published_time" content="${escapeHtml(publishedTime)}" />`;
+          extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(publishedTime)}" />`;
         }
         if (p.author_name) {
           extraMeta += `\n<meta property="article:author" content="${escapeHtml(String(p.author_name))}" />`;
         }
+
+        const imageAbs = routeImage ? toAbsoluteUrl(String(routeImage), baseUrl) : undefined;
+        const datePublished = safeIsoDate(p.published_at || p.created_at);
+        contentSchemas.push({
+          "@type": "BlogPosting",
+          headline: String(p.meta_title || p.title),
+          description: String(p.meta_description || p.excerpt || stripAndTruncate(p.content, 200) || fallbackDescription),
+          image: imageAbs ? [imageAbs] : undefined,
+          datePublished,
+          dateModified: datePublished,
+          author: p.author_name ? { "@type": "Person", name: String(p.author_name) } : undefined,
+          mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+          url: canonical,
+        });
+      }
+    } else if (first === "news") {
+      const { data: latest } = await supabase
+        .from("posts")
+        .select("published_at, created_at")
+        .eq("published", true)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      const updatedTime = safeIsoDate(latest?.published_at || latest?.created_at);
+      if (updatedTime) {
+        extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(updatedTime)}" />`;
       }
     } else if (first === "releases" && second) {
       const { data: r } = await supabase
@@ -385,11 +442,40 @@ export default async function handler(req: Req, res: Res) {
           r.type,
           ...(Array.isArray(r.genres) ? r.genres : []),
         ]);
+
+        const releaseDate = safeIsoDate(r.release_date || r.created_at);
+        if (releaseDate) {
+          extraMeta += `\n<meta property="music:release_date" content="${escapeHtml(releaseDate)}" />`;
+          extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(releaseDate)}" />`;
+        }
+
+        const imageAbs = routeImage ? toAbsoluteUrl(String(routeImage), baseUrl) : undefined;
+        contentSchemas.push({
+          "@type": "MusicAlbum",
+          name: String(r.title),
+          byArtist: { "@type": "MusicGroup", name: String(r.artist_name) },
+          datePublished: releaseDate,
+          image: imageAbs ? [imageAbs] : undefined,
+          url: canonical,
+        });
+      }
+    } else if (first === "releases") {
+      const { data: latest } = await supabase
+        .from("releases")
+        .select("release_date, created_at")
+        .eq("published", true)
+        .order("release_date", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      const updatedTime = safeIsoDate(latest?.release_date || latest?.created_at);
+      if (updatedTime) {
+        extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(updatedTime)}" />`;
       }
     } else if (first === "events" && second) {
       const { data: e } = await supabase
         .from("events")
-        .select("title, description, venue, city, country, date, image_url, created_at")
+        .select("title, description, venue, address, city, country, date, end_date, image_url, created_at")
         .eq("slug", second)
         .eq("published", true)
         .limit(1)
@@ -400,6 +486,7 @@ export default async function handler(req: Req, res: Res) {
         description =
           e.description || stripAndTruncate(`${e.city}${e.country ? `, ${e.country}` : ""} • ${e.date}`) || fallbackDescription;
         routeImage = e.image_url || undefined;
+        ogType = "event";
 
         routeKeywords = uniqKeywords([
           ...baseKeywords,
@@ -410,6 +497,50 @@ export default async function handler(req: Req, res: Res) {
           e.country,
           "events",
         ]);
+
+        const startTime = safeIsoDate(e.date || e.created_at);
+        const endTime = safeIsoDate(e.end_date);
+        if (startTime) {
+          extraMeta += `\n<meta property="event:start_time" content="${escapeHtml(startTime)}" />`;
+          extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(startTime)}" />`;
+        }
+        if (endTime) {
+          extraMeta += `\n<meta property="event:end_time" content="${escapeHtml(endTime)}" />`;
+        }
+
+        const imageAbs = routeImage ? toAbsoluteUrl(String(routeImage), baseUrl) : undefined;
+        contentSchemas.push({
+          "@type": "Event",
+          name: String(e.title),
+          description: e.description ? String(e.description) : undefined,
+          startDate: startTime,
+          endDate: endTime,
+          url: canonical,
+          image: imageAbs ? [imageAbs] : undefined,
+          location: {
+            "@type": "Place",
+            name: e.venue ? String(e.venue) : undefined,
+            address: {
+              "@type": "PostalAddress",
+              streetAddress: e.address ? String(e.address) : undefined,
+              addressLocality: e.city ? String(e.city) : undefined,
+              addressCountry: e.country ? String(e.country) : undefined,
+            },
+          },
+        });
+      }
+    } else if (first === "events") {
+      const { data: latest } = await supabase
+        .from("events")
+        .select("date, created_at")
+        .eq("published", true)
+        .order("date", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      const updatedTime = safeIsoDate(latest?.date || latest?.created_at);
+      if (updatedTime) {
+        extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(updatedTime)}" />`;
       }
     } else if (first === "artists" && second) {
       const { data: a } = await supabase
@@ -426,6 +557,33 @@ export default async function handler(req: Req, res: Res) {
         ogType = "profile";
 
         routeKeywords = uniqKeywords([...baseKeywords, siteName, a.name, "artists"]);
+
+        const createdTime = safeIsoDate(a.created_at);
+        if (createdTime) {
+          extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(createdTime)}" />`;
+        }
+
+        const imageAbs = routeImage ? toAbsoluteUrl(String(routeImage), baseUrl) : undefined;
+        contentSchemas.push({
+          "@type": "Person",
+          name: String(a.name),
+          description: a.bio ? String(a.bio) : undefined,
+          image: imageAbs ? [imageAbs] : undefined,
+          url: canonical,
+        });
+      }
+    } else if (first === "tours") {
+      const { data: latest } = await supabase
+        .from("tours")
+        .select("start_date, end_date, created_at")
+        .eq("published", true)
+        .order("start_date", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+
+      const updatedTime = safeIsoDate(latest?.end_date || latest?.start_date || latest?.created_at);
+      if (updatedTime) {
+        extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(updatedTime)}" />`;
       }
     } else if (["terms", "privacy", "cookies"].includes(first)) {
       const { data: sp } = await supabase
@@ -441,11 +599,16 @@ export default async function handler(req: Req, res: Res) {
         description = sp.meta_description || stripAndTruncate(sp.content) || fallbackDescription;
 
         routeKeywords = uniqKeywords([...baseKeywords, siteName, sp.title, first]);
+
+        const updatedTime = safeIsoDate(sp.updated_at || sp.created_at);
+        if (updatedTime) {
+          extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(updatedTime)}" />`;
+        }
       }
     } else if (first) {
       const { data: sp } = await supabase
         .from("static_pages")
-        .select("title, meta_title, meta_description, content")
+        .select("title, meta_title, meta_description, content, updated_at, created_at")
         .eq("slug", first)
         .eq("published", true)
         .limit(1)
@@ -460,14 +623,17 @@ export default async function handler(req: Req, res: Res) {
       description = staticDescription || sectionResolved.description || description;
 
       routeKeywords = uniqKeywords([...baseKeywords, siteName, first, staticTitle]);
+
+      const updatedTime = safeIsoDate(sp?.updated_at || sp?.created_at);
+      if (updatedTime) {
+        extraMeta += `\n<meta property="og:updated_time" content="${escapeHtml(updatedTime)}" />`;
+      }
     }
 
     const resolvedKeywords = (routeKeywords.length ? routeKeywords : baseKeywords).join(", ");
 
     const headScripts = typeof data.head_scripts === "string" ? data.head_scripts : "";
     const bodyScripts = typeof data.body_scripts === "string" ? data.body_scripts : "";
-
-    const robots = "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
 
     const ogImageRaw = routeImage || nonEmpty(data.og_image) || `${baseUrl}/favicon.png`;
     const ogImage = toAbsoluteUrl(String(ogImageRaw), baseUrl);
@@ -476,7 +642,7 @@ export default async function handler(req: Req, res: Res) {
     const twitterImage = toAbsoluteUrl(String(twitterImageRaw), baseUrl);
     const twitterHandle = nonEmpty(data.twitter_handle);
 
-    const schemas = [data.organization_schema, data.website_schema, data.music_group_schema].filter(Boolean);
+    const schemas = [data.organization_schema, data.website_schema, data.music_group_schema, ...contentSchemas].filter(Boolean);
     const structuredData = schemas.length
       ? {
           "@context": "https://schema.org",
@@ -514,12 +680,14 @@ export default async function handler(req: Req, res: Res) {
     res.status(200);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
+    res.setHeader("X-Robots-Tag", robots);
     res.send(withSeoAndBody);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     res.status(200);
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
+    res.setHeader("X-Robots-Tag", "index, follow");
     res.send(`<!doctype html><html><head><title>GroupTherapy</title><meta name="description" content="GroupTherapy Records" /></head><body><div id="root"></div></body></html>`);
   }
 }

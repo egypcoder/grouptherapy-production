@@ -1094,13 +1094,23 @@ export const db = {
   seoSettings: {
     async get(): Promise<SeoSettings | null> {
       if (!supabase) return null;
-      const { data, error } = await supabase.from('seo_settings').select('*').limit(1).single();
-      if (error) return null;
+      const { data, error } = await supabase
+        .from('seo_settings')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return null;
       return convertSnakeToCamel(data);
     },
     async update(settings: Partial<SeoSettings>): Promise<SeoSettings> {
       if (!supabase) throw new Error('Database not configured');
-      const { data: existing } = await supabase.from('seo_settings').select('id').limit(1).single();
+      const { data: existing } = await supabase
+        .from('seo_settings')
+        .select('id')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       const {
         organizationSchema,

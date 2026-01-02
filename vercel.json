@@ -5,7 +5,8 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/index.html", "destination": "/index.html" },
+    { "source": "/__ssr-template", "destination": "/index.html" },
+    { "source": "/index.html", "destination": "/api/ssr" },
     { "source": "/favicon.ico", "destination": "/favicon.ico" },
     { "source": "/favicon.png", "destination": "/favicon.png" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
@@ -20,6 +21,12 @@
     { "source": "/(.*)", "destination": "/api/ssr?path=$1" }
   ],
   "headers": [
+    {
+      "source": "/__ssr-template",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [

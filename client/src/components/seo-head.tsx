@@ -45,7 +45,7 @@ export function SEOHead({
 
   const canonical = nonEmpty(canonicalUrl) || fullUrl;
 
-  const { data: seoSettings } = useQuery({
+  const { data: seoSettings, isFetched: seoSettingsFetched } = useQuery({
     queryKey: ["seoSettings"],
     queryFn: () => db.seoSettings.get(),
   });
@@ -75,35 +75,42 @@ export function SEOHead({
     return { kind: "section" as const, slug: first };
   }, [location]);
 
-  const { data: post } = useQuery({
+  const { data: post, isFetched: postFetched } = useQuery({
     queryKey: ["seoRoute", "post", (route as any).slug],
     queryFn: () => db.posts.getBySlug((route as any).slug),
     enabled: route.kind === "post" && !!(route as any).slug,
   });
 
-  const { data: release } = useQuery({
+  const { data: release, isFetched: releaseFetched } = useQuery({
     queryKey: ["seoRoute", "release", (route as any).slug],
     queryFn: () => db.releases.getBySlug((route as any).slug),
     enabled: route.kind === "release" && !!(route as any).slug,
   });
 
-  const { data: event } = useQuery({
+  const { data: event, isFetched: eventFetched } = useQuery({
     queryKey: ["seoRoute", "event", (route as any).slug],
     queryFn: () => db.events.getBySlug((route as any).slug),
     enabled: route.kind === "event" && !!(route as any).slug,
   });
 
-  const { data: artist } = useQuery({
+  const { data: artist, isFetched: artistFetched } = useQuery({
     queryKey: ["seoRoute", "artist", (route as any).slug],
     queryFn: () => db.artists.getBySlug((route as any).slug),
     enabled: route.kind === "artist" && !!(route as any).slug,
   });
 
-  const { data: staticPage } = useQuery({
+  const { data: staticPage, isFetched: staticPageFetched } = useQuery({
     queryKey: ["seoRoute", "static", (route as any).slug],
     queryFn: () => db.staticPages.getBySlug((route as any).slug),
     enabled: (route.kind === "static" || route.kind === "section") && !!(route as any).slug,
   });
+
+  const safeIsoDate = (value: unknown): string | undefined => {
+    if (!value) return undefined;
+    const d = new Date(String(value));
+    if (Number.isNaN(d.getTime())) return undefined;
+    return d.toISOString();
+  };
 
   const stripAndTruncate = (value: string | undefined, maxLen = 160): string | undefined => {
     if (!value) return undefined;
@@ -205,8 +212,8 @@ export function SEOHead({
 
   const ogImageRaw = routeImage || seoSettings?.ogImage || `${origin}/favicon.png`;
   const twitterImageRaw = routeImage || seoSettings?.twitterImage || seoSettings?.ogImage || `${origin}/favicon.png`;
-  const resolvedOgImage = resolveMediaUrl(ogImageRaw, "full");
-  const resolvedTwitterImage = resolveMediaUrl(twitterImageRaw, "full");
+  const resolvedOgImage = resolveMediaUrl(toAbsoluteUrl(String(ogImageRaw), origin), "full");
+  const resolvedTwitterImage = resolveMediaUrl(toAbsoluteUrl(String(twitterImageRaw), origin), "full");
 
   const ogType = (() => {
     if (route.kind === "post") return "article";
@@ -225,7 +232,71 @@ export function SEOHead({
   const twitterHandle = nonEmpty(seoSettings?.twitterHandle);
 
   const resolvedStructuredData = (() => {
-    const schemas = [seoSettings?.organizationSchema, seoSettings?.websiteSchema, seoSettings?.musicGroupSchema].filter(Boolean);
+    const baseSchemas = [seoSettings?.organizationSchema, seoSettings?.websiteSchema, seoSettings?.musicGroupSchema].filter(Boolean);
+    const contentSchemas: any[] = [];
+
+    if (route.kind === "post" && post) {
+      const datePublished = safeIsoDate((post as any).publishedAt || (post as any).createdAt);
+      contentSchemas.push({
+        "@type": "BlogPosting",
+        headline: String(post.metaTitle || post.title),
+        description: String(post.metaDescription || post.excerpt || stripAndTruncate(post.content, 200) || fallbackDescription),
+        image: routeImage ? [toAbsoluteUrl(String(routeImage), origin)] : undefined,
+        datePublished,
+        dateModified: datePublished,
+        author: (post as any).authorName ? { "@type": "Person", name: String((post as any).authorName) } : undefined,
+        mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+        url: canonical,
+      });
+    }
+
+    if (route.kind === "release" && release) {
+      const releaseDate = safeIsoDate((release as any).releaseDate || (release as any).createdAt);
+      contentSchemas.push({
+        "@type": "MusicAlbum",
+        name: String((release as any).title),
+        byArtist: { "@type": "MusicGroup", name: String((release as any).artistName) },
+        datePublished: releaseDate,
+        image: routeImage ? [toAbsoluteUrl(String(routeImage), origin)] : undefined,
+        url: canonical,
+      });
+    }
+
+    if (route.kind === "event" && event) {
+      const startTime = safeIsoDate((event as any).date || (event as any).createdAt);
+      const endTime = safeIsoDate((event as any).endDate);
+      contentSchemas.push({
+        "@type": "Event",
+        name: String((event as any).title),
+        description: (event as any).description ? String((event as any).description) : undefined,
+        startDate: startTime,
+        endDate: endTime,
+        url: canonical,
+        image: routeImage ? [toAbsoluteUrl(String(routeImage), origin)] : undefined,
+        location: {
+          "@type": "Place",
+          name: (event as any).venue ? String((event as any).venue) : undefined,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: (event as any).address ? String((event as any).address) : undefined,
+            addressLocality: (event as any).city ? String((event as any).city) : undefined,
+            addressCountry: (event as any).country ? String((event as any).country) : undefined,
+          },
+        },
+      });
+    }
+
+    if (route.kind === "artist" && artist) {
+      contentSchemas.push({
+        "@type": "Person",
+        name: String((artist as any).name),
+        description: (artist as any).bio ? String((artist as any).bio) : undefined,
+        image: routeImage ? [toAbsoluteUrl(String(routeImage), origin)] : undefined,
+        url: canonical,
+      });
+    }
+
+    const schemas = [...baseSchemas, ...contentSchemas].filter(Boolean);
     if (!schemas.length) return undefined;
     return {
       "@context": "https://schema.org",
@@ -233,7 +304,19 @@ export function SEOHead({
     };
   })();
 
+  const routeDataReady = (() => {
+    if (!seoSettingsFetched) return false;
+    if (route.kind === "post") return postFetched;
+    if (route.kind === "release") return releaseFetched;
+    if (route.kind === "event") return eventFetched;
+    if (route.kind === "artist") return artistFetched;
+    if (route.kind === "static" || route.kind === "section") return staticPageFetched;
+    return true;
+  })();
+
   useEffect(() => {
+    if (!routeDataReady) return;
+
     // Set document title
     document.title = resolvedTitle;
 
@@ -272,6 +355,48 @@ export function SEOHead({
       updateMetaTag("robots", "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1");
     }
 
+    // Dynamic date meta tags (remove when not applicable)
+    const removeMetaTag = (name: string, attribute: string = "name") => {
+      const el = document.querySelector(`meta[${attribute}="${name}"]`);
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    };
+
+    removeMetaTag("article:published_time", "property");
+    removeMetaTag("article:author", "property");
+    removeMetaTag("music:release_date", "property");
+    removeMetaTag("event:start_time", "property");
+    removeMetaTag("event:end_time", "property");
+    removeMetaTag("og:updated_time", "property");
+
+    if (route.kind === "post" && post) {
+      const published = safeIsoDate((post as any).publishedAt || (post as any).createdAt);
+      if (published) {
+        updateMetaTag("article:published_time", published, "property");
+        updateMetaTag("og:updated_time", published, "property");
+      }
+      if ((post as any).authorName) {
+        updateMetaTag("article:author", String((post as any).authorName), "property");
+      }
+    }
+
+    if (route.kind === "release" && release) {
+      const releaseDate = safeIsoDate((release as any).releaseDate || (release as any).createdAt);
+      if (releaseDate) {
+        updateMetaTag("music:release_date", releaseDate, "property");
+        updateMetaTag("og:updated_time", releaseDate, "property");
+      }
+    }
+
+    if (route.kind === "event" && event) {
+      const startTime = safeIsoDate((event as any).date || (event as any).createdAt);
+      const endTime = safeIsoDate((event as any).endDate);
+      if (startTime) {
+        updateMetaTag("event:start_time", startTime, "property");
+        updateMetaTag("og:updated_time", startTime, "property");
+      }
+      if (endTime) updateMetaTag("event:end_time", endTime, "property");
+    }
+
     // Structured data
     if (resolvedStructuredData) {
       updateStructuredData(resolvedStructuredData);
@@ -289,6 +414,10 @@ export function SEOHead({
     siteName,
     noindex,
     resolvedStructuredData,
+    routeDataReady,
+    post,
+    release,
+    event,
   ]);
 
   return null;
@@ -323,7 +452,7 @@ function updateStructuredData(data: object) {
     (script as HTMLScriptElement).type = "application/ld+json";
     document.head.appendChild(script);
   }
-  script.textContent = JSON.stringify(data);
+  script.textContent = JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
 export function generateStructuredData(type: string, data: any) {
