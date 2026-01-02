@@ -1018,7 +1018,7 @@ export default function AdminAwards() {
                 <CardContent>
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="select-none">
                         <TableHead className="w-10" />
                         <TableHead>Nominee</TableHead>
                         <TableHead>Votes</TableHead>
