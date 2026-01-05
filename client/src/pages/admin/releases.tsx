@@ -580,118 +580,124 @@ export default function AdminReleases() {
 
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]"></TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Artist</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Release Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagedReleases.map((release) => (
-                  <TableRow 
-                    key={release.id} 
-                    data-testid={`row-release-${release.id}`}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => setLocation(`/admin/releases/${release.id}`)}
-                  >
-                    <TableCell>
-                      <div className="w-10 h-10 rounded overflow-hidden bg-muted">
-                        {release.coverUrl ? (
-                          <img
-                            src={resolveMediaUrl(release.coverUrl, "thumb")}
-                            alt={release.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{release.title}</div>
-                      {release.featured && (
-                        <Badge variant="default" className="text-xs mt-1">
-                          Featured
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>{release.artistName}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {release.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(release.releaseDate)}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={release.published ? "default" : "secondary"}
-                      >
-                        {release.published ? "Published" : "Draft"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid={`button-release-actions-${release.id}`}>
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setLocation(`/admin/releases/${release.id}`)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              togglePublishMutation.mutate({
-                                id: release.id!,
-                                published: !release.published,
-                              })
-                            }
-                          >
-                            {release.published ? (
-                              <>
-                                <EyeOff className="h-4 w-4 mr-2" />
-                                Unpublish
-                              </>
-                            ) : (
-                              <>
-                                <Eye className="h-4 w-4 mr-2" />
-                                Publish
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          {release.spotifyUrl && (
-                            <DropdownMenuItem asChild>
-                              <a
-                                href={release.spotifyUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                View on Spotify
-                              </a>
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteId(release.id!)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[44px] text-xs text-muted-foreground">#</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="hidden md:table-cell">Artist</TableHead>
+                    <TableHead className="hidden lg:table-cell">Type</TableHead>
+                    <TableHead className="hidden sm:table-cell">Release Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {pagedReleases.map((release, index) => (
+                    <TableRow 
+                      key={release.id} 
+                      data-testid={`row-release-${release.id}`}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setLocation(`/admin/releases/${release.id}`)}
+                    >
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <div className="w-10 h-10 rounded overflow-hidden bg-muted">
+                          {release.coverUrl ? (
+                            <img
+                              src={resolveMediaUrl(release.coverUrl, "thumb")}
+                              alt={release.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{release.title}</div>
+                        {release.featured && (
+                          <Badge variant="default" className="text-xs mt-1">
+                            Featured
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">{release.artistName}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge variant="outline" className="capitalize">
+                          {release.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatDate(release.releaseDate)}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={release.published ? "default" : "secondary"}
+                        >
+                          {release.published ? "Published" : "Draft"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" data-testid={`button-release-actions-${release.id}`}>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setLocation(`/admin/releases/${release.id}`)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                togglePublishMutation.mutate({
+                                  id: release.id!,
+                                  published: !release.published,
+                                })
+                              }
+                            >
+                              {release.published ? (
+                                <>
+                                  <EyeOff className="h-4 w-4 mr-2" />
+                                  Unpublish
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Publish
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            {release.spotifyUrl && (
+                              <DropdownMenuItem asChild>
+                                <a
+                                  href={release.spotifyUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <ExternalLink className="h-4 w-4 mr-2" />
+                                  View on Spotify
+                                </a>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => setDeleteId(release.id!)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
             {filteredReleases.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">

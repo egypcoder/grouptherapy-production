@@ -46,7 +46,7 @@ export function TestimonialsSection() {
   };
 
   return (
-    <section className="py-24 md:py-32">
+    <section className="py-24 md:py-32  shadow-sm">
       <div className="max-w-6xl mx-auto px-6 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

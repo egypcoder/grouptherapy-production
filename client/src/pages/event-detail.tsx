@@ -135,7 +135,7 @@ export default function EventDetailPage() {
 
               <h1 className="text-4xl md:text-6xl font-bold text-white mb-4">{event.title}</h1>
 
-              <div className="flex flex-wrap items-center gap-6 text-white/80 mb-8">
+              <div className="flex flex-wrap items-center gap-6 text-foreground mb-8">
                 {eventDate && (
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5" />
@@ -184,7 +184,7 @@ export default function EventDetailPage() {
             {event.description && (
               <section>
                 <h2 className="text-2xl font-bold mb-4">About This Event</h2>
-                <div className="prose prose-invert max-w-none">
+                <div className="prose dark:prose-invert max-w-none">
                   <p className="text-muted-foreground whitespace-pre-wrap">{event.description}</p>
                 </div>
               </section>

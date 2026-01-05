@@ -26,7 +26,7 @@ export default function ArtistsPage() {
     <div className="min-h-screen">
       <PageHero
         title="Artists"
-        subtitle="A curated showcase of the artists we believe in and support"
+        subtitle="The artists shaping the Group Therapy community"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

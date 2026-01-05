@@ -107,7 +107,7 @@ const defaultAboutPageModel: AboutPageModel = {
   ],
   ctaHeading: "Want to work with us?",
   ctaDescription:
-    "Whether you're an artist looking for a home, a promoter seeking talent, or a brand interested in partnerships – we'd love to hear from you.",
+    "Whether you have a question about our artists, event promos, or submitting a demo, get in touch.",
   ctaPrimaryText: "Get in Touch",
   ctaSecondaryText: "Press Kit",
 };

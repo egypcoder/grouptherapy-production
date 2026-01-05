@@ -610,7 +610,11 @@ export const db = {
   events: {
     async getAll(): Promise<Event[]> {
       if (!supabase) return [];
-      const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true });
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },
@@ -957,7 +961,11 @@ export const db = {
   tours: {
     async getAll(): Promise<Tour[]> {
       if (!supabase) return [];
-      const { data, error } = await supabase.from('tours').select('*').order('start_date', { ascending: true });
+      const { data, error } = await supabase
+        .from('tours')
+        .select('*')
+        .order('start_date', { ascending: false })
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },

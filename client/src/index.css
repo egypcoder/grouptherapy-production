@@ -35,7 +35,7 @@
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
-  --muted: 210 40% 96%;
+  --muted: 197 35% 94%;
   --muted-foreground: 215 16% 47%;
   --accent: 197 80% 92%;
   --accent-foreground: 197 100% 40%;
@@ -161,12 +161,29 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     letter-spacing: -0.011em;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  #root {
+    width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  img,
+  video {
+    max-width: 100%;
   }
 
   @media (pointer: coarse) {

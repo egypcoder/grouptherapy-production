@@ -18,11 +18,11 @@ function renderMarkdown(markdown: string): string {
 
   html = html.replace(
     /^### (.+)$/gm,
-    '<h3 class="text-lg font-semibold mt-6 mb-3">$1</h3>',
+    '<h3 class="text-xl font-semibold mt-6 mb-3">$1</h3>',
   );
   html = html.replace(
     /^## (.+)$/gm,
-    '<h2 class="text-xl font-semibold mt-8 mb-4">$1</h2>',
+    '<h2 class="text-3xl font-semibold mt-8 mb-4 pt-4">$1</h2>',
   );
   html = html.replace(
     /^# (.+)$/gm,
@@ -218,7 +218,7 @@ export default function PostDetailPage() {
 
             {post.content && (
               <div
-                className="prose prose-lg prose-invert max-w-none text-foreground"
+                className="prose prose-lg dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{
                   __html: sanitizeHtml(renderMarkdown(post.content)),
                 }}

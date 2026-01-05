@@ -170,9 +170,6 @@ function SectionHeader({
       transition={{ duration: 0.6 }}
       className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12 relative"
     >
-            <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl z-0" />
-      </div>
       <div>
         <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
           {title} <span className="gradient-text">{highlight}</span>
@@ -206,7 +203,7 @@ function AwardsSection({
   periodId?: string;
 }) {
   const { toast } = useToast();
-  const [votedEntries, setVotedEntries] = useState<Set<string>>(new Set());
+  const [votedPeriods, setVotedPeriods] = useState<Set<string>>(new Set());
   const [fingerprint, setFingerprint] = useState<string>("");
 
   useEffect(() => {
@@ -229,13 +226,23 @@ function AwardsSection({
       nav.platform,
     ].join("|");
     setFingerprint(btoa(data));
-    
-    const stored = localStorage.getItem("voted_entries_home");
-    if (stored) {
+
+    const votedOnAwardsPage = localStorage.getItem("voted_periods");
+    const votedOnHome = localStorage.getItem("voted_periods_home");
+
+    const next = new Set<string>();
+    for (const stored of [votedOnAwardsPage, votedOnHome]) {
+      if (!stored) continue;
       try {
-        setVotedEntries(new Set(JSON.parse(stored)));
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          for (const id of parsed) {
+            if (typeof id === "string") next.add(id);
+          }
+        }
       } catch {}
     }
+    if (next.size > 0) setVotedPeriods(next);
   }, []);
 
   const voteMutation = useMutation({
@@ -243,11 +250,13 @@ function AwardsSection({
       if (!periodId) throw new Error("No voting period available");
       return db.awards.votes.submit(entryId, periodId, undefined, fingerprint);
     },
-    onSuccess: (_, entryId) => {
-      const newVoted = new Set(votedEntries);
-      newVoted.add(entryId);
-      setVotedEntries(newVoted);
-      localStorage.setItem("voted_entries_home", JSON.stringify([...newVoted]));
+    onSuccess: () => {
+      if (!periodId) return;
+      const newVoted = new Set(votedPeriods);
+      newVoted.add(periodId);
+      setVotedPeriods(newVoted);
+      localStorage.setItem("voted_periods_home", JSON.stringify([...newVoted]));
+      localStorage.setItem("voted_periods", JSON.stringify([...newVoted]));
       queryClient.invalidateQueries({ queryKey: ["featuredAwardEntries"] });
       toast({
         title: "Vote Submitted!",
@@ -272,10 +281,10 @@ function AwardsSection({
       });
       return;
     }
-    if (votedEntries.has(entryId)) {
+    if (votedPeriods.has(periodId)) {
       toast({
         title: "Already Voted",
-        description: "You have already voted for this entry.",
+        description: "You have already voted in this period.",
         variant: "destructive",
       });
       return;
@@ -285,11 +294,12 @@ function AwardsSection({
 
   // Calculate total votes for percentage
   const totalVotes = entries.reduce((sum, entry) => sum + (entry.voteCount || 0), 0);
+  const hasVoted = periodId ? votedPeriods.has(periodId) : false;
 
   if (!hasActiveVoting || entries.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 bg-muted/30">
+    <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
       <div className="max-w-7xl mx-auto px-6 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -331,7 +341,7 @@ function AwardsSection({
               <AwardEntryCard
                 entry={entry}
                 onVote={() => handleVote(entry.id)}
-                hasVoted={votedEntries.has(entry.id)}
+                hasVoted={hasVoted}
                 isVoting={voteMutation.isPending}
                 totalVotes={totalVotes}
               />
@@ -458,12 +468,12 @@ export default function HomePage() {
 
       {/* Only show artists section if there are featured artists */}
       {artists && artists.filter((a) => a.featured).length > 0 && (
-        <section className="py-16 md:py-24 bg-muted/30">
+        <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
           <div className="max-w-7xl mx-auto px-6 md:px-8">
             <SectionHeader
               title="Supported"
               highlight="Artists"
-              description="A curated showcase of the artists we believe in and support"
+              description="The artists shaping the Group Therapy community"
               action={{ label: "Meet The Artists", href: "/artists" }}
             />
           </div>
@@ -486,24 +496,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-16 md:py-24 bg-muted/30">
+      <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <SectionHeader
             title="Curated"
             highlight="Playlists"
-            description="A mix of official playlists and music we believe in"
+            description="Official selections of playlists that reflects our sound"
             action={{ label: "View All Playlists", href: "/playlists" }}
           />
         </div>
         <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
       </section>
 
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24  shadow-sm">
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <SectionHeader
             title="Latest"
             highlight="News"
-            description="The Latest in Music, From Every Corner of the World"
+            description="The latest music news from around the world"
             action={{ label: "View All News", href: "/news" }}
           />
         </div>

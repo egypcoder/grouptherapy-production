@@ -151,8 +151,7 @@ export default function ContactPage() {
             >
               <h2 className="text-2xl font-bold mb-6">Get in Touch</h2>
               <p className="text-muted-foreground mb-8">
-                Whether you have a question about our artists, want to book talent, 
-                or are interested in submitting a demo, we're here to help.
+                Whether you have a question about our artists, event promos, or submitting a demo, get in touch.
               </p>
             </motion.div>
 
