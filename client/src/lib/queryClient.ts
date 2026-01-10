@@ -28,6 +28,7 @@ export const queryFunctions = {
   playlists: () => db.playlists.getAll(),
   videos: () => db.videos.getAll(),
   contacts: () => db.contacts.getAll(),
+  adminMessages: () => db.adminMessages.getAll(),
   radioSettings: () => db.radioSettings.get(),
   careers: () => db.careers.getAll(),
   careersPublished: () => db.careers.getPublished(),

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Mail, Trash2, MoreVertical, CheckCircle, Clock, Archive, Bell, BellOff } from "lucide-react";
+import { Search, Mail, Trash2, MoreVertical, CheckCircle, Clock, Archive, Bell, BellOff, Music2, Calendar } from "lucide-react";
 import { AdminLayout } from "./index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, Contact } from "@/lib/database";
+import { db, AdminMessage } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { requestNotificationPermission, showNotification } from "@/lib/firebase";
@@ -47,14 +47,14 @@ export default function AdminContacts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContact, setSelectedContact] = useState<AdminMessage | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
-  const { data: contacts, refetch } = useQuery<Contact[]>({
-    queryKey: ["contacts"],
-    queryFn: queryFunctions.contacts,
+  const { data: contacts, refetch } = useQuery<AdminMessage[]>({
+    queryKey: ["adminMessages"],
+    queryFn: queryFunctions.adminMessages,
   });
 
   const displayContacts = contacts || [];
@@ -72,7 +72,7 @@ export default function AdminContacts() {
     if (!supabase) return;
 
     const channel = supabase
-      .channel('contacts-realtime')
+      .channel('messages-realtime')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'contacts' },
@@ -96,6 +96,48 @@ export default function AdminContacts() {
       )
       .on(
         'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'promote_release_submissions' },
+        (payload) => {
+          refetch();
+          const row = payload.new as any;
+
+          if (notificationsEnabled) {
+            showNotification(
+              'New Track Promo Submission',
+              `${row.artist_name}: ${row.track_title || 'Track promo'}`,
+              '/favicon.ico'
+            );
+          }
+
+          toast({
+            title: "New Track Promo Submission",
+            description: `${row.artist_name}: ${row.track_title || 'Track promo'}`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'promote_event_submissions' },
+        (payload) => {
+          refetch();
+          const row = payload.new as any;
+
+          if (notificationsEnabled) {
+            showNotification(
+              'New Event Promo Submission',
+              `${row.event_name || 'Event promo'}`,
+              '/favicon.ico'
+            );
+          }
+
+          toast({
+            title: "New Event Promo Submission",
+            description: `${row.event_name || 'Event promo'}`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'contacts' },
         () => {
           refetch();
@@ -103,7 +145,35 @@ export default function AdminContacts() {
       )
       .on(
         'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'promote_release_submissions' },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'promote_event_submissions' },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'contacts' },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'promote_release_submissions' },
+        () => {
+          refetch();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'promote_event_submissions' },
         () => {
           refetch();
         }
@@ -147,22 +217,22 @@ export default function AdminContacts() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      return db.contacts.update(id, { status });
+    mutationFn: async ({ sourceTable, id, status }: { sourceTable: string; id: string; status: string }) => {
+      return db.adminMessages.updateStatus({ sourceTable, id, status });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["adminMessages"] });
       toast({ title: "Status updated" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return db.contacts.delete(id);
+    mutationFn: async (args: { sourceTable: string; id: string }) => {
+      return db.adminMessages.delete(args);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["contacts"] });
-      toast({ title: "Contact deleted" });
+      queryClient.invalidateQueries({ queryKey: ["adminMessages"] });
+      toast({ title: "Message deleted" });
       setDeleteId(null);
     },
   });
@@ -197,6 +267,20 @@ export default function AdminContacts() {
   };
 
   const newCount = displayContacts.filter((c) => c.status === "new").length;
+  const promoteReleaseCount = displayContacts.filter((c) => c.category === "promote_release").length;
+  const promoteEventCount = displayContacts.filter((c) => c.category === "promote_event").length;
+
+  const getCategoryIcon = (category: string) => {
+    if (category === "promote_release") return <Music2 className="h-3.5 w-3.5 mr-1" />;
+    if (category === "promote_event") return <Calendar className="h-3.5 w-3.5 mr-1" />;
+    return null;
+  };
+
+  const getCategoryLabel = (category: string) => {
+    if (category === "promote_release") return "Track Promo";
+    if (category === "promote_event") return "Event Promo";
+    return category;
+  };
 
   return (
     <AdminLayout>
@@ -205,7 +289,7 @@ export default function AdminContacts() {
           <div>
             <h1 className="text-3xl font-bold" data-testid="text-admin-contacts-title">Messages</h1>
             <p className="text-muted-foreground">
-              Contact form submissions and inquiries
+              Contact form submissions and promo requests
             </p>
           </div>
           <Button
@@ -244,17 +328,17 @@ export default function AdminContacts() {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">
-                {displayContacts.filter((c) => c.category === "demo").length}
+                {promoteReleaseCount}
               </div>
-              <p className="text-sm text-muted-foreground">Demo Submissions</p>
+              <p className="text-sm text-muted-foreground">Track Promo</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold">
-                {displayContacts.filter((c) => c.category === "press").length}
+                {promoteEventCount}
               </div>
-              <p className="text-sm text-muted-foreground">Press Inquiries</p>
+              <p className="text-sm text-muted-foreground">Event Promo</p>
             </CardContent>
           </Card>
         </div>
@@ -283,6 +367,8 @@ export default function AdminContacts() {
                   <SelectItem value="booking">Booking</SelectItem>
                   <SelectItem value="demo">Demo</SelectItem>
                   <SelectItem value="partnership">Partnership</SelectItem>
+                  <SelectItem value="promote_release">Track Promo</SelectItem>
+                  <SelectItem value="promote_event">Event Promo</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -316,9 +402,9 @@ export default function AdminContacts() {
               <TableBody>
                 {filteredContacts.map((contact) => (
                   <TableRow
-                    key={contact.id}
+                    key={`${contact.sourceTable}-${contact.id}`}
                     className={contact.status === "new" ? "bg-primary/5" : ""}
-                    data-testid={`row-contact-${contact.id}`}
+                    data-testid={`row-contact-${contact.sourceTable}-${contact.id}`}
                   >
                     <TableCell>{getStatusIcon(contact.status || "new")}</TableCell>
                     <TableCell>
@@ -328,14 +414,17 @@ export default function AdminContacts() {
                     <TableCell>
                       <button
                         className="text-left hover:text-primary transition-colors"
-                        onClick={() => setSelectedContact(contact as Contact)}
+                        onClick={() => setSelectedContact(contact)}
                       >
                         {contact.subject}
                       </button>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="capitalize">
-                        {contact.category}
+                        <span className="inline-flex items-center">
+                          {getCategoryIcon(contact.category || "")}
+                          {getCategoryLabel(contact.category || "")}
+                        </span>
                       </Badge>
                     </TableCell>
                     <TableCell>{formatDate(contact.createdAt)}</TableCell>
@@ -347,14 +436,14 @@ export default function AdminContacts() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setSelectedContact(contact as Contact)}>
+                          <DropdownMenuItem onClick={() => setSelectedContact(contact)}>
                             <Mail className="h-4 w-4 mr-2" />
                             View Message
                           </DropdownMenuItem>
                           {contact.status !== "read" && (
                             <DropdownMenuItem
                               onClick={() =>
-                                updateStatusMutation.mutate({ id: contact.id!, status: "read" })
+                                updateStatusMutation.mutate({ sourceTable: contact.sourceTable, id: contact.id!, status: "read" })
                               }
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
@@ -363,7 +452,7 @@ export default function AdminContacts() {
                           )}
                           <DropdownMenuItem
                             onClick={() =>
-                              updateStatusMutation.mutate({ id: contact.id!, status: "archived" })
+                              updateStatusMutation.mutate({ sourceTable: contact.sourceTable, id: contact.id!, status: "archived" })
                             }
                           >
                             <Archive className="h-4 w-4 mr-2" />
@@ -372,7 +461,7 @@ export default function AdminContacts() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
-                            onClick={() => setDeleteId(contact.id!)}
+                            onClick={() => setDeleteId(`${contact.sourceTable}::${contact.id!}`)}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
@@ -405,13 +494,29 @@ export default function AdminContacts() {
           <div className="space-y-4">
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <Badge variant="outline" className="capitalize">
-                {selectedContact?.category}
+                <span className="inline-flex items-center">
+                  {getCategoryIcon(selectedContact?.category || "")}
+                  {getCategoryLabel(selectedContact?.category || "")}
+                </span>
               </Badge>
               <span>{formatDate(selectedContact?.createdAt)}</span>
             </div>
-            <div className="p-4 bg-muted rounded-md">
-              <p className="whitespace-pre-wrap">{selectedContact?.message}</p>
-            </div>
+            {selectedContact?.payload && (selectedContact.category === "promote_release" || selectedContact.category === "promote_event") ? (
+              <div className="p-4 bg-muted rounded-md space-y-3">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {Object.entries(selectedContact.payload as any).map(([k, v]) => (
+                    <div key={k} className="space-y-1">
+                      <p className="text-xs text-muted-foreground">{k}</p>
+                      <p className="text-sm break-words whitespace-pre-wrap">{v === null || v === undefined || v === "" ? "-" : String(v)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-muted rounded-md">
+                <p className="whitespace-pre-wrap">{selectedContact?.message}</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedContact(null)}>
@@ -441,7 +546,12 @@ export default function AdminContacts() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              onClick={() => {
+                if (!deleteId) return;
+                const [sourceTable, id] = deleteId.split("::");
+                if (!sourceTable || !id) return;
+                deleteMutation.mutate({ sourceTable, id });
+              }}
               disabled={deleteMutation.isPending}
             >
               {deleteMutation.isPending ? "Deleting..." : "Delete"}

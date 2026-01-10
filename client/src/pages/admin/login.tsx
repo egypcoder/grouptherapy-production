@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { LogIn, Loader2, Mail, Lock, ArrowRight } from "lucide-react";
+import { LogIn, Loader2, Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, Link } from "wouter";
-
+import logo from "/favicon.png";
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -57,9 +57,9 @@ export default function AdminLogin() {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-10">
-             <Link href="/" className="flex items-center gap-1 group mb-2" data-testid="link-logo">
-            <img src="favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
-              <span className="text-lg lg:text-xl font-semibold tracking-tight">
+             <Link href="/" className="flex items-center gap-1 group mb-2 justify-center" data-testid="link-logo">
+            <img src={logo} className="w-8 h-8" alt="GroupTherapy Records Logo" />
+              <span className="text-2xl font-semibold tracking-tight">
                 GROUP<span className="text-primary transition-colors">THERAPY</span>
               </span>
             </Link>
@@ -130,8 +130,8 @@ export default function AdminLogin() {
 
         <div className="mt-8 text-center">
           <Link href="/">
-            <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-              Back to website
+            <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1 justify-center">
+            <ArrowLeft className="h-4 w-4" /> Back to website
             </span>
           </Link>
         </div>

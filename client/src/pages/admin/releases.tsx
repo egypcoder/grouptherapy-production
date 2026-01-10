@@ -267,7 +267,7 @@ const defaultFormData: ReleaseFormData = {
 
 export default function AdminReleases() {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [matchNew] = useRoute("/admin/releases/new");
   const [matchEdit, params] = useRoute("/admin/releases/:id");
   const PAGE_SIZE = 10;
@@ -284,6 +284,9 @@ export default function AdminReleases() {
   const [metadataFetched, setMetadataFetched] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollYRef = useRef(0);
+  const restoreScrollPendingRef = useRef(false);
+  const restoreScrollTargetPathRef = useRef<string | null>(null);
 
   const { data: releases } = useQuery<Release[]>({
     queryKey: ["releases"],
@@ -311,6 +314,28 @@ export default function AdminReleases() {
     }
   }, [matchNew, matchEdit, params?.id, displayReleases.length]);
 
+  useEffect(() => {
+    if (!restoreScrollPendingRef.current) return;
+    if (!restoreScrollTargetPathRef.current) return;
+    if (location !== restoreScrollTargetPathRef.current) return;
+
+    const y = scrollYRef.current;
+    restoreScrollPendingRef.current = false;
+    restoreScrollTargetPathRef.current = null;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, left: 0, behavior: "auto" });
+      });
+    });
+  }, [location]);
+
+  const navigatePreserveScroll = (href: string) => {
+    scrollYRef.current = window.scrollY;
+    restoreScrollPendingRef.current = true;
+    restoreScrollTargetPathRef.current = href;
+    setLocation(href);
+  };
+
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingRelease(null);
@@ -318,6 +343,8 @@ export default function AdminReleases() {
     setQuickAddLink("");
     setIsFetchingMetadata(false);
     setMetadataFetched(false);
+    restoreScrollPendingRef.current = true;
+    restoreScrollTargetPathRef.current = "/admin/releases";
     setLocation("/admin/releases");
   };
 
@@ -533,7 +560,7 @@ export default function AdminReleases() {
           <Button 
             className="gap-2" 
             data-testid="button-new-release"
-            onClick={() => setLocation("/admin/releases/new")}
+            onClick={() => navigatePreserveScroll("/admin/releases/new")}
           >
             <Plus className="h-4 w-4" />
             Add Release
@@ -600,7 +627,7 @@ export default function AdminReleases() {
                       key={release.id} 
                       data-testid={`row-release-${release.id}`}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setLocation(`/admin/releases/${release.id}`)}
+                      onClick={() => navigatePreserveScroll(`/admin/releases/${release.id}`)}
                     >
                       <TableCell className="text-xs tabular-nums text-muted-foreground">
                         {index + 1}
@@ -646,7 +673,7 @@ export default function AdminReleases() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setLocation(`/admin/releases/${release.id}`)}>
+                            <DropdownMenuItem onClick={() => navigatePreserveScroll(`/admin/releases/${release.id}`)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
@@ -715,7 +742,10 @@ export default function AdminReleases() {
       </div>
 
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <DialogContent className="sm:max-w-md overflow-x-hidden">
+        <DialogContent
+          className="sm:max-w-md overflow-x-hidden"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Delete Release</DialogTitle>
             <DialogDescription>
@@ -738,7 +768,10 @@ export default function AdminReleases() {
       </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleDialogClose()}>
-        <DialogContent className="sm:max-w-xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent
+          className="sm:max-w-xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>{editingRelease ? "Edit Release" : "Create Release"}</DialogTitle>
             <DialogDescription>

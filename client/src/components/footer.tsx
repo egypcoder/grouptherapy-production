@@ -24,6 +24,8 @@ const footerLinks = {
   company: [
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
+    { label: "Promote Your Release", href: "/promote-your-release" },
+    { label: "Promote Your Event", href: "/promote-your-event" },
     { label: "Awards", href: "/awards" },
     { label: "Careers", href: "/careers" },
     { label: "Press", href: "/press" },

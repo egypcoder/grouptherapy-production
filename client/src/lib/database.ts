@@ -162,6 +162,54 @@ export interface Contact {
   createdAt: string;
 }
 
+export interface PromoteReleaseSubmission {
+  id: string;
+  artistName: string;
+  instagram?: string;
+  trackTitle: string;
+  trackLink?: string;
+  releaseDate?: string;
+  describeTrack?: string;
+  monthlyListeners?: number;
+  promoContent?: string;
+  promotionGoal?: string;
+  budget?: string;
+  email: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface PromoteEventSubmission {
+  id: string;
+  eventName: string;
+  eventDate?: string;
+  eventLocation?: string;
+  eventType?: string;
+  tellUsMore?: string;
+  expectedAttendance?: number;
+  ticketingLink?: string;
+  promoContent?: string;
+  instagramOrWebsiteLink?: string;
+  whatDoYouNeedFromUs?: string;
+  budget?: string;
+  email: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface AdminMessage {
+  id: string;
+  sourceTable: string;
+  category: string;
+  status: string;
+  createdAt: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  payload?: any;
+}
+
 export interface RadioSettings {
   id: string;
   stationName: string;
@@ -889,6 +937,137 @@ export const db = {
       if (!supabase) throw new Error('Database not configured');
       const { error } = await supabase.from('contacts').delete().eq('id', id);
       if (error) throw error;
+    }
+  },
+
+  promoteReleaseSubmissions: {
+    async getAll(): Promise<PromoteReleaseSubmission[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('promote_release_submissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getById(id: string): Promise<PromoteReleaseSubmission | null> {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from('promote_release_submissions').select('*').eq('id', id).single();
+      if (error) return null;
+      return convertSnakeToCamel(data);
+    },
+    async create(submission: Partial<PromoteReleaseSubmission>): Promise<PromoteReleaseSubmission> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('promote_release_submissions')
+        .insert(convertCamelToSnake(submission))
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async update(id: string, submission: Partial<PromoteReleaseSubmission>): Promise<PromoteReleaseSubmission> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('promote_release_submissions')
+        .update(convertCamelToSnake(submission))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async delete(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { error } = await supabase.from('promote_release_submissions').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  promoteEventSubmissions: {
+    async getAll(): Promise<PromoteEventSubmission[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('promote_event_submissions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getById(id: string): Promise<PromoteEventSubmission | null> {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from('promote_event_submissions').select('*').eq('id', id).single();
+      if (error) return null;
+      return convertSnakeToCamel(data);
+    },
+    async create(submission: Partial<PromoteEventSubmission>): Promise<PromoteEventSubmission> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('promote_event_submissions')
+        .insert(convertCamelToSnake(submission))
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async update(id: string, submission: Partial<PromoteEventSubmission>): Promise<PromoteEventSubmission> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('promote_event_submissions')
+        .update(convertCamelToSnake(submission))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async delete(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { error } = await supabase.from('promote_event_submissions').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
+  adminMessages: {
+    async getAll(): Promise<AdminMessage[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase.from('admin_messages').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async updateStatus(args: { sourceTable: string; id: string; status: string }): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { sourceTable, id, status } = args;
+      if (sourceTable === 'contacts') {
+        await db.contacts.update(id, { status });
+        return;
+      }
+      if (sourceTable === 'promote_release_submissions') {
+        await db.promoteReleaseSubmissions.update(id, { status });
+        return;
+      }
+      if (sourceTable === 'promote_event_submissions') {
+        await db.promoteEventSubmissions.update(id, { status });
+        return;
+      }
+      throw new Error(`Unknown message source: ${sourceTable}`);
+    },
+    async delete(args: { sourceTable: string; id: string }): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { sourceTable, id } = args;
+      if (sourceTable === 'contacts') {
+        await db.contacts.delete(id);
+        return;
+      }
+      if (sourceTable === 'promote_release_submissions') {
+        await db.promoteReleaseSubmissions.delete(id);
+        return;
+      }
+      if (sourceTable === 'promote_event_submissions') {
+        await db.promoteEventSubmissions.delete(id);
+        return;
+      }
+      throw new Error(`Unknown message source: ${sourceTable}`);
     }
   },
 

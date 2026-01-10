@@ -58,6 +58,8 @@ export default async function handler(req: Req, res: Res) {
     { loc: `${baseUrl}/awards`, changefreq: "weekly", priority: 0.6, lastmod: now },
     { loc: `${baseUrl}/about`, changefreq: "yearly", priority: 0.5, lastmod: now },
     { loc: `${baseUrl}/contact`, changefreq: "yearly", priority: 0.5, lastmod: now },
+    { loc: `${baseUrl}/promote-your-release`, changefreq: "yearly", priority: 0.5, lastmod: now },
+    { loc: `${baseUrl}/promote-your-event`, changefreq: "yearly", priority: 0.5, lastmod: now },
     { loc: `${baseUrl}/news`, changefreq: "daily", priority: 0.8, lastmod: now },
     { loc: `${baseUrl}/press`, changefreq: "yearly", priority: 0.4, lastmod: now },
     { loc: `${baseUrl}/careers`, changefreq: "weekly", priority: 0.5, lastmod: now },
