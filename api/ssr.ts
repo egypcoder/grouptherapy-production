@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-import { computeSeo, normalizeSeoSettings, parseSeoRoute } from "../shared/seo";
+import { computeSeo, normalizeSeoSettings, parseSeoRoute } from "../shared/seo.js";
 
 type Req = {
   headers: Record<string, string | string[] | undefined>;
