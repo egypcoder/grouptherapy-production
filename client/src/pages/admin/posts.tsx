@@ -278,7 +278,7 @@ const prompt = `You are an expert SEO strategist and music industry blogger for 
 Generate an SEO-optimized blog post about: "${formData.title}"
 
 IMPORTANT SEO REQUIREMENTS:
-1. Use proper heading structure with ## for H2 and ### for H3 headings.
+1. Use proper heading structure with ## for H2 and ### for H3 headings in "content" only.
 2. Include trending music industry keywords naturally, derived from the title context (e.g., electronic music, EDM, DJ, producer, remix, festival, streaming, vinyl, etc.).
 3. Identify and incorporate primary and secondary keywords from the title topic for SEO optimization.
 4. Add relevant internal links using markdown format to these pages where contextually appropriate:
