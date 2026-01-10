@@ -112,7 +112,7 @@ export function HeroSection({
           transition={{ duration: 0.8, ease: [0.25, 0.1, 0.25, 1] }}
         >
           <motion.span
-            className="inline-block text-xs md:text-sm uppercase tracking-[0.25em] text-primary font-medium mb-8"
+            className="px-4 py-1 rounded-full inline-block text-xs md:text-sm uppercase tracking-[0.25em] text-primary font-medium mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -133,7 +133,7 @@ export function HeroSection({
         </motion.h1>
 
         <motion.p
-          className="text-lg md:text-xl lg:text-2xl text-muted-foreground font-light max-w-2xl mx-auto mb-12 leading-relaxed text-balance"
+          className="text-lg md:text-xl lg:text-xl text-muted-foreground font-light max-w-2xl mx-auto mb-12 leading-relaxed text-balance"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
@@ -238,10 +238,10 @@ export function HeroSection({
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           className="flex flex-col items-center gap-3"
         >
-          <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/60">
+          <span className="text-[0.5rem] uppercase tracking-[0.2em] text-muted-foreground/60">
             Scroll
           </span>
-          <div className="w-5 h-8 border border-muted-foreground/20 rounded-full flex justify-center pt-1.5">
+          <div className="w-5 h-8 border border-border/50 rounded-full flex justify-center pt-1.5">
             <motion.div
               animate={{ y: [0, 8, 0], opacity: [1, 0.3, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}

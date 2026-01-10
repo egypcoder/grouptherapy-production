@@ -5,10 +5,11 @@ import { resolveMediaUrl } from "../lib/media";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
+import { Marquee } from "@/components/marquee";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SiLinkedin, SiX, SiInstagram } from "react-icons/si";
-import { db, type StaticPage } from "@/lib/database";
+import { db, type StaticPage, type SiteSettings } from "@/lib/database";
 import type { TeamMember } from "@shared/schema";
 
 const demoTeam: Partial<TeamMember>[] = [
@@ -116,6 +117,11 @@ export default function AboutPage() {
     queryFn: () => db.staticPages.getBySlug("about"),
   });
 
+  const { data: siteSettings } = useQuery<SiteSettings | null>({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
   const aboutModel = useMemo(() => {
     return aboutPage?.content ? parseAboutModel(aboutPage.content) : null;
   }, [aboutPage?.content]);
@@ -150,6 +156,11 @@ export default function AboutPage() {
       <PageHero
         title={heroTitle}
         subtitle={heroSubtitle}
+      />
+
+      <Marquee
+        items={siteSettings?.marqueeItems || []}
+        speed={siteSettings?.marqueeSpeed || 40}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

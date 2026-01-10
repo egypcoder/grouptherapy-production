@@ -98,7 +98,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-6">
           <div className="lg:col-span-4">
               <Link href="/" className="flex items-center gap-1 group mb-2" data-testid="link-logo">
-            <img src="favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
+            <img src="/favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
               <span className="text-lg lg:text-xl font-semibold tracking-tight">
                 GROUP<span className="text-primary transition-colors">THERAPY</span>
               </span>
@@ -214,6 +214,11 @@ export function Footer() {
             <Link href="/terms">
               <span className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                 Terms
+              </span>
+            </Link>
+            <Link href="/cookies">
+              <span className="text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                Cookie Policy
               </span>
             </Link>
           </div>

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -284,11 +285,10 @@ export default function AdminCareers() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Switch
                   id="published"
                   checked={formData.published}
-                  onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
+                  onCheckedChange={(checked) => setFormData({ ...formData, published: checked })}
                 />
                 <Label htmlFor="published">Published</Label>
               </div>

@@ -169,7 +169,7 @@ export function Navigation() {
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <nav className="flex items-center justify-between h-14 lg:h-16">
             <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
-            <img src="favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
+            <img src="/favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
               <span className="text-lg lg:text-xl font-semibold tracking-tight">
                 GROUP<span className="text-primary transition-colors">THERAPY</span>
               </span>

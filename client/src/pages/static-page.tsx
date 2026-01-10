@@ -9,14 +9,23 @@ export default function StaticPageView() {
   const [, params] = useRoute("/:slug");
   const slug = params?.slug || "";
 
+  const normalizedSlug =
+    slug === "privacy"
+      ? "privacy-policy"
+      : slug === "terms"
+      ? "terms-of-service"
+      : slug === "cookies"
+      ? "cookie-policy"
+      : slug;
+
   const {
     data: page,
     isLoading,
     error,
   } = useQuery<StaticPage | null>({
-    queryKey: ["staticPage", slug],
-    queryFn: () => db.staticPages.getBySlug(slug),
-    enabled: !!slug,
+    queryKey: ["staticPage", normalizedSlug],
+    queryFn: () => db.staticPages.getBySlug(normalizedSlug),
+    enabled: !!normalizedSlug,
   });
 
   if (isLoading) {

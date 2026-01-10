@@ -9,6 +9,7 @@ import { AwardEntryCard } from "@/components/award-entry-card";
 import { FeaturedArtists } from "@/components/featured-artists";
 import { NewsletterSection } from "@/components/newsletter-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
+import { Marquee } from "@/components/marquee";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
@@ -423,9 +424,19 @@ export default function HomePage() {
   const heroCtaText = siteSettings?.heroCtaText || "Explore Releases";
   const heroCtaLink = siteSettings?.heroCtaLink || "/releases";
   const showHeroRadio = siteSettings?.showHeroRadio ?? true;
+  const marqueeItems = siteSettings?.marqueeItems || defaultMarqueeItems;
+  const marqueeSpeed = siteSettings?.marqueeSpeed || 40;
   const statsItems = siteSettings?.statsItems?.length
     ? siteSettings.statsItems
     : defaultStatsItems;
+
+  const featuredEvents = (events || []).filter((event) => event.featured);
+
+  const hasStats = (statsItems?.length ?? 0) > 0;
+  const hasReleases = (releases?.length ?? 0) > 0;
+  const hasEvents = featuredEvents.length > 0;
+  const hasPlaylists = (playlists?.length ?? 0) > 0;
+  const hasPosts = (posts?.length ?? 0) > 0;
 
   const heroStats = statsItems.slice(0, 3).map((stat) => ({
     value: `${stat.prefix || ""}${stat.value}${stat.suffix || ""}`,
@@ -447,24 +458,29 @@ export default function HomePage() {
         heroStats={heroStats}
       />
 
-      <StatsSection statsItems={statsItems} />
 
-      <section className="py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <SectionHeader
-            title="New"
-            highlight="Releases"
-            description="The latest releases from our comunity"
-            action={{ label: "View All Releases", href: "/releases" }}
+      {hasStats && <StatsSection statsItems={statsItems} />}
+
+      <Marquee items={marqueeItems} speed={marqueeSpeed} />
+
+      {hasReleases && (
+        <section className="py-16 md:py-24">
+          <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12">
+            <SectionHeader
+              title="New"
+              highlight="Releases"
+              description="The latest releases from our comunity"
+              action={{ label: "View All Releases", href: "/releases" }}
+            />
+          </div>
+          <ReleasesCarousel
+            releases={releases || []}
+            title=""
+            autoPlay={true}
+            showViewAll={false}
           />
-        </div>
-        <ReleasesCarousel
-          releases={releases || []}
-          title=""
-          autoPlay={true}
-          showViewAll={false}
-        />
-      </section>
+        </section>
+      )}
 
       {/* Only show artists section if there are featured artists */}
       {artists && artists.filter((a) => a.featured).length > 0 && (
@@ -484,41 +500,47 @@ export default function HomePage() {
         </section>
       )}
 
-      <section className="py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <SectionHeader
-            title="Upcoming"
-            highlight="Events"
-            description="Experience the music live"
-            action={{ label: "View All Events", href: "/events" }}
-          />
-          <EventsCarousel events={events || []} title="" showViewAll={false} />
-        </div>
-      </section>
+      {hasEvents && (
+        <section className="py-16 md:py-24">
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
+            <SectionHeader
+              title="Upcoming"
+              highlight="Events"
+              description="Experience the music live"
+              action={{ label: "View All Events", href: "/events" }}
+            />
+            <EventsCarousel events={featuredEvents} title="" showViewAll={false} />
+          </div>
+        </section>
+      )}
 
-      <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <SectionHeader
-            title="Curated"
-            highlight="Playlists"
-            description="Official selections of playlists that reflects our sound"
-            action={{ label: "View All Playlists", href: "/playlists" }}
-          />
-        </div>
-        <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
-      </section>
+      {hasPlaylists && (
+        <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
+            <SectionHeader
+              title="Curated"
+              highlight="Playlists"
+              description="Official selections of playlists that reflects our sound"
+              action={{ label: "View All Playlists", href: "/playlists" }}
+            />
+          </div>
+          <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
+        </section>
+      )}
 
-      <section className="py-16 md:py-24  shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 md:px-8">
-          <SectionHeader
-            title="Latest"
-            highlight="News"
-            description="The latest music news from around the world"
-            action={{ label: "View All News", href: "/news" }}
-          />
-        </div>
-        <PostsCarousel posts={(posts || []).slice(0, 8)} autoPlay={true} />
-      </section>
+      {hasPosts && (
+        <section className="py-16 md:py-24  shadow-sm">
+          <div className="max-w-7xl mx-auto px-6 md:px-8">
+            <SectionHeader
+              title="Latest"
+              highlight="News"
+              description="The latest music news from around the world"
+              action={{ label: "View All News", href: "/news" }}
+            />
+          </div>
+          <PostsCarousel posts={(posts || []).slice(0, 8)} autoPlay={true} />
+        </section>
+      )}
 
       <TestimonialsSection />
 

@@ -273,32 +273,41 @@ export default function AdminPosts() {
 
     setIsGenerating(true);
     try {
-      const prompt = `You are an expert SEO strategist and music industry blogger for GroupTherapy Records, a cutting-edge electronic music label.
+const prompt = `You are an expert SEO strategist and music industry blogger for GroupTherapy Records, a cutting-edge electronic music label.
 
 Generate an SEO-optimized blog post about: "${formData.title}"
 
 IMPORTANT SEO REQUIREMENTS:
-1. Use proper heading structure with ## for H2 and ### for H3 headings
-2. Include trending music industry keywords naturally (electronic music, EDM, DJ, producer, remix, festival, streaming, vinyl, etc.)
-3. Add relevant internal links using markdown format to these pages where contextually appropriate:
+1. Use proper heading structure with ## for H2 and ### for H3 headings.
+2. Include trending music industry keywords naturally, derived from the title context (e.g., electronic music, EDM, DJ, producer, remix, festival, streaming, vinyl, etc.).
+3. Identify and incorporate primary and secondary keywords from the title topic for SEO optimization.
+4. Add relevant internal links using markdown format to these pages where contextually appropriate:
    - [our latest releases](/releases)
+   - [our latest videos](/videos)
+   - [Promote your event](/promote-your-event)
+   - [Promote your release](/promote-your-release)
+   - [Vote now in grouptherapy awards](/awards)
    - [featured artists](/artists)
+   - [contact us](/contact)
+   - [our latest news](/news)
    - [upcoming events](/events)
    - [live radio](/radio)
    - [tour dates](/tours)
-4. Write engaging, shareable content that establishes thought leadership
-5. Include a compelling call-to-action
-
+5. Determine the content format (news article, listicle, opinion piece, etc.) based on the title context and structure the post accordingly (e.g., use a numbered list for listicles).
+6. Use a casual, conversational tone throughout the article to engage readers.
+7. Write engaging, shareable content that establishes thought leadership in the music industry.
+8. Include a compelling call-to-action at the end.
 Format your response as JSON with these fields:
 {
   "excerpt": "A compelling 1-2 sentence summary with primary keyword for previews",
-  "content": "The full blog post content in Markdown format with:\n- An engaging intro paragraph\n- ## H2 heading for main sections\n- ### H3 subheadings where appropriate\n- 3-5 paragraphs of valuable content\n- Natural keyword placement\n- 2-3 internal links to /releases, /artists, /events, /radio, or /tours\n- A strong conclusion with call-to-action",
-  "tags": "comma-separated trending relevant tags (5-8 tags)",
-  "metaTitle": "SEO-optimized title under 60 characters with primary keyword at start",
+  "content": "The full blog post content in Markdown format with:\n- An engaging intro paragraph\n- ## H2 headings for main sections\n- ### H3 subheadings where appropriate\n- 3-5 paragraphs of valuable content (or list items for listicles)\n- Natural keyword placement\n- 2-3 internal links to /releases, /artists, /events, /radio, or /tours\n- A strong conclusion with call-to-action",
+  "tags": "comma-separated trending relevant tags (5-8 tags, including primary keywords)",
+  "metaTitle": "SEO-optimized title under 60 characters with primary keyword at the start",
   "metaDescription": "Compelling meta description under 155 characters with primary and secondary keywords, ending with a call-to-action"
 }
 
 Return only valid JSON, no markdown code blocks or additional text.`;
+
 
       const result = await generateContent(prompt);
       
