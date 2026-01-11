@@ -44,14 +44,29 @@ export default function ArtistDetailPage() {
     queryFn: () => db.events.getAll(),
   });
 
+  const artistNameLower = (artist?.name || "").trim().toLowerCase();
+
   const artistReleases = allReleases?.filter(
     (r) =>
       r.published &&
-      (r.artistName?.toLowerCase() === artist?.name?.toLowerCase() || r.artistId === artist?.id),
+      (
+        r.artistId === artist?.id ||
+        (!!artistNameLower && (r.artistName || "").toLowerCase().includes(artistNameLower))
+      ),
   ) ?? [];
 
   const artistEvents = allEvents?.filter(
-    (e) => e.published && e.artistIds?.includes(artist?.id ?? "") && (parseDateTime(e.date)?.getTime() ?? 0) >= Date.now(),
+    (e) => {
+      if (!e.published) return false;
+      const upcoming = (parseDateTime(e.date)?.getTime() ?? 0) >= Date.now();
+      if (!upcoming) return false;
+
+      const matchesById = !!artist?.id && (e.artistIds || []).includes(artist.id);
+      const haystack = `${e.title || ""} ${e.description || ""}`.toLowerCase();
+      const matchesByName = !!artistNameLower && haystack.includes(artistNameLower);
+
+      return matchesById || matchesByName;
+    },
   ) ?? [];
 
 
