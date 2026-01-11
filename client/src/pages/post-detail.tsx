@@ -34,7 +34,7 @@ function renderMarkdown(markdown: string): string {
 
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" class="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">$1</a>',
+    '<a href="$2" class="text-primary underline hover:no-underline">$1</a>',
   );
 
   html = html.replace(
