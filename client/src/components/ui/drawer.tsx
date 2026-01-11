@@ -49,7 +49,7 @@ const DrawerContent = React.forwardRef<
       )}
       {...props}
     >
-      <DrawerPrimitive.Handle className="mx-auto mt-1 h-1.5 w-12 rounded-full bg-muted cursor-grab active:cursor-grabbing touch-none sm:hidden" />
+      <DrawerPrimitive.Handle className="mx-auto mt-4 h-2 w-12 rounded-full bg-muted cursor-grab active:cursor-grabbing touch-none sm:hidden" />
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>

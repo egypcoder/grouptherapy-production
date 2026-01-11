@@ -177,7 +177,7 @@ export function RadioChat({
               </PopoverTrigger>
               <PopoverContent align="end" sideOffset={8} className="w-72 p-3">
                 <div className="space-y-2">
-                  <p className="text-xs font-medium tracking-wider text-muted-foreground">
+                  <p className="text-md sm:text-sm font-medium tracking-wider text-muted-foreground">
                     Edit your username
                   </p>
                   <div className="flex items-center gap-2">

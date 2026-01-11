@@ -149,7 +149,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                       <link.icon className={cn("h-4 w-4", isActive && "text-primary")} />
                       {link.label}
                       {showBadge && (
-                        <span className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-medium px-1.5">
+                        <span className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-md sm:text-sm font-medium px-1.5">
                           {newMessageCount > 9 ? "9+" : newMessageCount}
                         </span>
                       )}

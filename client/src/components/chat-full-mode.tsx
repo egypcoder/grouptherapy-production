@@ -54,7 +54,7 @@ export function ChatFullMode() {
                   className="z-[80] w-[min(20rem,calc(100vw-2rem))] p-3"
                 >
                   <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wider text-muted-foreground">
+                    <p className="text-md sm:text-sm font-medium tracking-wider text-muted-foreground">
                       Edit your username
                     </p>
                     <div className="flex items-center gap-2">
@@ -140,7 +140,7 @@ export function ChatFullMode() {
                   className="z-[80] w-72 p-3"
                 >
                   <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wider text-muted-foreground">
+                    <p className="text-md sm:text-sm font-medium tracking-wider text-muted-foreground">
                       Edit your username
                     </p>
                     <div className="flex items-center gap-2">

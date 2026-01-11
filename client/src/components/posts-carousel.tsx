@@ -127,7 +127,7 @@ function PostCard({ post }: { post: Post }) {
               {post.excerpt}
             </p>
           )}
-          <div className="mt-3 inline-flex items-center gap-2 text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+          <div className="mt-3 inline-flex items-center gap-2 text-md sm:text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
             Read article
             <ArrowRight className="h-3 w-3" />
           </div>

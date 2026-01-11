@@ -99,16 +99,16 @@ export function Footer() {
           <div className="lg:col-span-4">
               <Link href="/" className="flex items-center gap-1 group mb-2" data-testid="link-logo">
             <img src="/favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
-              <span className="text-lg lg:text-xl font-semibold tracking-tight">
+              <span className="text-xl lg:text-xl font-semibold tracking-tight">
                 GROUP<span className="text-primary transition-colors">THERAPY</span>
               </span>
             </Link>
-            <p className="text-xs text-muted-foreground mb-6 max-w-sm leading-relaxed">
+            <p className="text-md sm:text-xs text-muted-foreground mb-6 max-w-sm leading-relaxed">
               Home of Artists
             </p>
 
             <form onSubmit={handleSubscribe} className="space-y-2.5">
-              <p className="text-xs font-medium">Stay updated</p>
+              <p className="text-md sm:text-sm font-medium">Stay updated</p>
               <div className="flex gap-2">
                 <Input
                   type="email"
@@ -137,12 +137,12 @@ export function Footer() {
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="font-medium mb-3 text-xs">Music</h4>
+            <h4 className="font-medium mb-3 text-lg sm:text-md">Music</h4>
             <ul className="space-y-2">
               {footerLinks.music.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href}>
-                    <span className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    <span className="text-md sm:text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                       {link.label}
                     </span>
                   </Link>
@@ -152,12 +152,12 @@ export function Footer() {
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="font-medium mb-3 text-xs">Discover</h4>
+            <h4 className="font-medium mb-3 text-md">Discover</h4>
             <ul className="space-y-2">
               {footerLinks.discover.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href}>
-                    <span className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    <span className="text-md sm:text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                       {link.label}
                     </span>
                   </Link>
@@ -167,12 +167,12 @@ export function Footer() {
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="font-medium mb-3 text-xs">Company</h4>
+            <h4 className="font-medium mb-3 text-md">Company</h4>
             <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href}>
-                    <span className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    <span className="text-md sm:text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                       {link.label}
                     </span>
                   </Link>
@@ -182,7 +182,7 @@ export function Footer() {
           </div>
 
           <div className="lg:col-span-2">
-            <h4 className="font-medium mb-3 text-xs">Social</h4>
+            <h4 className="font-medium mb-3 text-md">Social</h4>
             <div className="flex flex-wrap gap-1.5">
               {socialLinks.map((social) => (
                 <a

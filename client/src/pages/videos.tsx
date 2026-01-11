@@ -262,7 +262,7 @@ function VideoCard({
 
         {/* Duration */}
         {video.duration && (
-          <span className="absolute bottom-2 right-2 px-2 py-1 text-xs font-medium bg-black/80 text-white rounded">
+          <span className="absolute bottom-2 right-2 px-2 py-1 text-md sm:text-sm font-medium bg-black/80 text-white rounded">
             {video.duration}
           </span>
         )}

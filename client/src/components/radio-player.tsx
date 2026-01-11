@@ -645,7 +645,7 @@ export function GlobalRadioPlayer() {
                   {recentTracks.length > 0 && (
                     <div className="pt-2 border-t border-border">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        <span className="text-md sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">
                           Recent Streams
                         </span>
                         <Link href="/radio">
@@ -694,7 +694,7 @@ export function GlobalRadioPlayer() {
                               </div>
                             </div>
                             <div className="max-w-[120px]">
-                              <p className="text-xs font-medium truncate">
+                              <p className="text-md sm:text-sm font-medium truncate">
                                 {track.title}
                               </p>
                               <p className="text-[10px] text-muted-foreground truncate">
