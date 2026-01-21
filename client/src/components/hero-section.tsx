@@ -1,10 +1,12 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Play, ArrowRight, Radio } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useRadio } from "@/lib/radio-context";
 import { resolveMediaUrl } from "@/lib/media";
+import { useQuery } from "@tanstack/react-query";
+import { db, type SiteSettings } from "@/lib/database";
 
 interface HeroProps {
   heroTag?: string;
@@ -17,6 +19,34 @@ interface HeroProps {
   ctaText?: string;
   ctaLink?: string;
   heroStats?: { value: string; label: string }[];
+}
+
+export function ConfiguredPageHero({
+  pageKey,
+  title,
+  subtitle,
+  backgroundImage,
+}: {
+  pageKey: string;
+  title: string;
+  subtitle?: string;
+  backgroundImage?: string;
+}) {
+  const { data: siteSettings } = useQuery<SiteSettings | null>({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
+  const normalizedKey = (pageKey || "").trim() || "/";
+  const override = siteSettings?.pageHeroOverrides?.[normalizedKey];
+
+  return (
+    <PageHero
+      title={override?.title ?? title}
+      subtitle={override?.subtitle ?? subtitle}
+      backgroundImage={override?.backgroundImage ?? backgroundImage}
+    />
+  );
 }
 
 export function HeroSection({
@@ -32,6 +62,23 @@ export function HeroSection({
   heroStats,
 }: HeroProps) {
   const { togglePlay, isPlaying } = useRadio();
+
+  const titleParts = useMemo(() => {
+    const raw = String(title || "").trim();
+    if (!raw) return { lead: "", highlight: "" };
+
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      return { lead: words[0] ?? "", highlight: words.slice(1).join(" ") };
+    }
+
+    const therapyIndex = raw.toUpperCase().indexOf("THERAPY");
+    if (therapyIndex > 0) {
+      return { lead: raw.slice(0, therapyIndex), highlight: raw.slice(therapyIndex) };
+    }
+
+    return { lead: raw, highlight: "" };
+  }, [title]);
 
   const displayHeroStats =
     heroStats && heroStats.length > 0
@@ -128,8 +175,10 @@ export function HeroSection({
           transition={{ duration: 0.8, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
           data-testid="text-hero-title"
         >
-          <span className="text-foreground">GROUP</span>
-          <span className="gradient-text">THERAPY</span>
+          <span className="text-foreground">{titleParts.lead}</span>
+          {titleParts.highlight ? (
+            <span className="gradient-text">{titleParts.highlight}</span>
+          ) : null}
         </motion.h1>
 
         <motion.p

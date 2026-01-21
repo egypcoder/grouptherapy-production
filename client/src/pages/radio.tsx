@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, Volume2, Radio, Clock, Calendar, Users, ChevronRight, Music, ExternalLink } from "lucide-react";
 import { RadioTrack } from "@/lib/database";
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +86,8 @@ export default function RadioPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/radio"
         title="GroupTherapy Radio"
         subtitle="24/7 curated radio shows, guest mixes, and discoveries"
       />

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -116,7 +116,8 @@ export default function PromoteYourReleasePage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/promote-your-release"
         title="Promote Your Release"
         subtitle="A sharper rollout. Cleaner narrative. Better conversion."
       />

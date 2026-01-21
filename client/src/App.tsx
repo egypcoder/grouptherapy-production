@@ -54,7 +54,6 @@ import AdminCareers from "@/pages/admin/careers";
 import AdminTours from "@/pages/admin/tours";
 import AdminPressKit from "@/pages/admin/press-kit";
 import AdminStaticPages from "@/pages/admin/static-pages";
-import AdminTestimonials from "@/pages/admin/testimonials";
 import AdminAwards from "@/pages/admin/awards";
 import AdminSeoSettings from "@/pages/admin/seo-settings";
 import AdminNewsletters from "@/pages/admin/newsletters";
@@ -313,11 +312,6 @@ function Router() {
       <Route path="/admin/static-pages">
         <ProtectedRoute>
           <AdminStaticPages />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/admin/testimonials">
-        <ProtectedRoute>
-          <AdminTestimonials />
         </ProtectedRoute>
       </Route>
       <Route path="/admin/awards">

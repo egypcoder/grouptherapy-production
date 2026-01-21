@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Calendar, Tag, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,8 @@ export default function NewsPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/news"
         title="News"
         subtitle="The latest music news from around the world"
       />

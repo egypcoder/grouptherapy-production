@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, ExternalLink, Search, Grid, List } from "lucide-react";
 import { Link } from "wouter";
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -138,7 +138,8 @@ export default function ReleasesPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/releases"
         title="Release Radar"
         subtitle="Releases supported and shared by the Group Therapy community"
       />

@@ -311,6 +311,12 @@ CREATE TABLE IF NOT EXISTS site_settings (
   marquee_items JSONB DEFAULT '[{"text": "New Release: ECHOES EP", "icon": "Disc3"}, {"text": "Live Radio 24/7", "icon": "Radio"}, {"text": "Summer Tour 2025", "icon": "Music2"}, {"text": "50+ Artists Worldwide", "icon": "Users"}, {"text": "Stream Now on All Platforms", "icon": "Play"}, {"text": "GroupTherapy Sessions", "icon": "Headphones"}]'::jsonb,
   marquee_speed INTEGER DEFAULT 40,
   stats_items JSONB DEFAULT '[{"value": 50, "suffix": "+", "prefix": "", "label": "Artists", "icon": "Users"}, {"value": 200, "suffix": "+", "prefix": "", "label": "Releases", "icon": "Disc3"}, {"value": 24, "suffix": "/7", "prefix": "", "label": "Radio", "icon": "Radio"}, {"value": 1, "suffix": "M+", "prefix": "", "label": "Streams", "icon": "Headphones"}]'::jsonb,
+  newsletter_title TEXT DEFAULT 'Join the community',
+  newsletter_description TEXT DEFAULT 'Get exclusive releases, early event access, and behind-the-scenes content.',
+  newsletter_button_text TEXT DEFAULT 'Subscribe',
+  newsletter_disclaimer TEXT DEFAULT 'No spam. Unsubscribe anytime.',
+  page_hero_overrides JSONB DEFAULT '{}'::jsonb,
+  home_sections JSONB DEFAULT '[]'::jsonb,
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

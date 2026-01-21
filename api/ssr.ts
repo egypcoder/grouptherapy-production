@@ -31,6 +31,25 @@ function safeJsonForScriptTag(data: object): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
 }
 
+function canonicalBaseUrl(reqHost: string, reqProto: string): string {
+  const envBase =
+    process.env.VITE_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.PUBLIC_SITE_URL;
+  const raw = (envBase && envBase.trim().length ? envBase.trim() : `${reqProto}://${reqHost}`).replace(/\/$/, "");
+  try {
+    const u = new URL(raw);
+    const host = u.host.toLowerCase();
+    if (host === "grouptherapyeg.com") u.host = "www.grouptherapyeg.com";
+    if (u.protocol === "http:" && !u.hostname.includes("localhost") && !u.hostname.includes("127.0.0.1")) {
+      u.protocol = "https:";
+    }
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return raw;
+  }
+}
+
 function stripSeo(html: string): string {
   html = html.replace(/<title[^>]*>[\s\S]*?<\/title>/gi, "");
 
@@ -126,7 +145,7 @@ export default async function handler(req: Req, res: Res) {
     const rawPath = Array.isArray(pathParam) ? pathParam[0] || "" : pathParam;
     const pathname = rawPath ? `/${rawPath.replace(/^\/+/, "")}` : "/";
 
-    const baseUrl = `${proto}://${host}`;
+    const baseUrl = canonicalBaseUrl(host, proto);
     const canonical = `${baseUrl}${pathname}`;
 
     const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");

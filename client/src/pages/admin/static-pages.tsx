@@ -1,27 +1,70 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, FileText, Eye, Plus, Trash2, Home, GripVertical } from "lucide-react";
+import {
+  Pencil,
+  FileText,
+  Eye,
+  EyeOff,
+  Plus,
+  Trash2,
+  Home,
+  GripVertical,
+  Star,
+  ChevronDown,
+  Sparkles,
+  Repeat,
+  BarChart3,
+  Disc3,
+  Users,
+  Calendar,
+  ListMusic,
+  Newspaper,
+  MessageSquareQuote,
+  Trophy,
+  Mail,
+  Megaphone,
+  Radio,
+  TrendingUp,
+  Video,
+  Globe,
+  Heart,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, StaticPage, SiteSettings, MarqueeItem, StatItem } from "@/lib/database";
+import { db, StaticPage, SiteSettings, MarqueeItem, StatItem, PageSectionConfig, PageHeroOverrides, Testimonial } from "@/lib/database";
 import { Link } from "wouter";
 import { VideoUpload } from "@/components/video-upload";
 import { ImageUpload } from "@/components/image-upload";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/media";
 
 type AboutPageModel = {
+  sections: Array<{ id: string; enabled: boolean; order: number }>;
   heroTitle: string;
   heroSubtitle: string;
   missionHeading: string;
@@ -45,7 +88,17 @@ type AboutPageModel = {
   ctaSecondaryText: string;
 };
 
+const defaultAboutSections: Array<{ id: string; enabled: boolean; order: number }> = [
+  { id: "marquee", enabled: true, order: 1 },
+  { id: "mission", enabled: true, order: 2 },
+  { id: "stats", enabled: true, order: 3 },
+  { id: "timeline", enabled: true, order: 4 },
+  { id: "team", enabled: true, order: 5 },
+  { id: "cta", enabled: true, order: 6 },
+];
+
 const defaultAboutPageModel: AboutPageModel = {
+  sections: defaultAboutSections,
   heroTitle: "About Us",
   heroSubtitle: "The story behind the sound",
   missionHeading: "Our Mission",
@@ -125,9 +178,36 @@ function tryParseAboutPageModel(raw: string): AboutPageModel | null {
   }
 }
 
+function normalizeAboutSections(
+  incoming: AboutPageModel["sections"],
+  defaults: Array<{ id: string; enabled: boolean; order: number }>
+) {
+  const byId = new Map(
+    (Array.isArray(incoming) ? incoming : [])
+      .filter((s) => !!s && typeof s.id === "string")
+      .map((s) => [s.id, s] as const)
+  );
+
+  return defaults
+    .map((d) => {
+      const inc = byId.get(d.id);
+      if (!inc) return d;
+      return {
+        ...d,
+        ...inc,
+        id: d.id,
+        enabled: typeof inc.enabled === "boolean" ? inc.enabled : d.enabled,
+        order: typeof inc.order === "number" ? inc.order : d.order,
+      };
+    })
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
 function normalizeAboutPageModel(input: Partial<AboutPageModel> | null | undefined): AboutPageModel {
   const m: any = input || {};
   return {
+    sections: normalizeAboutSections(m.sections, defaultAboutSections),
     heroTitle: m.heroTitle ?? defaultAboutPageModel.heroTitle,
     heroSubtitle: m.heroSubtitle ?? defaultAboutPageModel.heroSubtitle,
     missionHeading: m.missionHeading ?? defaultAboutPageModel.missionHeading,
@@ -223,6 +303,142 @@ const defaultStatsItems: StatItem[] = [
   { value: 1, suffix: "M+", prefix: "", label: "Streams", icon: "Headphones" },
 ];
 
+const defaultHomeSections: PageSectionConfig[] = [
+  { id: "hero", enabled: true, order: 1 },
+  {
+    id: "stats",
+    enabled: true,
+    order: 2,
+    title: "Growing the future of",
+    highlight: "music",
+    description: "Our numbers tell the story of a community united by sound.",
+  },
+  { id: "marquee", enabled: true, order: 3 },
+  {
+    id: "releases",
+    enabled: true,
+    order: 4,
+    title: "New",
+    highlight: "Releases",
+    description: "The latest releases from our comunity",
+    actionLabel: "View All Releases",
+    actionHref: "/releases",
+  },
+  {
+    id: "artists",
+    enabled: true,
+    order: 5,
+    title: "Supported",
+    highlight: "Artists",
+    description: "The artists shaping the Group Therapy community",
+    actionLabel: "Meet The Artists",
+    actionHref: "/artists",
+  },
+  {
+    id: "events",
+    enabled: true,
+    order: 6,
+    title: "Upcoming",
+    highlight: "Events",
+    description: "Experience the music live",
+    actionLabel: "View All Events",
+    actionHref: "/events",
+  },
+  {
+    id: "playlists",
+    enabled: true,
+    order: 7,
+    title: "Curated",
+    highlight: "Playlists",
+    description: "Official selections of playlists that reflects our sound",
+    actionLabel: "View All Playlists",
+    actionHref: "/playlists",
+  },
+  {
+    id: "news",
+    enabled: true,
+    order: 8,
+    title: "Latest",
+    highlight: "News",
+    description: "The latest music news from around the world",
+    actionLabel: "View All News",
+    actionHref: "/news",
+  },
+  { id: "testimonials", enabled: true, order: 9 },
+  {
+    id: "awards",
+    enabled: true,
+    order: 10,
+    tag: "Therapy Awards",
+    title: "Voting is",
+    highlight: "live",
+    description: "Vote for your favorites, make them win the battle.",
+    actionLabel: "View Awards",
+    actionHref: "/awards",
+  },
+  { id: "newsletter", enabled: true, order: 11 },
+  {
+    id: "newsCta",
+    enabled: true,
+    order: 12,
+    title: "Stay in the",
+    highlight: "loop",
+    description:
+      "Get the latest news, interviews, and behind-the-scenes content from the label.",
+    actionLabel: "Read Latest News",
+    actionHref: "/news",
+  },
+];
+
+const heroOverridePages = [
+  { key: "/releases", label: "Releases" },
+  { key: "/artists", label: "Artists" },
+  { key: "/playlists", label: "Playlists" },
+  { key: "/radio", label: "Radio" },
+  { key: "/events", label: "Events" },
+  { key: "/tours", label: "Tours" },
+  { key: "/videos", label: "Videos" },
+  { key: "/news", label: "News" },
+  { key: "/awards", label: "Awards" },
+  { key: "/contact", label: "Contact" },
+  { key: "/press", label: "Press" },
+  { key: "/careers", label: "Careers" },
+  { key: "/promote-your-event", label: "Promote Your Event" },
+  { key: "/promote-your-release", label: "Promote Your Release" },
+];
+
+const homeSectionMeta: Record<string, { label: string; Icon: any }> = {
+  hero: { label: "Hero", Icon: Sparkles },
+  marquee: { label: "Marquee", Icon: Repeat },
+  stats: { label: "Stats", Icon: BarChart3 },
+  releases: { label: "Releases", Icon: Disc3 },
+  artists: { label: "Artists", Icon: Users },
+  events: { label: "Events", Icon: Calendar },
+  playlists: { label: "Playlists", Icon: ListMusic },
+  news: { label: "News", Icon: Newspaper },
+  testimonials: { label: "Testimonials", Icon: MessageSquareQuote },
+  awards: { label: "Awards", Icon: Trophy },
+  newsletter: { label: "Newsletter", Icon: Mail },
+  newsCta: { label: "News CTA", Icon: Megaphone },
+};
+
+const pageHeaderMeta: Record<string, { label: string; Icon: any }> = {
+  "/releases": { label: "Releases", Icon: Disc3 },
+  "/artists": { label: "Artists", Icon: Users },
+  "/playlists": { label: "Playlists", Icon: ListMusic },
+  "/radio": { label: "Radio", Icon: Radio },
+  "/events": { label: "Events", Icon: Calendar },
+  "/tours": { label: "Tours", Icon: TrendingUp },
+  "/videos": { label: "Videos", Icon: Video },
+  "/news": { label: "News", Icon: Newspaper },
+  "/awards": { label: "Awards", Icon: Trophy },
+  "/contact": { label: "Contact", Icon: Mail },
+  "/press": { label: "Press", Icon: FileText },
+  "/careers": { label: "Careers", Icon: Heart },
+  "/promote-your-event": { label: "Promote Your Event", Icon: Megaphone },
+  "/promote-your-release": { label: "Promote Your Release", Icon: Megaphone },
+};
+
 export default function AdminStaticPages() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -240,6 +456,8 @@ export default function AdminStaticPages() {
   const [aboutForm, setAboutForm] = useState<AboutPageModel>(defaultAboutPageModel);
   const [draggingTeamMemberId, setDraggingTeamMemberId] = useState<string | null>(null);
   const [dragOverTeamMemberId, setDragOverTeamMemberId] = useState<string | null>(null);
+  const [draggingAboutSectionId, setDraggingAboutSectionId] = useState<string | null>(null);
+  const [dragOverAboutSectionId, setDragOverAboutSectionId] = useState<string | null>(null);
 
   const [heroSettings, setHeroSettings] = useState({
     heroTag: "",
@@ -258,9 +476,40 @@ export default function AdminStaticPages() {
 
   const [statsItems, setStatsItems] = useState<StatItem[]>(defaultStatsItems);
 
+  const [newsletterContent, setNewsletterContent] = useState({
+    newsletterTitle: "Join the community",
+    newsletterDescription: "Get exclusive releases, early event access, and behind-the-scenes content.",
+    newsletterButtonText: "Subscribe",
+    newsletterDisclaimer: "No spam. Unsubscribe anytime.",
+  });
+
+  const [isTestimonialDialogOpen, setIsTestimonialDialogOpen] = useState(false);
+  const [editingTestimonial, setEditingTestimonial] = useState<Testimonial | null>(null);
+  const [testimonialFormData, setTestimonialFormData] = useState({
+    name: "",
+    role: "",
+    content: "",
+    avatarUrl: "",
+    rating: 5,
+    displayOrder: 0,
+    published: true,
+  });
+
+  const [homeSections, setHomeSections] = useState<PageSectionConfig[]>(defaultHomeSections);
+  const [draggingHomeSectionId, setDraggingHomeSectionId] = useState<string | null>(null);
+  const [dragOverHomeSectionId, setDragOverHomeSectionId] = useState<string | null>(null);
+  const [openHomeSectionId, setOpenHomeSectionId] = useState<string | null>(null);
+  const [openPageHeaderKey, setOpenPageHeaderKey] = useState<string | null>(null);
+  const [pageHeroOverrides, setPageHeroOverrides] = useState<PageHeroOverrides>({});
+
   const { data: pages = [] } = useQuery<StaticPage[]>({
     queryKey: ["staticPages"],
     queryFn: queryFunctions.staticPages,
+  });
+
+  const { data: testimonials = [] } = useQuery<Testimonial[]>({
+    queryKey: ["testimonials"],
+    queryFn: queryFunctions.testimonials,
   });
 
   const { data: siteSettings, isLoading: isLoadingSettings } = useQuery<SiteSettings | null>({
@@ -285,6 +534,22 @@ export default function AdminStaticPages() {
       setMarqueeItems(siteSettings.marqueeItems || defaultMarqueeItems);
       setMarqueeSpeed(siteSettings.marqueeSpeed || 40);
       setStatsItems(siteSettings.statsItems || defaultStatsItems);
+      setNewsletterContent({
+        newsletterTitle: siteSettings.newsletterTitle || "Join the community",
+        newsletterDescription:
+          siteSettings.newsletterDescription || "Get exclusive releases, early event access, and behind-the-scenes content.",
+        newsletterButtonText: siteSettings.newsletterButtonText || "Subscribe",
+        newsletterDisclaimer: siteSettings.newsletterDisclaimer || "No spam. Unsubscribe anytime.",
+      });
+      setHomeSections(
+        (siteSettings.homeSections && siteSettings.homeSections.length
+          ? siteSettings.homeSections
+          : defaultHomeSections
+        )
+          .slice()
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      );
+      setPageHeroOverrides(siteSettings.pageHeroOverrides || {});
     }
   }, [siteSettings]);
 
@@ -304,6 +569,128 @@ export default function AdminStaticPages() {
       toast({
         title: "Error",
         description: error.message || "Failed to save page",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetTestimonialForm = () => {
+    setEditingTestimonial(null);
+    setTestimonialFormData({
+      name: "",
+      role: "",
+      content: "",
+      avatarUrl: "",
+      rating: 5,
+      displayOrder: 0,
+      published: true,
+    });
+  };
+
+  const openAddTestimonialDialog = () => {
+    resetTestimonialForm();
+    setTestimonialFormData((prev) => ({
+      ...prev,
+      displayOrder: (testimonials || []).length,
+    }));
+    setIsTestimonialDialogOpen(true);
+  };
+
+  const handleEditTestimonial = (testimonial: Testimonial) => {
+    setEditingTestimonial(testimonial);
+    setTestimonialFormData({
+      name: testimonial.name || "",
+      role: testimonial.role || "",
+      content: testimonial.content || "",
+      avatarUrl: testimonial.avatarUrl || "",
+      rating: testimonial.rating || 5,
+      displayOrder: testimonial.displayOrder || 0,
+      published: testimonial.published,
+    });
+    setIsTestimonialDialogOpen(true);
+  };
+
+  const handleSaveTestimonial = () => {
+    const testimonialData: Partial<Testimonial> = {
+      name: testimonialFormData.name,
+      role: testimonialFormData.role,
+      content: testimonialFormData.content,
+      avatarUrl: testimonialFormData.avatarUrl || undefined,
+      rating: testimonialFormData.rating,
+      displayOrder: testimonialFormData.displayOrder,
+      published: testimonialFormData.published,
+    };
+
+    saveTestimonialMutation.mutate({
+      isEdit: !!editingTestimonial,
+      id: editingTestimonial?.id,
+      testimonial: testimonialData,
+    });
+  };
+
+  const deleteTestimonialMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return db.testimonials.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["testimonials"] });
+      queryClient.invalidateQueries({ queryKey: ["testimonialsPublished"] });
+      toast({
+        title: "Testimonial deleted",
+        description: "The testimonial has been removed.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete testimonial",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveTestimonialMutation = useMutation({
+    mutationFn: async (data: { isEdit: boolean; id?: string; testimonial: Partial<Testimonial> }) => {
+      if (data.isEdit && data.id) {
+        return db.testimonials.update(data.id, data.testimonial);
+      }
+      return db.testimonials.create(data.testimonial);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["testimonials"] });
+      queryClient.invalidateQueries({ queryKey: ["testimonialsPublished"] });
+      toast({
+        title: variables.isEdit ? "Testimonial updated" : "Testimonial created",
+        description: variables.isEdit ? "The testimonial has been updated." : "The testimonial has been created.",
+      });
+      setIsTestimonialDialogOpen(false);
+      resetTestimonialForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save testimonial",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const toggleTestimonialPublishedMutation = useMutation({
+    mutationFn: async ({ id, published }: { id: string; published: boolean }) => {
+      return db.testimonials.update(id, { published });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["testimonials"] });
+      queryClient.invalidateQueries({ queryKey: ["testimonialsPublished"] });
+      toast({
+        title: "Status updated",
+        description: "The testimonial visibility has been updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update status",
         variant: "destructive",
       });
     },
@@ -371,6 +758,41 @@ export default function AdminStaticPages() {
     });
   };
 
+  const updateHomeSection = (id: string, patch: Partial<PageSectionConfig>) => {
+    setHomeSections((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  };
+
+  const reorderHomeSections = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+    setHomeSections((prev) => {
+      const ordered = prev.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const fromIndex = ordered.findIndex((s) => s.id === fromId);
+      const toIndex = ordered.findIndex((s) => s.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...ordered];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next.map((s, idx) => ({ ...s, order: idx + 1 }));
+    });
+  };
+
+  const reorderAboutSections = (fromId: string, toId: string) => {
+    if (!fromId || !toId || fromId === toId) return;
+    setAboutForm((prev) => {
+      const ordered = (prev.sections || []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const fromIndex = ordered.findIndex((s) => s.id === fromId);
+      const toIndex = ordered.findIndex((s) => s.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...ordered];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      const normalized = next.map((s, idx) => ({ ...s, order: idx + 1 }));
+      return { ...prev, sections: normalized };
+    });
+  };
+
   const handleSave = () => {
     if (!editingPage) return;
 
@@ -394,6 +816,14 @@ export default function AdminStaticPages() {
       marqueeItems,
       marqueeSpeed,
       statsItems,
+      ...newsletterContent,
+      homeSections,
+    });
+  };
+
+  const handleSavePageHeaders = () => {
+    saveSettingsMutation.mutate({
+      pageHeroOverrides,
     });
   };
 
@@ -452,319 +882,807 @@ export default function AdminStaticPages() {
           <p className="text-muted-foreground">Manage homepage settings and static pages</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Home className="h-5 w-5" />
-              Homepage Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Hero Section</h3>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="heroTag">Hero Tag</Label>
-                  <Input
-                    id="heroTag"
-                    value={heroSettings.heroTag}
-                    onChange={(e) => setHeroSettings({ ...heroSettings, heroTag: e.target.value })}
-                    placeholder="New Release"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="heroTitle">Title</Label>
-                  <Input
-                    id="heroTitle"
-                    value={heroSettings.heroTitle}
-                    onChange={(e) => setHeroSettings({ ...heroSettings, heroTitle: e.target.value })}
-                    placeholder="GROUPTHERAPY"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="heroSubtitle">Subtitle</Label>
-                  <Textarea
-                    id="heroSubtitle"
-                    value={heroSettings.heroSubtitle}
-                    onChange={(e) => setHeroSettings({ ...heroSettings, heroSubtitle: e.target.value })}
-                    placeholder="The sound of tomorrow, today..."
-                    rows={2}
-                  />
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="heroBackgroundType">Background Type</Label>
-                    <Select
-                      value={heroSettings.heroBackgroundType}
-                      onValueChange={(value: "image" | "video") => setHeroSettings({ ...heroSettings, heroBackgroundType: value })}
-                    >
-                      <SelectTrigger id="heroBackgroundType">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="image">Image</SelectItem>
-                        <SelectItem value="video">Video</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {heroSettings.heroBackgroundType === "image" ? (
-                    <div>
-                      <Label htmlFor="heroBackgroundImage">Background Image</Label>
-                      <ImageUpload
-                        onUploadComplete={(url) => setHeroSettings({ ...heroSettings, heroBackgroundImage: url })}
-                        currentImage={heroSettings.heroBackgroundImage}
-                        folder="hero"
-                        aspectRatio="banner"
-                      />
-                      <Input
-                        id="heroBackgroundImage"
-                        value={heroSettings.heroBackgroundImage}
-                        onChange={(e) => setHeroSettings({ ...heroSettings, heroBackgroundImage: e.target.value })}
-                        placeholder="Or paste image URL"
-                        className="mt-2"
-                      />
-                    </div>
-                  ) : (
-                    <div>
-                      <Label htmlFor="heroBackgroundVideo">Background Video</Label>
-                      <VideoUpload
-                        onUploadComplete={(url) => setHeroSettings({ ...heroSettings, heroBackgroundVideo: url })}
-                        currentVideo={heroSettings.heroBackgroundVideo}
-                        folder="hero"
-                      />
-                      <Input
-                        id="heroBackgroundVideo"
-                        value={heroSettings.heroBackgroundVideo}
-                        onChange={(e) => setHeroSettings({ ...heroSettings, heroBackgroundVideo: e.target.value })}
-                        placeholder="Or paste video URL"
-                        className="mt-2"
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="heroCtaText">CTA Text</Label>
-                    <Input
-                      id="heroCtaText"
-                      value={heroSettings.heroCtaText}
-                      onChange={(e) => setHeroSettings({ ...heroSettings, heroCtaText: e.target.value })}
-                      placeholder="Explore Releases"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="heroCtaLink">CTA Link</Label>
-                    <Input
-                      id="heroCtaLink"
-                      value={heroSettings.heroCtaLink}
-                      onChange={(e) => setHeroSettings({ ...heroSettings, heroCtaLink: e.target.value })}
-                      placeholder="/releases"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 pt-2">
-                  <Switch
-                    id="showHeroRadio"
-                    checked={heroSettings.showHeroRadio}
-                    onCheckedChange={(checked) => setHeroSettings({ ...heroSettings, showHeroRadio: checked })}
-                  />
-                  <Label htmlFor="showHeroRadio">Show Radio Button</Label>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="font-semibold text-lg">Marquee</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>Speed:</span>
-                  <Input
-                    type="number"
-                    value={marqueeSpeed}
-                    onChange={(e) => setMarqueeSpeed(parseInt(e.target.value) || 40)}
-                    className="w-16 h-8"
-                    min={10}
-                    max={100}
-                  />
-                  <span>s</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {marqueeItems.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Select
-                      value={item.icon}
-                      onValueChange={(value) => updateMarqueeItem(index, "icon", value)}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {iconOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      value={item.text}
-                      onChange={(e) => updateMarqueeItem(index, "text", e.target.value)}
-                      placeholder="Marquee text..."
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeMarqueeItem(index)}
-                      className="text-muted-foreground hover:text-destructive h-8 w-8"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={addMarqueeItem} className="mt-2">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Stats</h3>
-              <div className="space-y-2">
-                {statsItems.map((item, index) => (
-                  <div key={index} className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={item.icon}
-                        onValueChange={(value) => updateStatItem(index, "icon", value)}
-                      >
-                        <SelectTrigger className="w-full sm:w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {iconOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeStatItem(index)}
-                        className="ml-auto text-muted-foreground hover:text-destructive h-8 w-8"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
-                      <Input
-                        value={item.prefix}
-                        onChange={(e) => updateStatItem(index, "prefix", e.target.value)}
-                        placeholder="$"
-                        className="w-full sm:w-12"
-                      />
-                      <Input
-                        type="number"
-                        value={item.value}
-                        onChange={(e) => updateStatItem(index, "value", parseInt(e.target.value) || 0)}
-                        placeholder="50"
-                        className="w-full sm:w-20"
-                      />
-                      <Input
-                        value={item.suffix}
-                        onChange={(e) => updateStatItem(index, "suffix", e.target.value)}
-                        placeholder="+"
-                        className="w-full sm:w-14"
-                      />
-                    </div>
-
-                    <Input
-                      value={item.label}
-                      onChange={(e) => updateStatItem(index, "label", e.target.value)}
-                      placeholder="Label"
-                      className="w-full"
-                    />
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={addStatItem} className="mt-2">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </Button>
-              </div>
-            </div>
-
-            <div className="pt-4 border-t">
-              <Button onClick={handleSaveHomepageSettings} disabled={saveSettingsMutation.isPending}>
-                {saveSettingsMutation.isPending ? "Saving..." : "Save Homepage Settings"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Static Pages</h2>
-          <p className="text-muted-foreground mb-4">Manage legal and informational pages</p>
-        </div>
-
-        <div className="grid gap-4">
-          {pages.map((page) => (
-            <Card
-              key={page.id}
-              className="cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => handleEdit(page)}
+        <Tabs defaultValue="homepage" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 sm:w-auto sm:inline-flex bg-muted/40 p-1 rounded-xl border border-border/50">
+            <TabsTrigger
+              value="homepage"
+              className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm hover:bg-background/60 transition-colors"
             >
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{page.title}</h3>
-                      {!page.published && <Badge variant="secondary">Draft</Badge>}
-                    </div>
-                    <p className="text-sm text-muted-foreground">/{page.slug}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Last updated: {page.updatedAt ? new Date(page.updatedAt).toLocaleDateString() : "Never"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link href={`/${page.slug}`}>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => e.stopPropagation()}
+              Homepage
+            </TabsTrigger>
+            <TabsTrigger
+              value="pageHeaders"
+              className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm hover:bg-background/60 transition-colors"
+            >
+              Page Headers
+            </TabsTrigger>
+            <TabsTrigger
+              value="staticPages"
+              className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm hover:bg-background/60 transition-colors"
+            >
+              Static Pages
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="homepage" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Home className="h-5 w-5" />
+                  Homepage Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm text-muted-foreground">Drag to reorder. Toggle to enable/disable.</div>
+
+                <div className="space-y-2">
+                  {homeSections
+                    .slice()
+                    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    .map((section) => (
+                      <Collapsible
+                        key={section.id}
+                        open={openHomeSectionId === section.id}
+                        onOpenChange={(open) => setOpenHomeSectionId(open ? section.id : null)}
+                        className={
+                          "rounded-lg border border-border/50 bg-muted/10 p-3 space-y-4 " +
+                          (dragOverHomeSectionId === section.id ? "ring-2 ring-primary" : "")
+                        }
+                        onDragOver={(e) => {
+                          if (!draggingHomeSectionId) return;
+                          e.preventDefault();
+                          setDragOverHomeSectionId(section.id);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverHomeSectionId === section.id) setDragOverHomeSectionId(null);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const fromId = e.dataTransfer.getData("text/plain") || draggingHomeSectionId;
+                          if (!fromId) return;
+                          reorderHomeSections(fromId, section.id);
+                          setDraggingHomeSectionId(null);
+                          setDragOverHomeSectionId(null);
+                        }}
                       >
-                        <Eye className="h-4 w-4" />
+                        <div className="flex items-center justify-between gap-3">
+                          <div
+                            className="inline-flex items-center gap-2 text-xs text-muted-foreground select-none"
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggingHomeSectionId(section.id);
+                              e.dataTransfer.setData("text/plain", section.id);
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragEnd={() => {
+                              setDraggingHomeSectionId(null);
+                              setDragOverHomeSectionId(null);
+                            }}
+                          >
+                            <GripVertical className="h-4 w-4" />
+                            Drag
+                          </div>
+
+                          <CollapsibleTrigger asChild>
+                            <button type="button" className="flex-1 flex items-center gap-2 text-left">
+                              {(() => {
+                                const meta = homeSectionMeta[section.id] || { label: section.id, Icon: FileText };
+                                const Icon = meta.Icon;
+                                const isOpen = openHomeSectionId === section.id;
+                                return (
+                                  <>
+                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-medium text-sm">{meta.label}</span>
+                                    <span className="text-xs text-muted-foreground">#{section.order}</span>
+                                    <ChevronDown
+                                      className={
+                                        "h-4 w-4 ml-auto text-muted-foreground transition-transform duration-200 " +
+                                        (isOpen ? "rotate-180" : "")
+                                      }
+                                    />
+                                  </>
+                                );
+                              })()}
+                            </button>
+                          </CollapsibleTrigger>
+
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              checked={section.enabled}
+                              onCheckedChange={(checked) => updateHomeSection(section.id, { enabled: checked })}
+                            />
+                            <span className="text-xs text-muted-foreground">Enabled</span>
+                          </div>
+                        </div>
+
+                        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                          <div className="pt-4 space-y-4">
+                            {section.id === "hero" ? (
+                              <div className="space-y-4">
+                            <div>
+                              <Label>Hero Tag</Label>
+                              <Input
+                                value={heroSettings.heroTag}
+                                onChange={(e) => setHeroSettings({ ...heroSettings, heroTag: e.target.value })}
+                                placeholder="New Release"
+                              />
+                            </div>
+                            <div>
+                              <Label>Title</Label>
+                              <Input
+                                value={heroSettings.heroTitle}
+                                onChange={(e) => setHeroSettings({ ...heroSettings, heroTitle: e.target.value })}
+                                placeholder="GROUPTHERAPY"
+                              />
+                            </div>
+                            <div>
+                              <Label>Subtitle</Label>
+                              <Textarea
+                                value={heroSettings.heroSubtitle}
+                                onChange={(e) => setHeroSettings({ ...heroSettings, heroSubtitle: e.target.value })}
+                                placeholder="The sound of tomorrow, today..."
+                                rows={2}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Background Type</Label>
+                              <Select
+                                value={heroSettings.heroBackgroundType}
+                                onValueChange={(value: "image" | "video") => setHeroSettings({ ...heroSettings, heroBackgroundType: value })}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="image">Image</SelectItem>
+                                  <SelectItem value="video">Video</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {heroSettings.heroBackgroundType === "image" ? (
+                              <div className="space-y-2">
+                                <Label>Background Image</Label>
+                                <ImageUpload
+                                  onUploadComplete={(url) => setHeroSettings({ ...heroSettings, heroBackgroundImage: url })}
+                                  currentImage={heroSettings.heroBackgroundImage}
+                                  folder="hero"
+                                  aspectRatio="banner"
+                                />
+                                <Input
+                                  value={heroSettings.heroBackgroundImage}
+                                  onChange={(e) => setHeroSettings({ ...heroSettings, heroBackgroundImage: e.target.value })}
+                                  placeholder="Or paste image URL"
+                                />
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                <Label>Background Video</Label>
+                                <VideoUpload
+                                  onUploadComplete={(url) => setHeroSettings({ ...heroSettings, heroBackgroundVideo: url })}
+                                  currentVideo={heroSettings.heroBackgroundVideo}
+                                  folder="hero"
+                                />
+                                <Input
+                                  value={heroSettings.heroBackgroundVideo}
+                                  onChange={(e) => setHeroSettings({ ...heroSettings, heroBackgroundVideo: e.target.value })}
+                                  placeholder="Or paste video URL"
+                                />
+                              </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <Label>CTA Text</Label>
+                                <Input
+                                  value={heroSettings.heroCtaText}
+                                  onChange={(e) => setHeroSettings({ ...heroSettings, heroCtaText: e.target.value })}
+                                  placeholder="Explore Releases"
+                                />
+                              </div>
+                              <div>
+                                <Label>CTA Link</Label>
+                                <Input
+                                  value={heroSettings.heroCtaLink}
+                                  onChange={(e) => setHeroSettings({ ...heroSettings, heroCtaLink: e.target.value })}
+                                  placeholder="/releases"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 pt-1">
+                              <Switch
+                                checked={heroSettings.showHeroRadio}
+                                onCheckedChange={(checked) => setHeroSettings({ ...heroSettings, showHeroRadio: checked })}
+                              />
+                              <Label>Show Radio Button</Label>
+                            </div>
+                          </div>
+                            ) : null}
+
+                            {section.id === "marquee" ? (
+                              <div className="space-y-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-medium text-sm">Items</div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span>Speed:</span>
+                                <Input
+                                  type="number"
+                                  value={marqueeSpeed}
+                                  onChange={(e) => setMarqueeSpeed(parseInt(e.target.value) || 40)}
+                                  className="w-16 h-8"
+                                  min={10}
+                                  max={100}
+                                />
+                                <span>s</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              {marqueeItems.map((item, index) => (
+                                <div key={index} className="flex items-center gap-2">
+                                  <Select value={item.icon} onValueChange={(value) => updateMarqueeItem(index, "icon", value)}>
+                                    <SelectTrigger className="w-28">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {iconOptions.map((opt) => (
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                          {opt.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    value={item.text}
+                                    onChange={(e) => updateMarqueeItem(index, "text", e.target.value)}
+                                    placeholder="Marquee text..."
+                                    className="flex-1"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeMarqueeItem(index)}
+                                    className="text-muted-foreground hover:text-destructive h-8 w-8"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <Button variant="outline" size="sm" onClick={addMarqueeItem}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+                            ) : null}
+
+                            {section.id === "stats" ? (
+                              <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <Label>Title</Label>
+                                <Input
+                                  value={section.title || ""}
+                                  onChange={(e) => updateHomeSection(section.id, { title: e.target.value })}
+                                  placeholder="Growing the future of"
+                                />
+                              </div>
+                              <div>
+                                <Label>Highlight</Label>
+                                <Input
+                                  value={section.highlight || ""}
+                                  onChange={(e) => updateHomeSection(section.id, { highlight: e.target.value })}
+                                  placeholder="music"
+                                />
+                              </div>
+                              <div className="sm:col-span-2">
+                                <Label>Description</Label>
+                                <Textarea
+                                  rows={2}
+                                  value={section.description || ""}
+                                  onChange={(e) => updateHomeSection(section.id, { description: e.target.value })}
+                                  placeholder="Our numbers tell the story..."
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="font-medium text-sm">Stats Items</div>
+                              {statsItems.map((item, index) => (
+                                <div key={index} className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Select value={item.icon} onValueChange={(value) => updateStatItem(index, "icon", value)}>
+                                      <SelectTrigger className="w-full sm:w-28">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {iconOptions.map((opt) => (
+                                          <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeStatItem(index)}
+                                      className="ml-auto text-muted-foreground hover:text-destructive h-8 w-8"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+
+                                  <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
+                                    <Input
+                                      value={item.prefix}
+                                      onChange={(e) => updateStatItem(index, "prefix", e.target.value)}
+                                      placeholder="$"
+                                      className="w-full sm:w-12"
+                                    />
+                                    <Input
+                                      type="number"
+                                      value={item.value}
+                                      onChange={(e) => updateStatItem(index, "value", parseInt(e.target.value) || 0)}
+                                      placeholder="50"
+                                      className="w-full sm:w-20"
+                                    />
+                                    <Input
+                                      value={item.suffix}
+                                      onChange={(e) => updateStatItem(index, "suffix", e.target.value)}
+                                      placeholder="+"
+                                      className="w-full sm:w-14"
+                                    />
+                                  </div>
+
+                                  <Input
+                                    value={item.label}
+                                    onChange={(e) => updateStatItem(index, "label", e.target.value)}
+                                    placeholder="Label"
+                                    className="w-full"
+                                  />
+                                </div>
+                              ))}
+                              <Button variant="outline" size="sm" onClick={addStatItem}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+                            ) : null}
+
+                            {section.id === "newsletter" ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="sm:col-span-2">
+                              <Label>Title</Label>
+                              <Input
+                                value={newsletterContent.newsletterTitle}
+                                onChange={(e) => setNewsletterContent({ ...newsletterContent, newsletterTitle: e.target.value })}
+                                placeholder="Join the community"
+                              />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <Label>Description</Label>
+                              <Textarea
+                                rows={2}
+                                value={newsletterContent.newsletterDescription}
+                                onChange={(e) =>
+                                  setNewsletterContent({ ...newsletterContent, newsletterDescription: e.target.value })
+                                }
+                                placeholder="Get exclusive releases..."
+                              />
+                            </div>
+                            <div>
+                              <Label>Button Text</Label>
+                              <Input
+                                value={newsletterContent.newsletterButtonText}
+                                onChange={(e) => setNewsletterContent({ ...newsletterContent, newsletterButtonText: e.target.value })}
+                                placeholder="Subscribe"
+                              />
+                            </div>
+                            <div>
+                              <Label>Disclaimer</Label>
+                              <Input
+                                value={newsletterContent.newsletterDisclaimer}
+                                onChange={(e) => setNewsletterContent({ ...newsletterContent, newsletterDisclaimer: e.target.value })}
+                                placeholder="No spam. Unsubscribe anytime."
+                              />
+                            </div>
+                          </div>
+                            ) : null}
+
+                            {section.id === "testimonials" ? (
+                              <div className="space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="font-medium text-sm">Testimonials</div>
+                              <Button type="button" size="sm" onClick={openAddTestimonialDialog}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                              </Button>
+                            </div>
+
+                            {(testimonials || []).length === 0 ? (
+                              <div className="text-sm text-muted-foreground">No testimonials yet.</div>
+                            ) : (
+                              <div className="grid gap-2">
+                                {testimonials
+                                  .slice()
+                                  .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                                  .map((t) => (
+                                    <div key={t.id} className={"rounded-lg border border-border/50 bg-background/40 p-3 " + (!t.published ? "opacity-60" : "")}
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <Avatar className="h-10 w-10 flex-shrink-0">
+                                          <AvatarImage src={resolveMediaUrl(t.avatarUrl, "thumb")} alt={t.name} />
+                                          <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                            {t.name
+                                              .split(" ")
+                                              .filter(Boolean)
+                                              .map((n) => n.charAt(0))
+                                              .join("")}
+                                          </AvatarFallback>
+                                        </Avatar>
+
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <div className="font-medium text-sm truncate">{t.name}</div>
+                                            <Badge variant={t.published ? "default" : "secondary"}>
+                                              {t.published ? "Published" : "Draft"}
+                                            </Badge>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground truncate">{t.role}</div>
+                                          <div className="mt-2 text-xs line-clamp-2">"{t.content}"</div>
+                                          <div className="flex items-center gap-0.5 mt-2">
+                                            {[...Array(t.rating)].map((_, i) => (
+                                              <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                            ))}
+                                            {[...Array(5 - t.rating)].map((_, i) => (
+                                              <Star key={i} className="w-3.5 h-3.5 text-muted-foreground/30" />
+                                            ))}
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() =>
+                                              toggleTestimonialPublishedMutation.mutate({
+                                                id: t.id,
+                                                published: !t.published,
+                                              })
+                                            }
+                                            title={t.published ? "Unpublish" : "Publish"}
+                                          >
+                                            {t.published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                          </Button>
+                                          <Button variant="outline" size="icon" onClick={() => handleEditTestimonial(t)}>
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => {
+                                              if (confirm("Are you sure you want to delete this testimonial?")) {
+                                                deleteTestimonialMutation.mutate(t.id);
+                                              }
+                                            }}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+                            ) : null}
+
+                            {[
+                              "releases",
+                              "artists",
+                              "events",
+                              "playlists",
+                              "news",
+                              "awards",
+                              "newsCta",
+                            ].includes(section.id) ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {section.id === "awards" ? (
+                              <div className="sm:col-span-2">
+                                <Label>Tag</Label>
+                                <Input
+                                  value={section.tag || ""}
+                                  onChange={(e) => updateHomeSection(section.id, { tag: e.target.value })}
+                                  placeholder="Therapy Awards"
+                                />
+                              </div>
+                            ) : null}
+
+                            <div>
+                              <Label>Title</Label>
+                              <Input
+                                value={section.title || ""}
+                                onChange={(e) => updateHomeSection(section.id, { title: e.target.value })}
+                                placeholder="Title"
+                              />
+                            </div>
+                            <div>
+                              <Label>Highlight</Label>
+                              <Input
+                                value={section.highlight || ""}
+                                onChange={(e) => updateHomeSection(section.id, { highlight: e.target.value })}
+                                placeholder="Highlight"
+                              />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                              <Label>Description</Label>
+                              <Textarea
+                                rows={2}
+                                value={section.description || ""}
+                                onChange={(e) => updateHomeSection(section.id, { description: e.target.value })}
+                                placeholder="Description"
+                              />
+                            </div>
+
+                            {[
+                              "releases",
+                              "artists",
+                              "events",
+                              "playlists",
+                              "news",
+                              "awards",
+                              "newsCta",
+                            ].includes(section.id) ? (
+                              <>
+                                <div>
+                                  <Label>Action label</Label>
+                                  <Input
+                                    value={section.actionLabel || ""}
+                                    onChange={(e) => updateHomeSection(section.id, { actionLabel: e.target.value })}
+                                    placeholder="Button text"
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Action href</Label>
+                                  <Input
+                                    value={section.actionHref || ""}
+                                    onChange={(e) => updateHomeSection(section.id, { actionHref: e.target.value })}
+                                    placeholder="/path"
+                                  />
+                                </div>
+                              </>
+                            ) : null}
+                          </div>
+                            ) : null}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button className="bg-red-500 hover:bg-red-700 hover:text-white" type="button" variant="outline">
+                        ⚠ Set Default content
                       </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(page);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset homepage sections?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will overwrite your current Homepage Sections order, enabled toggles, and section copy with the template defaults.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => setHomeSections(defaultHomeSections)}>
+                          Yes, reset
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+
+                <div className="sticky bottom-0 z-30 -mx-6 px-6 py-4 bg-background/80 backdrop-blur border-t border-border/50">
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveHomepageSettings} disabled={saveSettingsMutation.isPending}>
+                      {saveSettingsMutation.isPending ? "Saving..." : "Save Homepage Settings"}
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
-          {pages.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No static pages found. Run the database schema to create default pages.
+          </TabsContent>
+
+          <TabsContent value="pageHeaders" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Page Headers</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-sm text-muted-foreground">Override page hero titles/subtitles without editing code.</div>
+
+                <div className="space-y-2">
+                  {heroOverridePages.map((p) => {
+                    const current = pageHeroOverrides[p.key] || {};
+
+                    const meta = pageHeaderMeta[p.key] || { label: p.label, Icon: Globe };
+                    const Icon = meta.Icon;
+
+                    return (
+                      <Collapsible
+                        key={p.key}
+                        open={openPageHeaderKey === p.key}
+                        onOpenChange={(open) => setOpenPageHeaderKey(open ? p.key : null)}
+                        className="rounded-lg border border-border/50 bg-muted/10 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <CollapsibleTrigger asChild>
+                            <button type="button" className="flex-1 flex items-center gap-2 text-left">
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium text-sm">{meta.label}</span>
+                              <span className="text-xs text-muted-foreground">{p.key}</span>
+                              <ChevronDown
+                                className={
+                                  "h-4 w-4 ml-auto text-muted-foreground transition-transform duration-200 " +
+                                  (openPageHeaderKey === p.key ? "rotate-180" : "")
+                                }
+                              />
+                            </button>
+                          </CollapsibleTrigger>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPageHeroOverrides((prev) => {
+                                const next = { ...prev };
+                                delete next[p.key];
+                                return next;
+                              });
+                            }}
+                          >
+                            Reset
+                          </Button>
+                        </div>
+
+                        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
+                          <div className="pt-4 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <Label>Title</Label>
+                                <Input
+                                  value={current.title || ""}
+                                  onChange={(e) =>
+                                    setPageHeroOverrides((prev) => ({
+                                      ...prev,
+                                      [p.key]: { ...current, title: e.target.value },
+                                    }))
+                                  }
+                                  placeholder="Page title"
+                                />
+                              </div>
+                              <div>
+                                <Label>Subtitle</Label>
+                                <Input
+                                  value={current.subtitle || ""}
+                                  onChange={(e) =>
+                                    setPageHeroOverrides((prev) => ({
+                                      ...prev,
+                                      [p.key]: { ...current, subtitle: e.target.value },
+                                    }))
+                                  }
+                                  placeholder="Page subtitle"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Background Image</Label>
+                              <ImageUpload
+                                currentImage={current.backgroundImage || ""}
+                                onUploadComplete={(url) =>
+                                  setPageHeroOverrides((prev) => ({
+                                    ...prev,
+                                    [p.key]: { ...current, backgroundImage: url },
+                                  }))
+                                }
+                                folder="page-headers"
+                                aspectRatio="banner"
+                              />
+                              <Input
+                                value={current.backgroundImage || ""}
+                                onChange={(e) =>
+                                  setPageHeroOverrides((prev) => ({
+                                    ...prev,
+                                    [p.key]: { ...current, backgroundImage: e.target.value },
+                                  }))
+                                }
+                                placeholder="Or paste image URL"
+                              />
+                            </div>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+
+                <div className="sticky bottom-0 z-30 -mx-6 px-6 py-4 bg-background/80 backdrop-blur border-t border-border/50">
+                  <div className="flex justify-end">
+                    <Button onClick={handleSavePageHeaders} disabled={saveSettingsMutation.isPending}>
+                      {saveSettingsMutation.isPending ? "Saving..." : "Save Page Headers"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="staticPages" className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-4">Static Pages</h2>
+              <p className="text-muted-foreground mb-4">Manage legal and informational pages</p>
             </div>
-          )}
-        </div>
+
+            <div className="grid gap-4">
+              {pages.map((page) => (
+                <Card
+                  key={page.id}
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleEdit(page)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{page.title}</h3>
+                          {!page.published && <Badge variant="secondary">Draft</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground">/{page.slug}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Last updated: {page.updatedAt ? new Date(page.updatedAt).toLocaleDateString() : "Never"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Link href={`/${page.slug}`}>
+                          <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(page);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {pages.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">No static pages found. Run the database schema to create default pages.</div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
@@ -794,6 +1712,73 @@ export default function AdminStaticPages() {
 
               {(editingPage?.slug || formData.slug).toLowerCase() === "about" ? (
                 <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Sections</Label>
+                    <div className="space-y-2">
+                      {aboutForm.sections
+                        .slice()
+                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                        .map((section) => (
+                          <div
+                            key={section.id}
+                            className={`flex items-center justify-between gap-3 rounded-md border p-3 ${
+                              dragOverAboutSectionId === section.id ? "ring-2 ring-primary" : ""
+                            }`}
+                            onDragOver={(e) => {
+                              if (!draggingAboutSectionId) return;
+                              e.preventDefault();
+                              setDragOverAboutSectionId(section.id);
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverAboutSectionId === section.id) setDragOverAboutSectionId(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              const fromId = e.dataTransfer.getData("text/plain") || draggingAboutSectionId;
+                              if (!fromId || !section.id) return;
+                              reorderAboutSections(fromId, section.id);
+                              setDraggingAboutSectionId(null);
+                              setDragOverAboutSectionId(null);
+                            }}
+                          >
+                            <div
+                              className="inline-flex items-center gap-2 text-xs text-muted-foreground select-none"
+                              draggable
+                              onDragStart={(e) => {
+                                setDraggingAboutSectionId(section.id);
+                                e.dataTransfer.setData("text/plain", section.id);
+                                e.dataTransfer.effectAllowed = "move";
+                              }}
+                              onDragEnd={() => {
+                                setDraggingAboutSectionId(null);
+                                setDragOverAboutSectionId(null);
+                              }}
+                            >
+                              <GripVertical className="h-4 w-4" />
+                              Drag
+                            </div>
+
+                            <div className="flex-1 text-sm font-medium">{section.id}</div>
+
+                            <div className="flex items-center gap-3">
+                              <Switch
+                                checked={section.enabled}
+                                onCheckedChange={(checked) =>
+                                  setAboutForm({
+                                    ...aboutForm,
+                                    sections: aboutForm.sections.map((s) =>
+                                      s.id === section.id ? { ...s, enabled: checked } : s
+                                    ),
+                                  })
+                                }
+                              />
+                              <span className="text-xs text-muted-foreground">Enabled</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Hero</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1256,6 +2241,120 @@ export default function AdminStaticPages() {
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 <Button onClick={handleSave}>Save</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isTestimonialDialogOpen} onOpenChange={setIsTestimonialDialogOpen}>
+          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <DialogHeader>
+              <DialogTitle>{editingTestimonial ? "Edit Testimonial" : "Add New Testimonial"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="testimonialName">Name</Label>
+                  <Input
+                    id="testimonialName"
+                    placeholder="John Doe"
+                    value={testimonialFormData.name}
+                    onChange={(e) => setTestimonialFormData({ ...testimonialFormData, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="testimonialRole">Role / Title</Label>
+                  <Input
+                    id="testimonialRole"
+                    placeholder="CEO, DJ, Music Producer, etc."
+                    value={testimonialFormData.role}
+                    onChange={(e) => setTestimonialFormData({ ...testimonialFormData, role: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="testimonialContent">Testimonial Content</Label>
+                <Textarea
+                  id="testimonialContent"
+                  rows={4}
+                  placeholder="What did they say about you?"
+                  value={testimonialFormData.content}
+                  onChange={(e) => setTestimonialFormData({ ...testimonialFormData, content: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Label>Avatar Image</Label>
+                <ImageUpload
+                  onUploadComplete={(url) => setTestimonialFormData({ ...testimonialFormData, avatarUrl: url })}
+                  bucket="media"
+                  folder="testimonials"
+                  aspectRatio="square"
+                  currentImage={testimonialFormData.avatarUrl}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Rating (1-5)</Label>
+                  <div className="flex items-center gap-2 mt-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setTestimonialFormData({ ...testimonialFormData, rating: star })}
+                        className="focus:outline-none"
+                      >
+                        <Star
+                          className={`w-6 h-6 transition-colors ${
+                            star <= testimonialFormData.rating
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-muted-foreground/30 hover:text-amber-400/50"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="testimonialDisplayOrder">Display Order</Label>
+                  <Input
+                    id="testimonialDisplayOrder"
+                    type="number"
+                    min={0}
+                    value={testimonialFormData.displayOrder}
+                    onChange={(e) =>
+                      setTestimonialFormData({ ...testimonialFormData, displayOrder: parseInt(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="testimonialPublished"
+                  checked={testimonialFormData.published}
+                  onCheckedChange={(checked) => setTestimonialFormData({ ...testimonialFormData, published: checked })}
+                />
+                <Label htmlFor="testimonialPublished">Published (visible on website)</Label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsTestimonialDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveTestimonial}
+                  disabled={
+                    saveTestimonialMutation.isPending ||
+                    !testimonialFormData.name ||
+                    !testimonialFormData.role ||
+                    !testimonialFormData.content
+                  }
+                >
+                  {editingTestimonial ? "Update" : "Create"} Testimonial
+                </Button>
               </div>
             </div>
           </DialogContent>

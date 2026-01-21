@@ -227,12 +227,12 @@ export function Navigation() {
                 </Button>
               </Link>
 
-              <ThemeToggle className="h-10 w-10 rounded-full lg:h-9 lg:w-9" />
+              <ThemeToggle className="h-11 w-11 rounded-full" />
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden rounded-full h-10 w-10"
+                className="lg:hidden rounded-full h-11 w-11"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 data-testid="button-mobile-menu"
               >
@@ -241,7 +241,7 @@ export function Navigation() {
                   animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  {isMobileMenuOpen ? <X className="h-6 w-6 scale-150" /> : <Menu className="h-6 w-6 scale-150" />}
                 </motion.div>
               </Button>
             </div>

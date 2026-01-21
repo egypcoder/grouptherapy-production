@@ -23,6 +23,7 @@ import {
   type SiteSettings,
   type MarqueeItem,
   type StatItem,
+  type PageSectionConfig,
   type AwardPeriod,
   type AwardEntry,
 } from "@/lib/database";
@@ -60,6 +61,132 @@ const iconMap: Record<string, LucideIcon> = {
   Calendar,
   Trophy,
 };
+
+const defaultHomeSections: PageSectionConfig[] = [
+  {
+    id: "hero",
+    enabled: true,
+    order: 1,
+  },
+  {
+    id: "stats",
+    enabled: true,
+    order: 2,
+    title: "Growing the future of",
+    highlight: "music",
+    description: "Our numbers tell the story of a community united by sound.",
+  },
+  {
+    id: "marquee",
+    enabled: true,
+    order: 3,
+  },
+  {
+    id: "releases",
+    enabled: true,
+    order: 4,
+    title: "New",
+    highlight: "Releases",
+    description: "The latest releases from our comunity",
+    actionLabel: "View All Releases",
+    actionHref: "/releases",
+  },
+  {
+    id: "artists",
+    enabled: true,
+    order: 5,
+    title: "Supported",
+    highlight: "Artists",
+    description: "The artists shaping the Group Therapy community",
+    actionLabel: "Meet The Artists",
+    actionHref: "/artists",
+  },
+  {
+    id: "events",
+    enabled: true,
+    order: 6,
+    title: "Upcoming",
+    highlight: "Events",
+    description: "Experience the music live",
+    actionLabel: "View All Events",
+    actionHref: "/events",
+  },
+  {
+    id: "playlists",
+    enabled: true,
+    order: 7,
+    title: "Curated",
+    highlight: "Playlists",
+    description: "Official selections of playlists that reflects our sound",
+    actionLabel: "View All Playlists",
+    actionHref: "/playlists",
+  },
+  {
+    id: "news",
+    enabled: true,
+    order: 8,
+    title: "Latest",
+    highlight: "News",
+    description: "The latest music news from around the world",
+    actionLabel: "View All News",
+    actionHref: "/news",
+  },
+  {
+    id: "testimonials",
+    enabled: true,
+    order: 9,
+  },
+  {
+    id: "awards",
+    enabled: true,
+    order: 10,
+    tag: "Therapy Awards",
+    title: "Voting is",
+    highlight: "live",
+    description: "Vote for your favorites, make them win the battle.",
+    actionLabel: "View Awards",
+    actionHref: "/awards",
+  },
+  {
+    id: "newsletter",
+    enabled: true,
+    order: 11,
+  },
+  {
+    id: "newsCta",
+    enabled: true,
+    order: 12,
+    title: "Stay in the",
+    highlight: "loop",
+    description:
+      "Get the latest news, interviews, and behind-the-scenes content from the label.",
+    actionLabel: "Read Latest News",
+    actionHref: "/news",
+  },
+];
+
+function normalizeSections(
+  incoming: PageSectionConfig[] | null | undefined,
+  defaults: PageSectionConfig[]
+): PageSectionConfig[] {
+  const incomingById = new Map(
+    (Array.isArray(incoming) ? incoming : [])
+      .filter((s): s is PageSectionConfig => !!s && typeof s.id === "string")
+      .map((s) => [s.id, s] as const)
+  );
+
+  return defaults.map((d) => {
+    const inc = incomingById.get(d.id);
+    if (!inc) return d;
+    return {
+      ...d,
+      ...inc,
+      id: d.id,
+      enabled: typeof inc.enabled === "boolean" ? inc.enabled : d.enabled,
+      order: typeof inc.order === "number" ? inc.order : d.order,
+    };
+  });
+}
 
 function AnimatedCounter({
   value,
@@ -99,7 +226,17 @@ function AnimatedCounter({
   );
 }
 
-function StatsSection({ statsItems }: { statsItems: StatItem[] }) {
+function StatsSection({
+  statsItems,
+  title = "Growing the future of",
+  highlight = "music",
+  description = "Our numbers tell the story of a community united by sound.",
+}: {
+  statsItems: StatItem[];
+  title?: string;
+  highlight?: string;
+  description?: string;
+}) {
   return (
     <section className="py-24 md:py-32 relative">
       <div className="max-w-6xl mx-auto px-6 md:px-8">
@@ -111,11 +248,11 @@ function StatsSection({ statsItems }: { statsItems: StatItem[] }) {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight mb-4">
-            Growing the future of <span className="gradient-text">music</span>
+            {title} <span className="gradient-text">{highlight}</span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            Our numbers tell the story of a community united by sound.
-          </p>
+          {description ? (
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">{description}</p>
+          ) : null}
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
@@ -198,10 +335,22 @@ function AwardsSection({
   entries,
   hasActiveVoting,
   periodId,
+  tag = "Therapy Awards",
+  title = "Voting is",
+  highlight = "live",
+  description = "Vote for your favorites, make them win the battle.",
+  actionLabel = "View Awards",
+  actionHref = "/awards",
 }: {
   entries: AwardEntry[];
   hasActiveVoting: boolean;
   periodId?: string;
+  tag?: string;
+  title?: string;
+  highlight?: string;
+  description?: string;
+  actionLabel?: string;
+  actionHref?: string;
 }) {
   const { toast } = useToast();
   const [votedPeriods, setVotedPeriods] = useState<Set<string>>(new Set());
@@ -312,19 +461,19 @@ function AwardsSection({
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
               <Trophy className="w-4 h-4 text-primary" />
-              Therapy Awards
+              {tag}
             </div>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-              Voting is <span className="gradient-text">live</span>
+              {title} <span className="gradient-text">{highlight}</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl">
-              Vote for your favorites, make them win the battle.
-            </p>
+            {description ? (
+              <p className="text-muted-foreground max-w-xl">{description}</p>
+            ) : null}
           </div>
 
-          <Link href="/awards">
+          <Link href={actionHref}>
             <Button variant="outline" size="lg" className="rounded-full px-7">
-              View Awards
+              {actionLabel}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
@@ -430,6 +579,10 @@ export default function HomePage() {
     ? siteSettings.statsItems
     : defaultStatsItems;
 
+  const configuredSections = normalizeSections(siteSettings?.homeSections, defaultHomeSections)
+    .slice()
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
   const featuredEvents = (events || []).filter((event) => event.featured);
 
   const hasStats = (statsItems?.length ?? 0) > 0;
@@ -445,145 +598,242 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
-      <HeroSection
-        heroTag={heroTag}
-        title={heroTitle}
-        subtitle={heroSubtitle}
-        backgroundImage={heroBackgroundImage}
-        backgroundVideo={siteSettings?.heroBackgroundVideo}
-        backgroundType={siteSettings?.heroBackgroundType}
-        ctaText={heroCtaText}
-        ctaLink={heroCtaLink}
-        showRadio={showHeroRadio}
-        heroStats={heroStats}
-      />
+      {configuredSections.map((section) => {
+        if (!section.enabled) return null;
 
-
-      {hasStats && <StatsSection statsItems={statsItems} />}
-
-      <Marquee items={marqueeItems} speed={marqueeSpeed} />
-
-      {hasReleases && (
-        <section className="py-16 md:py-24">
-          <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12">
-            <SectionHeader
-              title="New"
-              highlight="Releases"
-              description="The latest releases from our comunity"
-              action={{ label: "View All Releases", href: "/releases" }}
+        if (section.id === "hero") {
+          return (
+            <HeroSection
+              key={section.id}
+              heroTag={heroTag}
+              title={heroTitle}
+              subtitle={heroSubtitle}
+              backgroundImage={heroBackgroundImage}
+              backgroundVideo={siteSettings?.heroBackgroundVideo}
+              backgroundType={siteSettings?.heroBackgroundType}
+              ctaText={heroCtaText}
+              ctaLink={heroCtaLink}
+              showRadio={showHeroRadio}
+              heroStats={heroStats}
             />
-          </div>
-          <ReleasesCarousel
-            releases={releases || []}
-            title=""
-            autoPlay={true}
-            showViewAll={false}
-          />
-        </section>
-      )}
+          );
+        }
 
-      {/* Only show artists section if there are featured artists */}
-      {artists && artists.filter((a) => a.featured).length > 0 && (
-        <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <SectionHeader
-              title="Supported"
-              highlight="Artists"
-              description="The artists shaping the Group Therapy community"
-              action={{ label: "Meet The Artists", href: "/artists" }}
+        if (section.id === "stats") {
+          if (!hasStats) return null;
+          return (
+            <StatsSection
+              key={section.id}
+              statsItems={statsItems}
+              title={section.title}
+              highlight={section.highlight}
+              description={section.description}
             />
-          </div>
-          <FeaturedArtists
-            artists={artists?.filter((a) => a.featured) || []}
-            title=""
-          />
-        </section>
-      )}
+          );
+        }
 
-      {hasEvents && (
-        <section className="py-16 md:py-24">
-          <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <SectionHeader
-              title="Upcoming"
-              highlight="Events"
-              description="Experience the music live"
-              action={{ label: "View All Events", href: "/events" }}
+        if (section.id === "marquee") {
+          return <Marquee key={section.id} items={marqueeItems} speed={marqueeSpeed} />;
+        }
+
+        if (section.id === "releases") {
+          if (!hasReleases) return null;
+          return (
+            <section key={section.id} className="py-16 md:py-24">
+              <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12">
+                <SectionHeader
+                  title={section.title || "New"}
+                  highlight={section.highlight || "Releases"}
+                  description={section.description || "The latest releases from our comunity"}
+                  action={
+                    section.actionHref
+                      ? {
+                          label: section.actionLabel || "View All Releases",
+                          href: section.actionHref,
+                        }
+                      : { label: "View All Releases", href: "/releases" }
+                  }
+                />
+              </div>
+              <ReleasesCarousel
+                releases={releases || []}
+                title=""
+                autoPlay={true}
+                showViewAll={false}
+              />
+            </section>
+          );
+        }
+
+        if (section.id === "artists") {
+          if (!(artists && artists.filter((a) => a.featured).length > 0)) return null;
+          return (
+            <section key={section.id} className="py-16 md:py-24 bg-muted/30  shadow-sm">
+              <div className="max-w-7xl mx-auto px-6 md:px-8">
+                <SectionHeader
+                  title={section.title || "Supported"}
+                  highlight={section.highlight || "Artists"}
+                  description={section.description || "The artists shaping the Group Therapy community"}
+                  action={
+                    section.actionHref
+                      ? {
+                          label: section.actionLabel || "Meet The Artists",
+                          href: section.actionHref,
+                        }
+                      : { label: "Meet The Artists", href: "/artists" }
+                  }
+                />
+              </div>
+              <FeaturedArtists artists={artists?.filter((a) => a.featured) || []} title="" />
+            </section>
+          );
+        }
+
+        if (section.id === "events") {
+          if (!hasEvents) return null;
+          return (
+            <section key={section.id} className="py-16 md:py-24">
+              <div className="max-w-7xl mx-auto px-6 md:px-8">
+                <SectionHeader
+                  title={section.title || "Upcoming"}
+                  highlight={section.highlight || "Events"}
+                  description={section.description || "Experience the music live"}
+                  action={
+                    section.actionHref
+                      ? {
+                          label: section.actionLabel || "View All Events",
+                          href: section.actionHref,
+                        }
+                      : { label: "View All Events", href: "/events" }
+                  }
+                />
+                <EventsCarousel events={featuredEvents} title="" showViewAll={false} />
+              </div>
+            </section>
+          );
+        }
+
+        if (section.id === "playlists") {
+          if (!hasPlaylists) return null;
+          return (
+            <section key={section.id} className="py-16 md:py-24 bg-muted/30  shadow-sm">
+              <div className="max-w-7xl mx-auto px-6 md:px-8">
+                <SectionHeader
+                  title={section.title || "Curated"}
+                  highlight={section.highlight || "Playlists"}
+                  description={section.description || "Official selections of playlists that reflects our sound"}
+                  action={
+                    section.actionHref
+                      ? {
+                          label: section.actionLabel || "View All Playlists",
+                          href: section.actionHref,
+                        }
+                      : { label: "View All Playlists", href: "/playlists" }
+                  }
+                />
+              </div>
+              <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
+            </section>
+          );
+        }
+
+        if (section.id === "news") {
+          if (!hasPosts) return null;
+          return (
+            <section key={section.id} className="py-16 md:py-24  shadow-sm">
+              <div className="max-w-7xl mx-auto px-6 md:px-8">
+                <SectionHeader
+                  title={section.title || "Latest"}
+                  highlight={section.highlight || "News"}
+                  description={section.description || "The latest music news from around the world"}
+                  action={
+                    section.actionHref
+                      ? {
+                          label: section.actionLabel || "View All News",
+                          href: section.actionHref,
+                        }
+                      : { label: "View All News", href: "/news" }
+                  }
+                />
+              </div>
+              <PostsCarousel posts={(posts || []).slice(0, 8)} autoPlay={true} />
+            </section>
+          );
+        }
+
+        if (section.id === "testimonials") {
+          return <TestimonialsSection key={section.id} />;
+        }
+
+        if (section.id === "awards") {
+          return (
+            <AwardsSection
+              key={section.id}
+              entries={featuredEntries}
+              hasActiveVoting={activeVotingPeriods.length > 0}
+              periodId={activeVotingPeriods[0]?.id}
+              tag={section.tag}
+              title={section.title}
+              highlight={section.highlight}
+              description={section.description}
+              actionLabel={section.actionLabel}
+              actionHref={section.actionHref}
             />
-            <EventsCarousel events={featuredEvents} title="" showViewAll={false} />
-          </div>
-        </section>
-      )}
+          );
+        }
 
-      {hasPlaylists && (
-        <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <SectionHeader
-              title="Curated"
-              highlight="Playlists"
-              description="Official selections of playlists that reflects our sound"
-              action={{ label: "View All Playlists", href: "/playlists" }}
+        if (section.id === "newsletter") {
+          return (
+            <NewsletterSection
+              key={section.id}
+              title={siteSettings?.newsletterTitle}
+              description={siteSettings?.newsletterDescription}
+              buttonText={siteSettings?.newsletterButtonText}
+              disclaimer={siteSettings?.newsletterDisclaimer}
             />
-          </div>
-          <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
-        </section>
-      )}
+          );
+        }
 
-      {hasPosts && (
-        <section className="py-16 md:py-24  shadow-sm">
-          <div className="max-w-7xl mx-auto px-6 md:px-8">
-            <SectionHeader
-              title="Latest"
-              highlight="News"
-              description="The latest music news from around the world"
-              action={{ label: "View All News", href: "/news" }}
-            />
-          </div>
-          <PostsCarousel posts={(posts || []).slice(0, 8)} autoPlay={true} />
-        </section>
-      )}
+        if (section.id === "newsCta") {
+          return (
+            <section key={section.id} className="py-24 md:py-32">
+              <div className="max-w-4xl mx-auto px-6 md:px-8 text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-8">
+                    <Radio className="w-6 h-6" />
+                  </div>
+                  <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight mb-6">
+                    {section.title || "Stay in the"}{" "}
+                    <span className="gradient-text">{section.highlight || "loop"}</span>
+                  </h2>
+                  <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
+                    {section.description ||
+                      "Get the latest news, interviews, and behind-the-scenes content from the label."}
+                  </p>
+                  <Link href={section.actionHref || "/news"}>
+                    <motion.span
+                      className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium text-base hover:shadow-lg hover:shadow-primary/25 transition-all cursor-pointer"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      data-testid="link-news-cta"
+                    >
+                      {section.actionLabel || "Read Latest News"}
+                      <ArrowRight className="w-4 h-4" />
+                    </motion.span>
+                  </Link>
+                </motion.div>
+              </div>
+            </section>
+          );
+        }
 
-      <TestimonialsSection />
-
-      <AwardsSection
-        entries={featuredEntries}
-        hasActiveVoting={activeVotingPeriods.length > 0}
-        periodId={activeVotingPeriods[0]?.id}
-      />
-
-      <NewsletterSection />
-
-      <section className="py-24 md:py-32">
-        <div className="max-w-4xl mx-auto px-6 md:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 text-primary mb-8">
-              <Radio className="w-6 h-6" />
-            </div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight mb-6">
-              Stay in the <span className="gradient-text">loop</span>
-            </h2>
-            <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto">
-              Get the latest news, interviews, and behind-the-scenes content
-              from the label.
-            </p>
-            <Link href="/news">
-              <motion.span
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium text-base hover:shadow-lg hover:shadow-primary/25 transition-all cursor-pointer"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                data-testid="link-news-cta"
-              >
-                Read Latest News
-                <ArrowRight className="w-4 h-4" />
-              </motion.span>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
+        return null;
+      })}
     </div>
   );
 }

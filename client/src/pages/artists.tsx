@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Users } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiSpotify, SiInstagram, SiSoundcloud } from "react-icons/si";
@@ -24,7 +24,8 @@ export default function ArtistsPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/artists"
         title="Artists"
         subtitle="The artists shaping the Group Therapy community"
       />

@@ -6,7 +6,17 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/database";
 
-export function NewsletterSection() {
+export function NewsletterSection({
+  title = "Join the community",
+  description = "Get exclusive releases, early event access, and behind-the-scenes content.",
+  buttonText = "Subscribe",
+  disclaimer = "No spam. Unsubscribe anytime.",
+}: {
+  title?: string;
+  description?: string;
+  buttonText?: string;
+  disclaimer?: string;
+} = {}) {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -69,10 +79,20 @@ export function NewsletterSection() {
           </div>
           
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight mb-4">
-            Join the <span className="gradient-text">community</span>
+            {(() => {
+              const parts = (title || "").trim().split(/\s+/).filter(Boolean);
+              if (parts.length <= 1) return <span className="gradient-text">{title}</span>;
+              const last = parts[parts.length - 1];
+              const leading = parts.slice(0, -1).join(" ");
+              return (
+                <>
+                  {leading} <span className="gradient-text">{last}</span>
+                </>
+              );
+            })()}
           </h2>
           <p className="text-muted-foreground text-lg mb-10 max-w-xl mx-auto">
-            Get exclusive releases, early event access, and behind-the-scenes content.
+            {description}
           </p>
 
           {isSubscribed ? (
@@ -108,7 +128,7 @@ export function NewsletterSection() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <>
-                    Subscribe
+                    {buttonText}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
@@ -117,7 +137,7 @@ export function NewsletterSection() {
           )}
           
           <p className="text-xs text-muted-foreground mt-6">
-            No spam. Unsubscribe anytime.
+            {disclaimer}
           </p>
         </motion.div>
       </div>

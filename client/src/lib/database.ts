@@ -444,6 +444,27 @@ export interface StatItem {
   icon: string;
 }
 
+export interface PageHeroOverride {
+  title?: string;
+  subtitle?: string;
+  backgroundImage?: string;
+}
+
+export type PageHeroOverrides = Record<string, PageHeroOverride>;
+
+export interface PageSectionConfig {
+  id: string;
+  enabled: boolean;
+  order: number;
+  title?: string;
+  highlight?: string;
+  subtitle?: string;
+  description?: string;
+  tag?: string;
+  actionLabel?: string;
+  actionHref?: string;
+}
+
 export interface SiteSettings {
   id?: string;
   emailServiceConfig?: string; // JSON string of email service configuration
@@ -473,6 +494,12 @@ export interface SiteSettings {
   marqueeItems?: MarqueeItem[];
   marqueeSpeed?: number;
   statsItems?: StatItem[];
+  newsletterTitle?: string;
+  newsletterDescription?: string;
+  newsletterButtonText?: string;
+  newsletterDisclaimer?: string;
+  pageHeroOverrides?: PageHeroOverrides;
+  homeSections?: PageSectionConfig[];
   updatedAt: string;
 }
 

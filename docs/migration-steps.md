@@ -152,6 +152,39 @@ ALTER TABLE radio_tracks ADD COLUMN IF NOT EXISTS album TEXT;
 ALTER TABLE radio_tracks ADD COLUMN IF NOT EXISTS duration INTEGER;
 ```
 
+### Add home_sections and page_hero_overrides to site_settings (January 2026)
+
+```sql
+-- Add JSONB columns for homepage section ordering/enabled state and per-page hero overrides
+ALTER TABLE site_settings
+  ADD COLUMN IF NOT EXISTS page_hero_overrides JSONB DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS home_sections JSONB DEFAULT '[]'::jsonb;
+
+-- Add newsletter section content fields
+ALTER TABLE site_settings
+  ADD COLUMN IF NOT EXISTS newsletter_title TEXT DEFAULT 'Join the community',
+  ADD COLUMN IF NOT EXISTS newsletter_description TEXT DEFAULT 'Get exclusive releases, early event access, and behind-the-scenes content.',
+  ADD COLUMN IF NOT EXISTS newsletter_button_text TEXT DEFAULT 'Subscribe',
+  ADD COLUMN IF NOT EXISTS newsletter_disclaimer TEXT DEFAULT 'No spam. Unsubscribe anytime.';
+
+-- Backfill existing rows to ensure non-null values
+UPDATE site_settings
+SET
+  page_hero_overrides = COALESCE(page_hero_overrides, '{}'::jsonb),
+  home_sections = COALESCE(home_sections, '[]'::jsonb),
+  newsletter_title = COALESCE(newsletter_title, 'Join the community'),
+  newsletter_description = COALESCE(newsletter_description, 'Get exclusive releases, early event access, and behind-the-scenes content.'),
+  newsletter_button_text = COALESCE(newsletter_button_text, 'Subscribe'),
+  newsletter_disclaimer = COALESCE(newsletter_disclaimer, 'No spam. Unsubscribe anytime.')
+WHERE
+  page_hero_overrides IS NULL
+  OR home_sections IS NULL
+  OR newsletter_title IS NULL
+  OR newsletter_description IS NULL
+  OR newsletter_button_text IS NULL
+  OR newsletter_disclaimer IS NULL;
+```
+
 ## Troubleshooting
 
 ### "Permission denied" errors

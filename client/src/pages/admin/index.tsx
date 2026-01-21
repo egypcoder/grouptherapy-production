@@ -63,7 +63,6 @@ const sidebarLinks = [
   { href: "/admin/radio", icon: Radio, label: "Radio Shows" },
   { href: "/admin/playlists", icon: ListMusic, label: "Playlists" },
   { href: "/admin/videos", icon: Video, label: "Videos" },
-  { href: "/admin/testimonials", icon: MessageSquareQuote, label: "Testimonials" },
   { href: "/admin/awards", icon: Trophy, label: "Awards" },
   { href: "/admin/careers", icon: Heart, label: "Careers" },
   { href: "/admin/newsletters", icon: Send, label: "Newsletter" },
@@ -674,7 +673,7 @@ export default function AdminDashboard() {
                 {publishedReleases.slice(0, 2).map((release) => (
                   <Link key={release.id} href={`/admin/releases/${release.id}`}>
                     <div
-                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
+                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0  cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">Release published</p>
@@ -691,7 +690,7 @@ export default function AdminDashboard() {
                 {upcomingEvents.slice(0, 1).map((event) => (
                   <Link key={event.id} href={`/admin/events/${event.id}`}>
                     <div
-                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0 last:pb-0 cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
+                      className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-4 pb-3 border-b border-border/50 last:border-0  cursor-pointer hover:bg-muted/50 transition-colors rounded-md p-2 -mx-2"
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">Event scheduled</p>

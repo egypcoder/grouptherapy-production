@@ -13,6 +13,25 @@ function firstHeader(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function canonicalBaseUrl(reqHost: string, reqProto: string): string {
+  const envBase =
+    process.env.VITE_SITE_URL ||
+    process.env.SITE_URL ||
+    process.env.PUBLIC_SITE_URL;
+  const raw = (envBase && envBase.trim().length ? envBase.trim() : `${reqProto}://${reqHost}`).replace(/\/$/, "");
+  try {
+    const u = new URL(raw);
+    const host = u.host.toLowerCase();
+    if (host === "grouptherapyeg.com") u.host = "www.grouptherapyeg.com";
+    if (u.protocol === "http:" && !u.hostname.includes("localhost") && !u.hostname.includes("127.0.0.1")) {
+      u.protocol = "https:";
+    }
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return raw;
+  }
+}
+
 function xmlEscape(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -39,7 +58,7 @@ export default async function handler(req: Req, res: Res) {
   const proto =
     firstHeader(req.headers["x-forwarded-proto"]) ||
     (host.includes("localhost") || host.includes("127.0.0.1") ? "http" : "https");
-  const baseUrl = `${proto}://${host}`;
+  const baseUrl = canonicalBaseUrl(host, proto);
 
   const xml = sitemapIndex([
     { loc: `${baseUrl}/sitemap-pages.xml` },

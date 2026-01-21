@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MapPin, Calendar, Ticket, Clock, Filter, Grid, List as ListIcon, Map, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 import { Link } from "wouter";
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -142,7 +142,8 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/events"
         title="Events"
         subtitle="Your refrence for international electronic music events and experiences"
       />

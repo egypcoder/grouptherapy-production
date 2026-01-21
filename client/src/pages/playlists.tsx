@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Music2, Clock, ListMusic, ExternalLink } from "lucide-react";
 import { Link, useRoute } from "wouter";
-import { PageHero } from "@/components/hero-section";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,8 @@ export default function PlaylistsPage() {
 
   return (
     <div className="min-h-screen">
-      <PageHero
+      <ConfiguredPageHero
+        pageKey="/playlists"
         title="Curated Playlists"
         subtitle="Official selections of playlists that reflects our sound"
       />
