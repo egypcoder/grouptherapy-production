@@ -95,7 +95,7 @@ function NavDropdown({
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="absolute top-full left-0 pt-2 z-50"
           >
-            <div className="bg-popover/95 backdrop-blur-xl border border-border/50 rounded-xl shadow-lg shadow-black/10 overflow-hidden min-w-[160px]">
+            <div className="bg-popover/95 border border-border/50 rounded-xl shadow-lg shadow-black/10 overflow-hidden min-w-[160px]">
               <div className="p-1.5">
                 {items.map((item, index) => (
                   <Link key={item.href} href={item.href}>
@@ -227,12 +227,12 @@ export function Navigation() {
                 </Button>
               </Link>
 
-              <ThemeToggle />
+              <ThemeToggle className="h-10 w-10 rounded-full lg:h-9 lg:w-9" />
 
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden rounded-full h-8 w-8"
+                className="lg:hidden rounded-full h-10 w-10"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 data-testid="button-mobile-menu"
               >
@@ -241,7 +241,7 @@ export function Navigation() {
                   animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                  {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                 </motion.div>
               </Button>
             </div>

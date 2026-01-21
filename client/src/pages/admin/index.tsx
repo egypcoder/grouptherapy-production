@@ -433,35 +433,91 @@ export default function AdminDashboard() {
     if (!analytics) return [];
 
     if (pageViewsRange === "today") {
-      return (analytics.pageViewsTodayByHour || []).map((h) => ({
-        date: `${String(h.hour).padStart(2, "0")}:00`,
-        views: h.views,
+      const byHour = new Map<number, number>();
+      (analytics.pageViewsTodayByHour || []).forEach((h) => {
+        byHour.set(h.hour, h.views);
+      });
+      return Array.from({ length: 24 }).map((_, hour) => ({
+        date: `${String(hour).padStart(2, "0")}:00`,
+        views: byHour.get(hour) ?? 0,
       }));
     }
 
-    let days = analytics.pageViewsByDay || [];
+    const toDateKey = (value: string) => {
+      const trimmed = String(value || "").trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+      const dt = new Date(trimmed);
+      if (Number.isNaN(dt.getTime())) return trimmed;
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const d = String(dt.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+
+    const dateKeyToDate = (key: string) => {
+      const [y, m, d] = key.split("-").map((v) => Number(v));
+      if (!y || !m || !d) return new Date(key);
+      return new Date(y, m - 1, d);
+    };
+
+    const startOfDay = (dt: Date) => {
+      const d = new Date(dt);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const addDays = (dt: Date, daysToAdd: number) => {
+      const d = new Date(dt);
+      d.setDate(d.getDate() + daysToAdd);
+      return d;
+    };
+
+    const dailyMap = new Map<string, number>();
+    (analytics.pageViewsByDay || []).forEach((row) => {
+      const key = toDateKey(row.date);
+      dailyMap.set(key, (dailyMap.get(key) ?? 0) + (row.views ?? 0));
+    });
+
+    const today = startOfDay(new Date());
+    let start: Date;
+    let end: Date;
 
     if (pageViewsRange === "custom" && pageViewsStart && pageViewsEnd) {
-      const start = new Date(pageViewsStart);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(pageViewsEnd);
-      end.setHours(23, 59, 59, 999);
-      days = days.filter((d) => {
-        const dt = new Date(d.date);
-        return dt >= start && dt <= end;
-      });
+      start = startOfDay(pageViewsStart);
+      end = startOfDay(pageViewsEnd);
     } else if (pageViewsRange === "7d") {
-      days = days.slice(-7);
+      end = today;
+      start = addDays(end, -6);
     } else if (pageViewsRange === "30d") {
-      days = days.slice(-30);
-    } else if (pageViewsRange === "90d") {
-      days = days.slice(-90);
+      end = today;
+      start = addDays(end, -29);
+    } else {
+      end = today;
+      start = addDays(end, -89);
     }
 
-    return days.map((day) => ({
-      date: new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      views: day.views,
-    }));
+    if (start > end) {
+      const tmp = start;
+      start = end;
+      end = tmp;
+    }
+
+    const startKey = toDateKey(`${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`);
+    const endKey = toDateKey(`${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`);
+
+    const startDate = dateKeyToDate(startKey);
+    const endDate = dateKeyToDate(endKey);
+
+    const out: { date: string; views: number }[] = [];
+    for (let d = startDate; d <= endDate; d = addDays(d, 1)) {
+      const key = toDateKey(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+      out.push({
+        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        views: dailyMap.get(key) ?? 0,
+      });
+    }
+
+    return out;
   }, [analytics, pageViewsRange, pageViewsStart, pageViewsEnd]);
 
   const contentCounts = [

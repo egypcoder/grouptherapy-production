@@ -416,10 +416,10 @@ export default function HomePage() {
   });
 
   const heroTitle = siteSettings?.heroTitle || "GROUPTHERAPY";
-  const heroTag = siteSettings?.heroTag || "Electronic Music Label";
+  const heroTag = siteSettings?.heroTag || "New: Finaly Launching our platform";
   const heroSubtitle =
     siteSettings?.heroSubtitle ||
-    "The future of electronic music, curated for you.";
+    "Home of Artists. Built for Sound, Culture, and Community.";
   const heroBackgroundImage = siteSettings?.heroBackgroundImage || undefined;
   const heroCtaText = siteSettings?.heroCtaText || "Explore Releases";
   const heroCtaLink = siteSettings?.heroCtaLink || "/releases";

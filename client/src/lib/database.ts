@@ -1723,6 +1723,26 @@ export const db = {
         };
       }
 
+      const sb = supabase;
+
+      const PAGE_SIZE = 1000;
+      const fetchAll = async <T,>(
+        buildQuery: (from: number, to: number) => any
+      ): Promise<T[]> => {
+        const out: T[] = [];
+        let from = 0;
+        while (true) {
+          const to = from + PAGE_SIZE - 1;
+          const { data, error } = await buildQuery(from, to);
+          if (error) throw error;
+          const rows: T[] = (data || []) as T[];
+          out.push(...rows);
+          if (rows.length < PAGE_SIZE) break;
+          from += PAGE_SIZE;
+        }
+        return out;
+      };
+
       const now = new Date();
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
@@ -1758,36 +1778,32 @@ export const db = {
         contactsResult,
         newContactsResult,
         eventsResult,
-        topPagesResult,
         releaseEventsResult,
         eventTicketEventsResult,
-        referrersResult,
         radioShowsResult
       ] = await Promise.all([
-        supabase.from('page_views').select('id', { count: 'exact', head: true }),
-        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', todayStartIso).lt('created_at', tomorrowStartIso),
-        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', weekStartIso).lt('created_at', tomorrowStartIso),
-        supabase.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
-        supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'release_click'),
-        supabase.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'event_ticket_click'),
-        supabase.from('radio_sessions').select('duration_seconds'),
-        supabase
+        sb.from('page_views').select('id', { count: 'exact', head: true }),
+        sb.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', todayStartIso).lt('created_at', tomorrowStartIso),
+        sb.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', weekStartIso).lt('created_at', tomorrowStartIso),
+        sb.from('page_views').select('id', { count: 'exact', head: true }).gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
+        sb.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'release_click'),
+        sb.from('analytics_events').select('id', { count: 'exact', head: true }).eq('event_type', 'event_ticket_click'),
+        sb.from('radio_sessions').select('duration_seconds'),
+        sb
           .from('radio_tracks')
           .select('played_at, created_at')
           .or(`played_at.gte.${todayStartIso},created_at.gte.${todayStartIso}`),
-        supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
-        supabase.from('newsletter_subscribers').select('id', { count: 'exact', head: true }).eq('active', true),
-        supabase.from('contacts').select('id', { count: 'exact', head: true }),
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('status', 'new'),
-        supabase.from('events').select('rsvp_count'),
-        supabase.from('page_views').select('page_path').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
-        supabase.from('analytics_events').select('entity_id, entity_name').eq('event_type', 'release_click').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
-        supabase.from('analytics_events').select('entity_id, entity_name, metadata').eq('event_type', 'event_ticket_click').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
-        supabase.from('page_views').select('referrer').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso).not('referrer', 'is', null),
-        supabase.from('radio_sessions').select('show_id, duration_seconds')
+        sb.from('newsletter_subscribers').select('id', { count: 'exact', head: true }),
+        sb.from('newsletter_subscribers').select('id', { count: 'exact', head: true }).eq('active', true),
+        sb.from('contacts').select('id', { count: 'exact', head: true }),
+        sb.from('contacts').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+        sb.from('events').select('rsvp_count'),
+        sb.from('analytics_events').select('entity_id, entity_name').eq('event_type', 'release_click').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
+        sb.from('analytics_events').select('entity_id, entity_name, metadata').eq('event_type', 'event_ticket_click').gte('created_at', monthStartIso).lt('created_at', tomorrowStartIso),
+        sb.from('radio_sessions').select('show_id, duration_seconds')
       ]);
 
-      const radioShows = await supabase.from('radio_shows').select('id, title');
+      const radioShows = await sb.from('radio_shows').select('id, title');
 
       const totalRadioDuration = (radioSessionsResult.data || []).reduce((acc, s) => acc + (s.duration_seconds || 0), 0);
       const totalRsvps = (eventsResult.data || []).reduce((acc, e) => acc + (e.rsvp_count || 0), 0);
@@ -1801,7 +1817,16 @@ export const db = {
       }).length;
 
       const pagePathCounts: Record<string, number> = {};
-      (topPagesResult.data || []).forEach(pv => {
+      const topPagesRows = await fetchAll<{ page_path: string }>((from, to) =>
+        sb
+          .from('page_views')
+          .select('page_path')
+          .gte('created_at', monthStartIso)
+          .lt('created_at', tomorrowStartIso)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      );
+      (topPagesRows || []).forEach(pv => {
         pagePathCounts[pv.page_path] = (pagePathCounts[pv.page_path] || 0) + 1;
       });
       const topPages = Object.entries(pagePathCounts)
@@ -1840,7 +1865,17 @@ export const db = {
         .map(([id, data]) => ({ id, name: data.name, clicks: data.clicks }));
 
       const referrerCounts: Record<string, number> = {};
-      (referrersResult.data || []).forEach(pv => {
+      const referrerRows = await fetchAll<{ referrer: string }>((from, to) =>
+        sb
+          .from('page_views')
+          .select('referrer')
+          .gte('created_at', monthStartIso)
+          .lt('created_at', tomorrowStartIso)
+          .not('referrer', 'is', null)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      );
+      (referrerRows || []).forEach(pv => {
         if (pv.referrer) {
           try {
             const url = new URL(pv.referrer);
@@ -1876,14 +1911,18 @@ export const db = {
         }))
         .sort((a, b) => b.listens - a.listens);
 
-      const pageViewsByDayData = await supabase
-        .from('page_views')
-        .select('created_at')
-        .gte('created_at', trendStartIso)
-        .order('created_at', { ascending: true });
+      const pageViewsByDayRows = await fetchAll<{ created_at: string }>((from, to) =>
+        sb
+          .from('page_views')
+          .select('created_at')
+          .gte('created_at', trendStartIso)
+          .lt('created_at', tomorrowStartIso)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      );
 
       const dailyCounts: Record<string, number> = {};
-      (pageViewsByDayData.data || []).forEach(pv => {
+      (pageViewsByDayRows || []).forEach(pv => {
         if (!pv.created_at) return;
         const dt = new Date(pv.created_at);
         if (Number.isNaN(dt.getTime())) return;
@@ -1894,19 +1933,22 @@ export const db = {
         .map(([date, views]) => ({ date, views }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      const pageViewsTodayData = await supabase
-        .from('page_views')
-        .select('created_at')
-        .gte('created_at', todayStartIso)
-        .lt('created_at', tomorrowStartIso)
-        .order('created_at', { ascending: true });
+      const pageViewsTodayRows = await fetchAll<{ created_at: string }>((from, to) =>
+        sb
+          .from('page_views')
+          .select('created_at')
+          .gte('created_at', todayStartIso)
+          .lt('created_at', tomorrowStartIso)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      );
 
       const todayStartForViews = new Date(todayStartIso);
       const hourlyCounts: Record<number, number> = {};
       for (let hour = 0; hour < 24; hour++) {
         hourlyCounts[hour] = 0;
       }
-      (pageViewsTodayData.data || []).forEach((pv) => {
+      (pageViewsTodayRows || []).forEach((pv) => {
         if (!pv.created_at) return;
         const dt = new Date(pv.created_at);
         if (Number.isNaN(dt.getTime())) return;
@@ -1923,11 +1965,17 @@ export const db = {
       nowHourStart.setMinutes(0, 0, 0);
       const last24Start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-      const pageViewsLast24Data = await supabase
-        .from('page_views')
-        .select('created_at')
-        .gte('created_at', last24Start.toISOString())
-        .order('created_at', { ascending: true });
+      const nowIso = now.toISOString();
+
+      const pageViewsLast24Rows = await fetchAll<{ created_at: string }>((from, to) =>
+        sb
+          .from('page_views')
+          .select('created_at')
+          .gte('created_at', last24Start.toISOString())
+          .lt('created_at', nowIso)
+          .order('created_at', { ascending: true })
+          .range(from, to)
+      );
 
       const last24HourStarts = Array.from({ length: 24 }, (_, idx) =>
         new Date(nowHourStart.getTime() - (23 - idx) * 60 * 60 * 1000)
@@ -1937,7 +1985,7 @@ export const db = {
         last24Counts[dt.toISOString()] = 0;
       });
 
-      (pageViewsLast24Data.data || []).forEach((pv) => {
+      (pageViewsLast24Rows || []).forEach((pv) => {
         if (!pv.created_at) return;
         const dt = new Date(pv.created_at);
         if (Number.isNaN(dt.getTime())) return;

@@ -20,9 +20,9 @@ interface HeroProps {
 }
 
 export function HeroSection({
-  heroTag = "Electronic Music Label",
+  heroTag = "New: Finaly Launching our platform",
   title = "GROUPTHERAPY",
-  subtitle = "The future of electronic music, curated for you.",
+  subtitle = "Home of Artists. Built for Sound, Culture, and Community.",
   backgroundImage,
   backgroundVideo,
   backgroundType = "image",
@@ -38,7 +38,7 @@ export function HeroSection({
       ? heroStats
       : [
           { value: "50+", label: "Artists" },
-          { value: "200+", label: "Releases" },
+          { value: "387+", label: "Releases" },
           { value: "24/7", label: "Radio" },
         ];
 
