@@ -227,7 +227,7 @@ export function Navigation() {
                 </Button>
               </Link>
 
-              <ThemeToggle className="h-11 w-11 rounded-full" />
+              <ThemeToggle className="h-11 w-11 sm:h-9 sm:w-9 rounded-full" />
 
               <Button
                 variant="ghost"
