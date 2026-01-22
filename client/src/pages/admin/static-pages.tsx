@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Pencil,
@@ -500,6 +500,7 @@ export default function AdminStaticPages() {
   const [dragOverHomeSectionId, setDragOverHomeSectionId] = useState<string | null>(null);
   const [openHomeSectionId, setOpenHomeSectionId] = useState<string | null>(null);
   const [openPageHeaderKey, setOpenPageHeaderKey] = useState<string | null>(null);
+  const lastSettingsSaveContextRef = useRef<"homepage" | "pageHeaders" | null>(null);
   const [pageHeroOverrides, setPageHeroOverrides] = useState<PageHeroOverrides>({});
 
   const { data: pages = [] } = useQuery<StaticPage[]>({
@@ -704,13 +705,19 @@ export default function AdminStaticPages() {
       queryClient.invalidateQueries({ queryKey: ["siteSettings"] });
       toast({
         title: "Success",
-        description: "Homepage settings saved successfully",
+        description:
+          lastSettingsSaveContextRef.current === "pageHeaders"
+            ? "Page headers saved successfully"
+            : "Homepage settings saved successfully",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to save homepage settings",
+        description:
+          lastSettingsSaveContextRef.current === "pageHeaders"
+            ? "Failed to save page headers"
+            : "Failed to save homepage settings",
         variant: "destructive",
       });
     },
@@ -811,6 +818,7 @@ export default function AdminStaticPages() {
   };
 
   const handleSaveHomepageSettings = () => {
+    lastSettingsSaveContextRef.current = "homepage";
     saveSettingsMutation.mutate({
       ...heroSettings,
       marqueeItems,
@@ -822,6 +830,7 @@ export default function AdminStaticPages() {
   };
 
   const handleSavePageHeaders = () => {
+    lastSettingsSaveContextRef.current = "pageHeaders";
     saveSettingsMutation.mutate({
       pageHeroOverrides,
     });
@@ -1565,7 +1574,7 @@ export default function AdminStaticPages() {
                                   onChange={(e) =>
                                     setPageHeroOverrides((prev) => ({
                                       ...prev,
-                                      [p.key]: { ...current, title: e.target.value },
+                                      [p.key]: { ...(prev[p.key] || {}), title: e.target.value },
                                     }))
                                   }
                                   placeholder="Page title"
@@ -1578,7 +1587,7 @@ export default function AdminStaticPages() {
                                   onChange={(e) =>
                                     setPageHeroOverrides((prev) => ({
                                       ...prev,
-                                      [p.key]: { ...current, subtitle: e.target.value },
+                                      [p.key]: { ...(prev[p.key] || {}), subtitle: e.target.value },
                                     }))
                                   }
                                   placeholder="Page subtitle"
@@ -1593,7 +1602,7 @@ export default function AdminStaticPages() {
                                 onUploadComplete={(url) =>
                                   setPageHeroOverrides((prev) => ({
                                     ...prev,
-                                    [p.key]: { ...current, backgroundImage: url },
+                                    [p.key]: { ...(prev[p.key] || {}), backgroundImage: url },
                                   }))
                                 }
                                 folder="page-headers"
@@ -1604,7 +1613,7 @@ export default function AdminStaticPages() {
                                 onChange={(e) =>
                                   setPageHeroOverrides((prev) => ({
                                     ...prev,
-                                    [p.key]: { ...current, backgroundImage: e.target.value },
+                                    [p.key]: { ...(prev[p.key] || {}), backgroundImage: e.target.value },
                                   }))
                                 }
                                 placeholder="Or paste image URL"

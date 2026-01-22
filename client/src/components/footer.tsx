@@ -19,13 +19,13 @@ const footerLinks = {
   discover: [
     { label: "Events", href: "/events" },
     { label: "Tours", href: "/tours" },
+    { label: "Awards", href: "/awards" },
     { label: "Videos", href: "/videos" },
     { label: "News", href: "/news" },
   ],
   company: [
     { label: "About", href: "/about" },
     { label: "Contact", href: "/contact" },
-    { label: "Awards", href: "/awards" },
     { label: "Careers", href: "/careers" },
     { label: "Press", href: "/press" },
     { label: "Promote Your Release", href: "/promote-your-release" },
