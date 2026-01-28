@@ -242,9 +242,9 @@ export default function PostDetailPage() {
             )}
           </article>
 
-          <aside className="space-y-3 z-10 w-[300px]">
+          <aside className="space-y-3 z-10 w-[300px] relative">
             {relatedPosts && relatedPosts.length > 0 && (
-              <div className="bg-card/50 border border-border/50 rounded-2xl p-5 w-full">
+              <div className="bg-card/50 border border-border/50 rounded-2xl p-5 w-full relative sm:sticky top-[70px]">
                 <h3 className="font-semibold text-lg mb-5">Related Articles</h3>
                 <div className="space-y-4">
                   {relatedPosts.map((relatedPost) => (

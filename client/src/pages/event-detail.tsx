@@ -164,7 +164,7 @@ export default function EventDetailPage() {
                 <a
                   href={event.ticketUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="bookmark"
                   onClick={() => trackTicketClick("event_detail_hero")}
                 >
                   <Button size="lg" className="bg-primary hover:bg-primary/90">
@@ -263,7 +263,7 @@ export default function EventDetailPage() {
                   <a
                     href={event.ticketUrl}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="bookmark"
                     className="block"
                     onClick={() => trackTicketClick("event_detail_sidebar")}
                   >

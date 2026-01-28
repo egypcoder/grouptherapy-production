@@ -74,7 +74,7 @@ export function sanitizeHtml(input: string, options: SanitizeHtmlOptions = {}): 
           }
 
           if (name === "target") {
-            el.setAttribute("rel", "noopener noreferrer");
+            el.setAttribute("rel", "bookmark");
           }
         }
       }

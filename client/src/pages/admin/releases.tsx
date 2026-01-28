@@ -922,7 +922,7 @@ export default function AdminReleases() {
                                 <a
                                   href={release.spotifyUrl}
                                   target="_blank"
-                                  rel="noopener noreferrer"
+                                  rel="bookmark"
                                 >
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   View on Spotify

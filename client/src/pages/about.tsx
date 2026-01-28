@@ -399,21 +399,21 @@ function TeamCard({ member }: { member: TeamMember }) {
         <div className="flex items-center gap-2 mt-3">
           {member.socialLinks?.linkedin && (
             <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-              <a href={member.socialLinks.linkedin} target="_blank" rel="noopener noreferrer">
+              <a href={member.socialLinks.linkedin} target="_blank" rel="bookmark">
                 <SiLinkedin className="h-4 w-4" />
               </a>
             </Button>
           )}
           {member.socialLinks?.twitter && (
             <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-              <a href={member.socialLinks.twitter} target="_blank" rel="noopener noreferrer">
+              <a href={member.socialLinks.twitter} target="_blank" rel="bookmark">
                 <SiX className="h-4 w-4" />
               </a>
             </Button>
           )}
           {member.socialLinks?.instagram && (
             <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-              <a href={member.socialLinks.instagram} target="_blank" rel="noopener noreferrer">
+              <a href={member.socialLinks.instagram} target="_blank" rel="bookmark">
                 <SiInstagram className="h-4 w-4" />
               </a>
             </Button>

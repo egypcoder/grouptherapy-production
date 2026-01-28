@@ -103,7 +103,7 @@ export default function PlaylistsPage() {
                         <a
                           href={selectedPlaylist.spotifyUrl}
                           target="_blank"
-                          rel="noopener noreferrer"
+                          rel="bookmark"
                         >
                           <SiSpotify className="h-4 w-4 mr-2" />
                           Open in Spotify

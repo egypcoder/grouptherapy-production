@@ -182,7 +182,7 @@ export default function ContactPage() {
                           className="text-sm hover:text-primary transition-colors"
                           href={info.href}
                           target={info.href.startsWith("http") ? "_blank" : undefined}
-                          rel={info.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                          rel={info.href.startsWith("http") ? "bookmark" : undefined}
                         >
                           {info.details}
                         </a>

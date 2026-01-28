@@ -258,6 +258,11 @@ export function computeSeo(args: {
     ? "noindex, nofollow"
     : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
 
+  const orgId = `${baseUrl}/#organization`;
+  const websiteId = `${baseUrl}/#website`;
+  const musicGroupId = `${baseUrl}/#musicgroup`;
+  const webPageId = canonical;
+
   let title = fallbackTitle;
   let description = fallbackDescription;
   let ogType = "website";
@@ -404,10 +409,102 @@ export function computeSeo(args: {
   const contentSchemas: any[] = [];
   const contentImageAbs = routeImage ? toAbsoluteUrl(String(routeImage), baseUrl) : undefined;
 
+  const stripContext = (node: any) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return node;
+    const { "@context": _ctx, ...rest } = node as any;
+    return rest;
+  };
+
+  const normalizeSchemaNode = (node: any, fallbackId: string) => {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return null;
+    const n: any = { ...stripContext(node) };
+    if (!n["@id"]) n["@id"] = fallbackId;
+    if (!n.url) n.url = baseUrl;
+    if (typeof n.logo === "string") n.logo = toAbsoluteUrl(n.logo, baseUrl);
+    if (typeof n.image === "string") n.image = toAbsoluteUrl(n.image, baseUrl);
+    return n;
+  };
+
+  const defaultOrganizationSchema = {
+    "@type": "Organization",
+    name: siteName,
+    url: baseUrl,
+    logo: `${baseUrl}/favicon.png`,
+  };
+
+  const defaultWebsiteSchema = {
+    "@type": "WebSite",
+    name: siteName,
+    url: baseUrl,
+  };
+
+  const defaultMusicGroupSchema = {
+    "@type": "MusicGroup",
+    name: siteName,
+    url: baseUrl,
+  };
+
+  const pageTypeForRoute = (): string => {
+    if (route.kind === "home") return "WebPage";
+    if (route.kind === "post") return "WebPage";
+    if (route.kind === "release") return "WebPage";
+    if (route.kind === "event") return "WebPage";
+    if (route.kind === "artist") return "WebPage";
+    if (route.kind === "static") return "WebPage";
+    if (route.kind === "section") {
+      if (route.slug === "about") return "AboutPage";
+      if (route.slug === "contact") return "ContactPage";
+      if (route.slug === "news") return "CollectionPage";
+      if (route.slug === "releases") return "CollectionPage";
+      if (route.slug === "events") return "CollectionPage";
+      if (route.slug === "artists") return "CollectionPage";
+      if (route.slug === "radio") return "CollectionPage";
+      if (route.slug === "awards") return "CollectionPage";
+      if (route.slug === "careers") return "CollectionPage";
+      return "WebPage";
+    }
+    return "WebPage";
+  };
+
+  const breadcrumbForRoute = (): any | null => {
+    const items: Array<{ name: string; url: string }> = [{ name: "Home", url: baseUrl + "/" }];
+    if (route.kind === "home") return null;
+    if (route.kind === "section") {
+      items.push({ name: route.slug.charAt(0).toUpperCase() + route.slug.slice(1), url: canonical });
+    } else if (route.kind === "static") {
+      items.push({ name: route.slug.charAt(0).toUpperCase() + route.slug.slice(1), url: canonical });
+    } else if (route.kind === "post") {
+      items.push({ name: "News", url: `${baseUrl}/news` });
+      if (post?.title) items.push({ name: String(post.title), url: canonical });
+    } else if (route.kind === "release") {
+      items.push({ name: "Releases", url: `${baseUrl}/releases` });
+      if (release?.title) items.push({ name: String(release.title), url: canonical });
+    } else if (route.kind === "event") {
+      items.push({ name: "Events", url: `${baseUrl}/events` });
+      if (event?.title) items.push({ name: String(event.title), url: canonical });
+    } else if (route.kind === "artist") {
+      items.push({ name: "Artists", url: `${baseUrl}/artists` });
+      if (artist?.name) items.push({ name: String(artist.name), url: canonical });
+    }
+
+    return {
+      "@type": "BreadcrumbList",
+      "@id": `${canonical}#breadcrumb`,
+      itemListElement: items.map((it, idx) => ({
+        "@type": "ListItem",
+        position: idx + 1,
+        name: it.name,
+        item: it.url,
+      })),
+    };
+  };
+
   if (route.kind === "post" && post) {
+    const entityId = `${canonical}#blogposting`;
     const datePublished = safeIsoDate(post.publishedAt || post.createdAt);
     contentSchemas.push({
       "@type": "BlogPosting",
+      "@id": entityId,
       headline: String(post.metaTitle || post.title),
       description: String(post.metaDescription || post.excerpt || stripAndTruncate(post.content, 200) || fallbackDescription),
       image: contentImageAbs ? [contentImageAbs] : undefined,
@@ -420,9 +517,11 @@ export function computeSeo(args: {
   }
 
   if (route.kind === "release" && release) {
+    const entityId = `${canonical}#musicalbum`;
     const releaseDate = safeIsoDate(release.releaseDate || release.createdAt);
     contentSchemas.push({
       "@type": "MusicAlbum",
+      "@id": entityId,
       name: String(release.title),
       byArtist: { "@type": "MusicGroup", name: String(release.artistName) },
       datePublished: releaseDate,
@@ -432,10 +531,12 @@ export function computeSeo(args: {
   }
 
   if (route.kind === "event" && event) {
+    const entityId = `${canonical}#event`;
     const startTime = safeIsoDate(event.date || event.createdAt);
     const endTime = safeIsoDate(event.endDate);
     contentSchemas.push({
       "@type": "Event",
+      "@id": entityId,
       name: String(event.title),
       description: event.description ? String(event.description) : undefined,
       startDate: startTime,
@@ -456,8 +557,10 @@ export function computeSeo(args: {
   }
 
   if (route.kind === "artist" && artist) {
+    const entityId = `${canonical}#person`;
     contentSchemas.push({
       "@type": "Person",
+      "@id": entityId,
       name: String(artist.name),
       description: artist.bio ? String(artist.bio) : undefined,
       image: contentImageAbs ? [contentImageAbs] : undefined,
@@ -465,8 +568,35 @@ export function computeSeo(args: {
     });
   }
 
-  const baseSchemas = [settings?.organizationSchema, settings?.websiteSchema, settings?.musicGroupSchema].filter(Boolean);
-  const schemas = [...baseSchemas, ...contentSchemas].filter(Boolean);
+  const organizationSchema =
+    normalizeSchemaNode(settings?.organizationSchema ?? defaultOrganizationSchema, orgId) ||
+    normalizeSchemaNode(defaultOrganizationSchema, orgId);
+  const websiteSchema =
+    normalizeSchemaNode(settings?.websiteSchema ?? defaultWebsiteSchema, websiteId) ||
+    normalizeSchemaNode(defaultWebsiteSchema, websiteId);
+  const musicGroupSchema =
+    normalizeSchemaNode(settings?.musicGroupSchema ?? defaultMusicGroupSchema, musicGroupId) ||
+    normalizeSchemaNode(defaultMusicGroupSchema, musicGroupId);
+
+  const mainEntityId = contentSchemas.length ? contentSchemas[0]?.["@id"] : undefined;
+
+  const webPageSchema: any = {
+    "@type": pageTypeForRoute(),
+    "@id": webPageId,
+    url: canonical,
+    name: title,
+    description,
+    isPartOf: { "@id": websiteId },
+    about: { "@id": orgId },
+    breadcrumb: route.kind === "home" ? undefined : { "@id": `${canonical}#breadcrumb` },
+    primaryImageOfPage: ogImage ? { "@type": "ImageObject", url: ogImage } : undefined,
+    mainEntity: mainEntityId ? { "@id": mainEntityId } : undefined,
+  };
+
+  const breadcrumbSchema = breadcrumbForRoute();
+
+  const baseSchemas = [organizationSchema, websiteSchema, musicGroupSchema].filter(Boolean);
+  const schemas = [...baseSchemas, webPageSchema, breadcrumbSchema, ...contentSchemas].filter(Boolean);
   const structuredData = schemas.length
     ? {
         "@context": "https://schema.org",

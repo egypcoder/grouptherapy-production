@@ -158,7 +158,7 @@ export default function AdminPressKit() {
                     <h3 className="font-semibold text-sm truncate">{asset.title}</h3>
                     <p className="text-xs text-muted-foreground capitalize">{asset.category}</p>
                     {asset.fileUrl && (
-                      <a href={asset.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
+                      <a href={asset.fileUrl} target="_blank" rel="bookmark" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
                         <Download className="h-3 w-3" /> Download
                       </a>
                     )}

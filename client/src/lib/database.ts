@@ -240,6 +240,20 @@ export interface Career {
   createdAt: string;
 }
 
+export interface CareerApplication {
+  id: string;
+  careerId?: string;
+  name: string;
+  email: string;
+  phone?: string;
+  resumeUrl?: string;
+  coverLetter?: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+  status: string;
+  createdAt: string;
+}
+
 export interface Tour {
   id: string;
   title: string;
@@ -287,6 +301,32 @@ export interface NewsletterSubscriber {
   subscribedAt: string;
   unsubscribedAt?: string;
   active: boolean;
+}
+
+export interface NewsletterTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  schemaVersion: number;
+  isDefault: boolean;
+  globalSettings: Record<string, any>;
+  sections: any[];
+  assets: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewsletterCampaign {
+  id: string;
+  templateId?: string;
+  subject?: string;
+  preheader?: string;
+  content: Record<string, any>;
+  renderedHtml?: string;
+  status: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SeoSettings {
@@ -1181,6 +1221,60 @@ export const db = {
     }
   },
 
+  careerApplications: {
+    async getAll(): Promise<CareerApplication[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('career_applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getByCareerId(careerId: string): Promise<CareerApplication[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('career_applications')
+        .select('*')
+        .eq('career_id', careerId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getById(id: string): Promise<CareerApplication | null> {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from('career_applications').select('*').eq('id', id).single();
+      if (error) return null;
+      return convertSnakeToCamel(data);
+    },
+    async create(application: Partial<CareerApplication>): Promise<CareerApplication> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('career_applications')
+        .insert(convertCamelToSnake(application))
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async update(id: string, application: Partial<CareerApplication>): Promise<CareerApplication> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('career_applications')
+        .update(convertCamelToSnake(application))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async delete(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { error } = await supabase.from('career_applications').delete().eq('id', id);
+      if (error) throw error;
+    }
+  },
+
   tours: {
     async getAll(): Promise<Tour[]> {
       if (!supabase) return [];
@@ -1320,6 +1414,111 @@ export const db = {
       const { error } = await supabase.from('newsletter_subscribers').delete().eq('id', id);
       if (error) throw error;
     }
+  },
+
+  newsletterTemplates: {
+    async getAll(): Promise<NewsletterTemplate[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('newsletter_templates')
+        .select('*')
+        .order('is_default', { ascending: false })
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getById(id: string): Promise<NewsletterTemplate | null> {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from('newsletter_templates').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return convertSnakeToCamel(data);
+    },
+    async create(template: Partial<NewsletterTemplate>): Promise<NewsletterTemplate> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('newsletter_templates')
+        .insert(convertCamelToSnake(template))
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async update(id: string, template: Partial<NewsletterTemplate>): Promise<NewsletterTemplate> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('newsletter_templates')
+        .update(convertCamelToSnake(template))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async delete(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { error } = await supabase.from('newsletter_templates').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async setDefault(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+
+      const { error: clearErr } = await supabase
+        .from('newsletter_templates')
+        .update({ is_default: false })
+        .neq('id', id);
+      if (clearErr) throw clearErr;
+
+      const { error: setErr } = await supabase
+        .from('newsletter_templates')
+        .update({ is_default: true })
+        .eq('id', id);
+      if (setErr) throw setErr;
+    },
+  },
+
+  newsletterCampaigns: {
+    async getAll(): Promise<NewsletterCampaign[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('newsletter_campaigns')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getById(id: string): Promise<NewsletterCampaign | null> {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from('newsletter_campaigns').select('*').eq('id', id).maybeSingle();
+      if (error || !data) return null;
+      return convertSnakeToCamel(data);
+    },
+    async create(campaign: Partial<NewsletterCampaign>): Promise<NewsletterCampaign> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('newsletter_campaigns')
+        .insert(convertCamelToSnake(campaign))
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async update(id: string, campaign: Partial<NewsletterCampaign>): Promise<NewsletterCampaign> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('newsletter_campaigns')
+        .update(convertCamelToSnake(campaign))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async delete(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { error } = await supabase.from('newsletter_campaigns').delete().eq('id', id);
+      if (error) throw error;
+    },
   },
 
   seoSettings: {

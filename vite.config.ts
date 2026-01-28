@@ -17,6 +17,8 @@ import sitemapReleasesHandler from "./api/sitemap-releases";
 import sitemapVideosHandler from "./api/sitemap-videos";
 import robotsHandler from "./api/robots";
 import seoHandler from "./api/seo";
+import emailServiceSettingsHandler from "./api/email-service-settings";
+import newsletterSendHandler from "./api/newsletter-send";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -118,7 +120,7 @@ ${structuredData ? `<script id="structured-data" type="application/ld+json">${sd
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, path.resolve(__dirname), "VITE_");
+  const env = loadEnv(mode, path.resolve(__dirname), "");
   for (const [k, v] of Object.entries(env)) {
     if (typeof v === "string") process.env[k] = v;
   }
@@ -154,6 +156,8 @@ export default defineConfig(({ mode }) => {
                 "/api/sitemap-videos": sitemapVideosHandler,
                 "/api/robots": robotsHandler,
                 "/api/seo": seoHandler,
+                "/api/email-service-settings": emailServiceSettingsHandler,
+                "/api/newsletter-send": newsletterSendHandler,
               };
 
               const handler = routes[pathname];
@@ -186,10 +190,23 @@ export default defineConfig(({ mode }) => {
                 else query[key] = [existing, value];
               });
 
+              const method = (req.method || "GET").toUpperCase();
+              const body = await new Promise<string>((resolve) => {
+                if (method === "GET" || method === "HEAD") return resolve("");
+                let acc = "";
+                req.on("data", (chunk) => {
+                  acc += chunk;
+                });
+                req.on("end", () => resolve(acc));
+                req.on("error", () => resolve(""));
+              });
+
               await handler(
                 {
+                  method,
                   headers,
                   query,
+                  body,
                 },
                 wrappedRes
               );

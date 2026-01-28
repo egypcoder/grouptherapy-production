@@ -128,7 +128,7 @@ export function Footer() {
                         key={social.label}
                         href={social.href!}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel="bookmark"
                         aria-label={social.label}
                         className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                         data-testid={`link-social-${social.label.toLowerCase()}`}

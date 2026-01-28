@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Tv,
   TrendingUp,
   Eye,
   Play,
@@ -39,7 +40,7 @@ import { AnalyticsChart } from "@/components/analytics-chart";
 import { cn, parseDateTime } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import type { Release, Event, Post, RadioShow, Artist, Contact, AnalyticsSummary, NewsletterSubscriber, Playlist, Video as VideoType, Career, Tour } from "@/lib/database";
+import type { Release, Event, Post, RadioShow, Artist, Contact, AnalyticsSummary, NewsletterSubscriber, Playlist, Video as VideoType, Career, Tour, CareerApplication } from "@/lib/database";
 import { useAuth } from "@/lib/auth-context";
 import { subscribeToListenerCount } from "@/lib/firebase";
 import { supabase } from "@/lib/supabase";
@@ -66,8 +67,8 @@ const sidebarLinks = [
   { href: "/admin/awards", icon: Trophy, label: "Awards" },
   { href: "/admin/careers", icon: Heart, label: "Careers" },
   { href: "/admin/newsletters", icon: Send, label: "Newsletter" },
-  { href: "/admin/press-kit", icon: Play, label: "Press Kit" },
-  { href: "/admin/static-pages", icon: FileText, label: "Static Pages" },
+  { href: "/admin/press-kit", icon: Tv, label: "Press Kit" },
+  { href: "/admin/static-pages", icon: FileText, label: "Content Management" },
   { href: "/admin/contacts", icon: Mail, label: "Messages" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
   { href: "/admin/seo-settings", icon: Globe, label: "SEO Settings" },
@@ -84,6 +85,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   });
 
   const newMessageCount = contacts.filter((c) => c.status === "new").length;
+
+  const { data: careerApplications = [] } = useQuery<CareerApplication[]>({
+    queryKey: ["careerApplications"],
+    queryFn: queryFunctions.careerApplications,
+    refetchInterval: 30000,
+  });
+
+  const newCareerApplicationCount = careerApplications.filter((a) => (a.status || "new") === "new").length;
 
   async function handleLogout() {
     await logout();
@@ -132,7 +141,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               {sidebarLinks.map((link) => {
                 const isActive = location === link.href || 
                   (link.href !== "/admin" && location.startsWith(link.href));
-                const showBadge = link.label === "Messages" && newMessageCount > 0;
+                const showMessagesBadge = link.label === "Messages" && newMessageCount > 0;
+                const showCareersBadge = link.label === "Careers" && newCareerApplicationCount > 0;
                 return (
                   <Link key={link.href} href={link.href}>
                     <button
@@ -147,9 +157,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                     >
                       <link.icon className={cn("h-4 w-4", isActive && "text-primary")} />
                       {link.label}
-                      {showBadge && (
+                      {showMessagesBadge && (
                         <span className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-md sm:text-sm font-medium px-1.5">
                           {newMessageCount > 9 ? "9+" : newMessageCount}
+                        </span>
+                      )}
+                      {showCareersBadge && (
+                        <span className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-md sm:text-sm font-medium px-1.5">
+                          {newCareerApplicationCount > 9 ? "9+" : newCareerApplicationCount}
                         </span>
                       )}
                     </button>

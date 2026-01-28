@@ -7,6 +7,8 @@ export const isCloudinaryConfigured = () => !!CLOUDINARY_CLOUD_NAME && !!CLOUDIN
 interface UploadOptions {
   folder?: string;
   resourceType?: 'image' | 'video' | 'raw' | 'auto';
+  type?: 'upload' | 'private' | 'authenticated';
+  accessMode?: 'public' | 'authenticated';
 }
 
 export async function uploadToCloudinary(
@@ -17,12 +19,14 @@ export async function uploadToCloudinary(
     throw new Error('Cloudinary is not configured. Please add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to your environment variables.');
   }
 
-  const { folder = 'grouptherapy', resourceType = 'auto' } = options;
+  const { folder = 'grouptherapy', resourceType = 'auto', type, accessMode } = options;
 
   const formData = new FormData();
   formData.append('file', file);
   formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
   formData.append('folder', folder);
+  if (type) formData.append('type', type);
+  if (accessMode) formData.append('access_mode', accessMode);
 
   try {
     const response = await fetch(
@@ -55,7 +59,7 @@ export async function uploadToCloudinaryWithProgress(
     throw new Error('Cloudinary is not configured. Please add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to your environment variables.');
   }
 
-  const { folder = 'grouptherapy', resourceType = 'auto' } = options;
+  const { folder = 'grouptherapy', resourceType = 'auto', type, accessMode } = options;
   const fileSizeMB = file.size / (1024 * 1024);
   
   // Calculate timeout based on file size (1 minute per 10MB, minimum 5 minutes, maximum 30 minutes)
@@ -68,6 +72,8 @@ export async function uploadToCloudinaryWithProgress(
       formData.append('file', file);
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
       formData.append('folder', folder);
+      if (type) formData.append('type', type);
+      if (accessMode) formData.append('access_mode', accessMode);
       
       // For large files, use raw resource type and add chunking hints
       if (file.size > 100 * 1024 * 1024) {

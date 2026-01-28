@@ -154,7 +154,7 @@ export default function ReleaseDetailPage() {
                     <a 
                       href={release.spotifyUrl} 
                       target="_blank" 
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       onClick={() => trackReleaseClick(release, 'spotify')}
                     >
                       <Button className="bg-[#1DB954] hover:bg-[#1ed760] text-white">
@@ -167,7 +167,7 @@ export default function ReleaseDetailPage() {
                     <a 
                       href={release.appleMusicUrl} 
                       target="_blank" 
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       onClick={() => trackReleaseClick(release, 'apple_music')}
                     >
                       <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
@@ -180,7 +180,7 @@ export default function ReleaseDetailPage() {
                     <a 
                       href={release.soundcloudUrl} 
                       target="_blank" 
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       onClick={() => trackReleaseClick(release, 'soundcloud')}
                     >
                       <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Briefcase } from "lucide-react";
+import { Plus, Pencil, Trash2, Briefcase, Mail, MoreVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,17 +8,38 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, Career } from "@/lib/database";
+import { db, Career, CareerApplication } from "@/lib/database";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function AdminCareers() {
   const { toast } = useToast();
+  const [tab, setTab] = useState("jobs");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCareer, setEditingCareer] = useState<Career | null>(null);
+  const [applicationSearch, setApplicationSearch] = useState("");
+  const [applicationStatus, setApplicationStatus] = useState("all");
+  const [selectedApplication, setSelectedApplication] = useState<CareerApplication | null>(null);
+  const [deleteApplicationId, setDeleteApplicationId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     department: "",
@@ -31,10 +52,79 @@ export default function AdminCareers() {
     published: true,
   });
 
+  const updateApplicationStatusMutation = useMutation({
+    mutationFn: async (args: { id: string; status: string }) => {
+      return db.careerApplications.update(args.id, { status: args.status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["careerApplications"] });
+      toast({ title: "Status updated" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update status",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteApplicationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return db.careerApplications.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["careerApplications"] });
+      toast({ title: "Application deleted" });
+      setDeleteApplicationId(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete application",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: careers = [] } = useQuery<Career[]>({
     queryKey: ["careers"],
     queryFn: queryFunctions.careers,
   });
+
+  const { data: applications = [] } = useQuery<CareerApplication[]>({
+    queryKey: ["careerApplications"],
+    queryFn: queryFunctions.careerApplications,
+  });
+
+  const careerById = useMemo(() => {
+    const m = new Map<string, Career>();
+    careers.forEach((c) => m.set(c.id, c));
+    return m;
+  }, [careers]);
+
+  const filteredApplications = useMemo(() => {
+    const q = applicationSearch.trim().toLowerCase();
+    return applications.filter((a) => {
+      const matchesSearch =
+        !q ||
+        a.name?.toLowerCase().includes(q) ||
+        a.email?.toLowerCase().includes(q) ||
+        (careerById.get(a.careerId || "")?.title || "").toLowerCase().includes(q);
+      const matchesStatus = applicationStatus === "all" || (a.status || "new") === applicationStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [applications, applicationSearch, applicationStatus, careerById]);
+
+  const getApplicationStatusBadge = (status?: string) => {
+    const s = (status || "new").toLowerCase();
+    if (s === "new") return { label: "new", className: "bg-blue-500/15 text-blue-600 border-blue-500/30" };
+    if (s === "reviewing") return { label: "reviewing", className: "bg-amber-500/15 text-amber-700 border-amber-500/30" };
+    if (s === "shortlisted") return { label: "shortlisted", className: "bg-purple-500/15 text-purple-700 border-purple-500/30" };
+    if (s === "hired") return { label: "hired", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" };
+    if (s === "rejected") return { label: "rejected", className: "bg-red-500/15 text-red-700 border-red-500/30" };
+    return { label: s, className: "bg-muted text-muted-foreground border-border" };
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -144,54 +234,182 @@ export default function AdminCareers() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">Careers</h1>
-            <p className="text-muted-foreground">Manage job postings</p>
+            <p className="text-muted-foreground">Manage job postings and applications</p>
           </div>
-          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Job
-          </Button>
+          {tab === "jobs" && (
+            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Job
+            </Button>
+          )}
         </div>
 
-        <div className="grid gap-4">
-          {careers.map((career) => (
-            <Card key={career.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Briefcase className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{career.title}</h3>
-                      {!career.published && <Badge variant="secondary">Draft</Badge>}
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList>
+            <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="applications">Applications</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="jobs" className="mt-4">
+            <div className="grid gap-4">
+              {careers.map((career) => (
+                <Card key={career.id}>
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Briefcase className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{career.title}</h3>
+                          {!career.published && <Badge variant="secondary">Draft</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{career.department} · {career.location}</p>
+                        <div className="flex gap-2 mt-2">
+                          <Badge variant="outline">{career.type}</Badge>
+                          {career.salary && <Badge variant="outline">{career.salary}</Badge>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(career)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(career.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{career.department} · {career.location}</p>
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant="outline">{career.type}</Badge>
-                      {career.salary && <Badge variant="outline">{career.salary}</Badge>}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(career)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(career.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {careers.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  No job postings yet. Add your first job to get started.
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="applications" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Input
+                    placeholder="Search applications (name, email, job title)..."
+                    value={applicationSearch}
+                    onChange={(e) => setApplicationSearch(e.target.value)}
+                  />
+                  <Select value={applicationStatus} onValueChange={setApplicationStatus}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="reviewing">Reviewing</SelectItem>
+                      <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="hired">Hired</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
-          ))}
-          {careers.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              No job postings yet. Add your first job to get started.
-            </div>
-          )}
-        </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Applicant</TableHead>
+                      <TableHead>Job</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredApplications.map((app) => {
+                      const job = app.careerId ? careerById.get(app.careerId) : undefined;
+                      const statusBadge = getApplicationStatusBadge(app.status);
+                      return (
+                        <TableRow
+                          key={app.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedApplication(app)}
+                        >
+                          <TableCell>
+                            <div className="font-medium">{app.name}</div>
+                            <div className="text-sm text-muted-foreground">{app.email}</div>
+                          </TableCell>
+                          <TableCell>{job?.title || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`capitalize ${statusBadge.className}`}>
+                              {statusBadge.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setSelectedApplication(app)}>
+                                  <Briefcase className="h-4 w-4 mr-2" />
+                                  View Application
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <a href={`mailto:${app.email}`}>
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Reply
+                                  </a>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => updateApplicationStatusMutation.mutate({ id: app.id, status: "reviewing" })}>
+                                  Mark Reviewing
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateApplicationStatusMutation.mutate({ id: app.id, status: "shortlisted" })}>
+                                  Mark Shortlisted
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateApplicationStatusMutation.mutate({ id: app.id, status: "rejected" })}>
+                                  Mark Rejected
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updateApplicationStatusMutation.mutate({ id: app.id, status: "hired" })}>
+                                  Mark Hired
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => setDeleteApplicationId(app.id)}>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+
+                {filteredApplications.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    No applications found.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
@@ -297,6 +515,111 @@ export default function AdminCareers() {
                 <Button onClick={handleSave}>Save</Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
+          <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <DialogHeader>
+              <DialogTitle>Application</DialogTitle>
+              <DialogDescription>
+                {selectedApplication?.name} ({selectedApplication?.email})
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                {(() => {
+                  const b = getApplicationStatusBadge(selectedApplication?.status);
+                  return (
+                    <Badge variant="outline" className={`capitalize ${b.className}`}>{b.label}</Badge>
+                  );
+                })()}
+                <span>
+                  {selectedApplication?.createdAt ? new Date(selectedApplication.createdAt).toLocaleString() : "-"}
+                </span>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Job</p>
+                  <p className="text-sm break-words">
+                    {selectedApplication?.careerId ? (careerById.get(selectedApplication.careerId)?.title || "-") : "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="text-sm break-words">{selectedApplication?.phone || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">LinkedIn</p>
+                  {selectedApplication?.linkedinUrl ? (
+                    <a className="text-sm break-words underline" href={selectedApplication.linkedinUrl} target="_blank" rel="noreferrer">
+                      {selectedApplication.linkedinUrl}
+                    </a>
+                  ) : (
+                    <p className="text-sm break-words">-</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Portfolio</p>
+                  {selectedApplication?.portfolioUrl ? (
+                    <a className="text-sm break-words underline" href={selectedApplication.portfolioUrl} target="_blank" rel="noreferrer">
+                      {selectedApplication.portfolioUrl}
+                    </a>
+                  ) : (
+                    <p className="text-sm break-words">-</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Cover letter</p>
+                <div className="p-4 bg-muted rounded-md">
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    {selectedApplication?.coverLetter?.trim() ? selectedApplication.coverLetter : "-"}
+                  </p>
+                </div>
+              </div>
+              {selectedApplication?.resumeUrl && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Resume</p>
+                  <Button asChild variant="outline" size="sm">
+                    <a href={selectedApplication.resumeUrl} target="_blank" rel="noreferrer">View resume</a>
+                  </Button>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedApplication(null)}>Close</Button>
+              <Button asChild>
+                <a href={`mailto:${selectedApplication?.email}`}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Reply
+                </a>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!deleteApplicationId} onOpenChange={() => setDeleteApplicationId(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Application</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this application? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteApplicationId(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                disabled={deleteApplicationMutation.isPending}
+                onClick={() => {
+                  if (!deleteApplicationId) return;
+                  deleteApplicationMutation.mutate(deleteApplicationId);
+                }}
+              >
+                {deleteApplicationMutation.isPending ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

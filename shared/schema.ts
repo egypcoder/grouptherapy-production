@@ -336,6 +336,20 @@ export const careers = pgTable("careers", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const careerApplications = pgTable("career_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  careerId: varchar("career_id").references(() => careers.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  resumeUrl: text("resume_url"),
+  coverLetter: text("cover_letter"),
+  linkedinUrl: text("linkedin_url"),
+  portfolioUrl: text("portfolio_url"),
+  status: text("status").default("new"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Newsletter subscribers
 export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -345,6 +359,32 @@ export const newsletterSubscribers = pgTable("newsletter_subscribers", {
   subscribedAt: timestamp("subscribed_at").defaultNow(),
   unsubscribedAt: timestamp("unsubscribed_at"),
   active: boolean("active").default(true),
+});
+
+export const newsletterTemplates = pgTable("newsletter_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  schemaVersion: integer("schema_version").notNull().default(1),
+  isDefault: boolean("is_default").notNull().default(false),
+  globalSettings: jsonb("global_settings").notNull().default({}),
+  sections: jsonb("sections").notNull().default([]),
+  assets: jsonb("assets").notNull().default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const newsletterCampaigns = pgTable("newsletter_campaigns", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  templateId: varchar("template_id").references(() => newsletterTemplates.id),
+  subject: text("subject"),
+  preheader: text("preheader"),
+  content: jsonb("content").notNull().default({}),
+  renderedHtml: text("rendered_html"),
+  status: text("status").notNull().default("draft"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // SEO Settings
@@ -471,7 +511,10 @@ export const insertRadioListenerSchema = createInsertSchema(radioListeners).omit
 export const insertTourSchema = createInsertSchema(tours).omit({ id: true, createdAt: true });
 export const insertTourDateSchema = createInsertSchema(tourDates).omit({ id: true, createdAt: true });
 export const insertCareerSchema = createInsertSchema(careers).omit({ id: true, createdAt: true });
+export const insertCareerApplicationSchema = createInsertSchema(careerApplications).omit({ id: true, createdAt: true });
 export const insertNewsletterSubscriberSchema = createInsertSchema(newsletterSubscribers).omit({ id: true, subscribedAt: true });
+export const insertNewsletterTemplateSchema = createInsertSchema(newsletterTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertNewsletterCampaignSchema = createInsertSchema(newsletterCampaigns).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSeoSettingsSchema = createInsertSchema(seoSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAwardCategorySchema = createInsertSchema(awardCategories).omit({ id: true, createdAt: true });
 export const insertAwardPeriodSchema = createInsertSchema(awardPeriods).omit({ id: true, createdAt: true });
@@ -554,8 +597,17 @@ export type TourDate = typeof tourDates.$inferSelect;
 export type InsertCareer = z.infer<typeof insertCareerSchema>;
 export type Career = typeof careers.$inferSelect;
 
+export type InsertCareerApplication = z.infer<typeof insertCareerApplicationSchema>;
+export type CareerApplication = typeof careerApplications.$inferSelect;
+
 export type InsertNewsletterSubscriber = z.infer<typeof insertNewsletterSubscriberSchema>;
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
+
+export type InsertNewsletterTemplate = z.infer<typeof insertNewsletterTemplateSchema>;
+export type NewsletterTemplate = typeof newsletterTemplates.$inferSelect;
+
+export type InsertNewsletterCampaign = z.infer<typeof insertNewsletterCampaignSchema>;
+export type NewsletterCampaign = typeof newsletterCampaigns.$inferSelect;
 
 export type InsertSeoSettings = z.infer<typeof insertSeoSettingsSchema>;
 export type SeoSettings = typeof seoSettings.$inferSelect;

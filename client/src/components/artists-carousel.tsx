@@ -111,7 +111,7 @@ function ArtistCard({ artist }: { artist: Artist }) {
               <motion.a
                 href={artist.socialLinks.spotify}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="bookmark"
                 data-social
                 className="flex items-center justify-center h-9 w-9 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-[#1DB954] transition-colors"
                 data-testid={`button-artist-spotify-${artist.id}`}
@@ -125,7 +125,7 @@ function ArtistCard({ artist }: { artist: Artist }) {
               <motion.a
                 href={artist.socialLinks.instagram}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="bookmark"
                 data-social
                 className="flex items-center justify-center h-9 w-9 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-gradient-to-br hover:from-purple-500 hover:to-pink-500 transition-colors"
                 data-testid={`button-artist-instagram-${artist.id}`}
@@ -139,7 +139,7 @@ function ArtistCard({ artist }: { artist: Artist }) {
               <motion.a
                 href={artist.socialLinks.soundcloud}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="bookmark"
                 data-social
                 className="flex items-center justify-center h-9 w-9 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-orange-500 transition-colors"
                 data-testid={`button-artist-soundcloud-${artist.id}`}

@@ -154,7 +154,7 @@ function ArtistCard({ artist, featured = false }: { artist: Artist; featured?: b
                 <a 
                   href={artist.socialLinks.spotify} 
                   target="_blank" 
-                  rel="noopener noreferrer"
+                  rel="bookmark"
                   className="h-8 w-8 flex items-center justify-center rounded-md text-white/80 hover:text-[#1DB954] hover:bg-white/10 transition-colors"
                 >
                   <SiSpotify className="h-4 w-4" />
@@ -164,7 +164,7 @@ function ArtistCard({ artist, featured = false }: { artist: Artist; featured?: b
                 <a 
                   href={artist.socialLinks.instagram} 
                   target="_blank" 
-                  rel="noopener noreferrer"
+                  rel="bookmark"
                   className="h-8 w-8 flex items-center justify-center rounded-md text-white/80 hover:text-pink-500 hover:bg-white/10 transition-colors"
                 >
                   <SiInstagram className="h-4 w-4" />
@@ -174,7 +174,7 @@ function ArtistCard({ artist, featured = false }: { artist: Artist; featured?: b
                 <a 
                   href={artist.socialLinks.soundcloud} 
                   target="_blank" 
-                  rel="noopener noreferrer"
+                  rel="bookmark"
                   className="h-8 w-8 flex items-center justify-center rounded-md text-white/80 hover:text-orange-500 hover:bg-white/10 transition-colors"
                 >
                   <SiSoundcloud className="h-4 w-4" />

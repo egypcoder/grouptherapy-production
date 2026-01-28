@@ -150,7 +150,7 @@ export default function ArtistDetailPage() {
                     <a
                       href={artist.socialLinks.spotify}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-[#1DB954] text-white transition-colors"
                     >
                       <SiSpotify className="h-6 w-6" />
@@ -160,7 +160,7 @@ export default function ArtistDetailPage() {
                     <a
                       href={artist.socialLinks.instagram}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-pink-500 text-white transition-colors"
                     >
                       <SiInstagram className="h-6 w-6" />
@@ -170,7 +170,7 @@ export default function ArtistDetailPage() {
                     <a
                       href={artist.socialLinks.soundcloud}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-orange-500 text-white transition-colors"
                     >
                       <SiSoundcloud className="h-6 w-6" />
@@ -180,7 +180,7 @@ export default function ArtistDetailPage() {
                     <a
                       href={artist.socialLinks.youtube}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-600 text-white transition-colors"
                     >
                       <SiYoutube className="h-6 w-6" />
@@ -190,7 +190,7 @@ export default function ArtistDetailPage() {
                     <a
                       href={artist.socialLinks.twitter}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="bookmark"
                       className="h-12 w-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-neutral-800 text-white transition-colors"
                     >
                       <SiX className="h-6 w-6" />
@@ -244,7 +244,7 @@ export default function ArtistDetailPage() {
                       <a
                         href={release.spotifyUrl}
                         target="_blank"
-                        rel="noopener noreferrer"
+                        rel="bookmark"
                         className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <SiSpotify className="h-12 w-12 text-[#1DB954]" />
