@@ -247,7 +247,7 @@ function PostCard({
           )}
         </div>
         <CardContent className="p-4">
-          <h3 className="font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {post.title}
           </h3>
           {post.excerpt && (

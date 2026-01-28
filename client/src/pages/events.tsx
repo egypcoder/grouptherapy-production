@@ -188,7 +188,7 @@ export default function EventsPage() {
         </div>
 
         {/* Results */}
-        <p className="text-sm text-muted-foreground mb-6">
+        <p className="text-sm text-muted-foreground mb-8">
           {sortedEvents.length} {filter === "past" ? "past" : filter === "upcoming" ? "upcoming" : ""} events
         </p>
 

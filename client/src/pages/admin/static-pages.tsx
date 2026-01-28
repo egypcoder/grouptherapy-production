@@ -323,6 +323,8 @@ const defaultHomeSections: PageSectionConfig[] = [
     description: "The latest releases from our comunity",
     actionLabel: "View All Releases",
     actionHref: "/releases",
+    carouselEnabled: true,
+    carouselIntervalMs: 6000,
   },
   {
     id: "artists",
@@ -333,6 +335,8 @@ const defaultHomeSections: PageSectionConfig[] = [
     description: "The artists shaping the Group Therapy community",
     actionLabel: "Meet The Artists",
     actionHref: "/artists",
+    carouselEnabled: true,
+    carouselIntervalMs: 6000,
   },
   {
     id: "events",
@@ -353,6 +357,8 @@ const defaultHomeSections: PageSectionConfig[] = [
     description: "Official selections of playlists that reflects our sound",
     actionLabel: "View All Playlists",
     actionHref: "/playlists",
+    carouselEnabled: true,
+    carouselIntervalMs: 6000,
   },
   {
     id: "news",
@@ -363,6 +369,8 @@ const defaultHomeSections: PageSectionConfig[] = [
     description: "The latest music news from around the world",
     actionLabel: "View All News",
     actionHref: "/news",
+    carouselEnabled: true,
+    carouselIntervalMs: 6000,
   },
   { id: "testimonials", enabled: true, order: 9 },
   {
@@ -1437,6 +1445,40 @@ export default function AdminStaticPages() {
                                 placeholder="Description"
                               />
                             </div>
+
+                            {[
+                              "releases",
+                              "artists",
+                              "playlists",
+                              "news",
+                            ].includes(section.id) ? (
+                              <>
+                                <div className="flex items-center gap-3">
+                                  <Switch
+                                    checked={section.carouselEnabled ?? true}
+                                    onCheckedChange={(checked) =>
+                                      updateHomeSection(section.id, { carouselEnabled: checked })
+                                    }
+                                  />
+                                  <Label>Carousel autoplay</Label>
+                                </div>
+                                <div>
+                                  <Label>Carousel speed (ms)</Label>
+                                  <Input
+                                    type="number"
+                                    value={section.carouselIntervalMs ?? 6000}
+                                    onChange={(e) =>
+                                      updateHomeSection(section.id, {
+                                        carouselIntervalMs: Math.max(250, parseInt(e.target.value) || 0),
+                                      })
+                                    }
+                                    min={250}
+                                    step={250}
+                                    disabled={(section.carouselEnabled ?? true) === false}
+                                  />
+                                </div>
+                              </>
+                            ) : null}
 
                             {[
                               "releases",

@@ -178,21 +178,29 @@ export default function AdminNewsletters() {
     setIsGenerating(true);
 
     try {
-      const prompt = `Write a professional email newsletter for a music record label called GroupTherapy Records. 
+const prompt = `Write a professional, energetic, and mobile-responsive email newsletter for a music record label called GroupTherapy Records.
 Topic: ${emailData.prompt}
 
-The email should:
-- Have an engaging subject line
-- Be written in HTML format with inline styles matching a modern music website design
-- Use a dark theme with accents of purple/blue (#8B5CF6 for primary color)
-- Be mobile-responsive
-- Include clear sections and be easy to read
-- Be professional but energetic, matching the electronic music industry tone
+Requirements:
+1. SUBJECT LINE:
+   - Create an engaging, click-worthy subject line that fits the electronic music industry vibe.
+2. EMAIL BODY (HTML format):
+   - Use inline CSS only.
+   - Follow a dark theme with primary accent color #8B5CF6 (light purple/blue) and clean modern fonts.
+   - Include our logo at the top: "https://grouptherapyrecords.com/logo.png"
+   - Structure content into clear sections:
+     a) Header/intro
+     b) Main content or featured news
+     c) Call-to-action buttons
+     d) Footer with © ${new Date().getFullYear()} GroupTherapy Records. All rights reserved.
+   - Ensure mobile responsiveness (scales nicely on mobile devices)
+   - Use a professional but energetic tone, matching the electronic music scene.
+3. DO NOT include extra commentary outside of the HTML.
 
-Format the response as:
+Format the response exactly like this:
 SUBJECT: [subject line here]
 ---
-[HTML content here]`;
+[Full HTML content here]`;
 
       const result = await generateContent(prompt);
 

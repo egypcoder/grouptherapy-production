@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, ExternalLink, Search, Grid, List } from "lucide-react";
+import { Play, ExternalLink, Search, Grid, List, Calendar } from "lucide-react";
 import { Link } from "wouter";
 import { ConfiguredPageHero } from "@/components/hero-section";
 import { Button } from "@/components/ui/button";
@@ -38,8 +38,8 @@ function getMonthLabel(monthKey: string): string {
 function MonthSpacer({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 my-8">
-      <span className="sm:ml-0 md:ml-0 lg:-ml-20 text-sm font-semibold tracking-widest text-primary uppercase whitespace-nowrap">
-        {label}
+      <span className="text-sm font-semibold tracking-widest text-primary uppercase whitespace-nowrap flex items-center gap-2">
+       <Calendar className="h-4 w-4"/> {label}
       </span>
       <div className="h-px flex-1 bg-border/70" />
     </div>
@@ -215,7 +215,7 @@ export default function ReleasesPage() {
         {isLoading ? (
           <Skeleton className="h-4 w-44 mb-6" />
         ) : (
-          <p className="text-sm text-muted-foreground mb-6">
+          <p className="text-sm text-muted-foreground mb-8">
             Showing {releases.length} releases
           </p>
         )}

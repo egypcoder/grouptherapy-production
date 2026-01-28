@@ -273,13 +273,13 @@ export default function AdminPosts() {
 
     setIsGenerating(true);
     try {
-const prompt = `You are an expert SEO strategist and music industry blogger for GroupTherapy Records, a cutting-edge electronic music label.
+const prompt = `You are an expert SEO strategist and music industry blogger for GroupTherapy Records, a community based electronic music label.
 
 Generate an SEO-optimized blog post about: "${formData.title}"
 
 IMPORTANT SEO REQUIREMENTS:
 1. Use proper heading structure with ## for H2 and ### for H3 headings only in the "content" field.
-2. Include trending music industry keywords naturally, derived from the title context (e.g., electronic music, EDM, DJ, producer, remix, festival, streaming, vinyl, etc.).
+2. Include trending music industry Competitive keywords naturally, derived from the title context (e.g., electronic music, EDM, DJ, producer, remix, festival, streaming, vinyl, etc.).
 3. Identify and incorporate primary and secondary keywords from the title topic for SEO optimization.
 4. Add relevant internal links using markdown format to these pages where contextually appropriate:
    - [our latest releases](/releases)
@@ -294,9 +294,10 @@ IMPORTANT SEO REQUIREMENTS:
    - [live radio](/radio)
    - [tour dates](/tours)
 5. Determine the content format (news article, listicle, opinion piece, etc.) based on the title context and structure the post accordingly (e.g., use a numbered list for listicles).
-6. Use a casual, conversational tone throughout the article to engage readers.
+6. Use casual, human-like language (to help pass Google AI detectors). Avoid extra words and long sentences. Use direct headings. no complex vocabulary. Maintain a conversational tone throughout the article, speak directly to readers and build a real connection.
 7. Write engaging, shareable content that establishes thought leadership in the music industry.
 8. Include a compelling call-to-action at the end.
+9. do any kind of online search to get the latest news and updates about the music industry if needed.
 Format your response as JSON with these fields:
 {
   "excerpt": "A compelling 1-2 sentence summary with primary keyword for previews",

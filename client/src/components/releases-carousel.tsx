@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useCarouselAutoplay } from "@/hooks/use-carousel-autoplay";
 import type { Release } from "@/lib/database";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -12,6 +13,7 @@ interface ReleasesCarouselProps {
   releases: Release[];
   title?: string;
   autoPlay?: boolean;
+  autoPlayIntervalMs?: number;
   showViewAll?: boolean;
 }
 
@@ -78,6 +80,7 @@ export function ReleasesCarousel({
   releases = [],
   title = "",
   autoPlay = true,
+  autoPlayIntervalMs = 6000,
   showViewAll = true,
 }: ReleasesCarouselProps) {
   const displayReleases = releases.length > 0 ? releases : demoReleases;
@@ -102,24 +105,12 @@ export function ReleasesCarousel({
     }
   }, []);
 
-  useEffect(() => {
-    if (!autoPlay) return;
-    
-    const interval = setInterval(() => {
-      if (scrollRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-        const isAtEnd = scrollLeft >= scrollWidth - clientWidth - 10;
-        
-        if (isAtEnd) {
-          scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          scrollRef.current.scrollBy({ left: 280, behavior: "smooth" });
-        }
-      }
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [autoPlay]);
+  useCarouselAutoplay({
+    scrollRef,
+    enabled: !!autoPlay,
+    intervalMs: autoPlayIntervalMs,
+    scrollByPx: 280,
+  });
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {

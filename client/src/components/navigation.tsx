@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 import { useRadio } from "@/lib/radio-context";
 
 const musicDropdownItems = [
+    { href: "/radio", label: "Radio" },
   { href: "/releases", label: "Releases" },
   { href: "/artists", label: "Artists" },
-  { href: "/playlists", label: "Playlists" },
-  { href: "/radio", label: "Radio" },
+  { href: "/playlists", label: "Playlists" }
 ];
 
 const discoverDropdownItems = [
@@ -19,13 +19,20 @@ const discoverDropdownItems = [
   { href: "/tours", label: "Tours" },
   { href: "/videos", label: "Videos" },
   { href: "/news", label: "News" },
+    { href: "/awards", label: "Awards" },
 ];
-
+const companyDropdownItems = [
+  { href: "/about", label: "About" },
+  { href: "/careers", label: "Careers" },
+  { href: "/press", label: "Press" },
+  { href: "/promote-your-release", label: "Release Promotion" },
+  { href: "/promote-your-event", label: "Event Promotion" },
+];
 const navLinks = [
   { href: "/", label: "Home" },
   { type: "dropdown", label: "Music", items: musicDropdownItems },
   { type: "dropdown", label: "Discover", items: discoverDropdownItems },
-  { href: "/awards", label: "Awards" },
+  { type: "dropdown", label: "Company", items: companyDropdownItems },
   { href: "/contact", label: "Contact" },
 ];
 

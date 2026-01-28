@@ -10,6 +10,7 @@ import {
   MoreVertical,
   Link,
   Loader2,
+  GripVertical,
 } from "lucide-react";
 import { useRoute, useLocation } from "wouter";
 import { AdminLayout } from "./index";
@@ -52,9 +53,37 @@ import {
 } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, Release } from "@/lib/database";
+import { db, Release, type PageSectionConfig, type SiteSettings } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 import { resolveMediaUrl } from "@/lib/media";
+
+function normalizeFeaturedReleaseIds(savedIds: string[], featuredIds: string[]) {
+  const featuredSet = new Set(featuredIds);
+  const normalized = (savedIds || []).filter((id) => featuredSet.has(id));
+  const normalizedSet = new Set(normalized);
+  for (const id of featuredIds) {
+    if (!normalizedSet.has(id)) normalized.push(id);
+  }
+  return normalized;
+}
+
+function updateHomeSectionsFeaturedOrder(homeSections: PageSectionConfig[] | undefined, featuredReleaseIds: string[]) {
+  const existing = Array.isArray(homeSections) ? homeSections : [];
+  const idx = existing.findIndex((s) => s?.id === "releases");
+  if (idx === -1) {
+    return [
+      ...existing,
+      {
+        id: "releases",
+        enabled: true,
+        order: 4,
+        featuredReleaseIds,
+      },
+    ];
+  }
+
+  return existing.map((s) => (s?.id === "releases" ? { ...s, featuredReleaseIds } : s));
+}
 
 interface FetchedMetadata {
   title: string;
@@ -118,7 +147,6 @@ async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
         const errorMessage = errorData.error_description || errorData.error || `HTTP ${response.status}`;
         
         if (attempt < retries) {
-          // Wait before retry (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
           continue;
         }
@@ -137,14 +165,12 @@ async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
       
       if (attempt === retries) {
         console.error(`Error getting Spotify access token after ${retries} attempts:`, errorMessage);
-        // Check for specific error types
         if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
           console.error('Network error - check your internet connection and CORS settings');
         }
         return null;
       }
       
-      // Wait before retry
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
@@ -287,13 +313,60 @@ export default function AdminReleases() {
   const scrollYRef = useRef(0);
   const restoreScrollPendingRef = useRef(false);
   const restoreScrollTargetPathRef = useRef<string | null>(null);
+  const [featuredReleaseIds, setFeaturedReleaseIds] = useState<string[]>([]);
+  const [draggingFeaturedReleaseId, setDraggingFeaturedReleaseId] = useState<string | null>(null);
+  const [dragOverFeaturedReleaseId, setDragOverFeaturedReleaseId] = useState<string | null>(null);
 
   const { data: releases } = useQuery<Release[]>({
     queryKey: ["releases"],
     queryFn: queryFunctions.releases,
   });
 
+  const { data: siteSettings } = useQuery<SiteSettings | null>({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
   const displayReleases = releases || [];
+
+  const featuredReleases = displayReleases.filter((r) => r.featured);
+
+  useEffect(() => {
+    const savedIds =
+      siteSettings?.homeSections?.find((s) => s?.id === "releases")?.featuredReleaseIds ?? [];
+    const next = normalizeFeaturedReleaseIds(savedIds, featuredReleases.map((r) => r.id));
+    setFeaturedReleaseIds((prev) => {
+      if (prev.length === next.length && prev.every((id, i) => id === next[i])) return prev;
+      return next;
+    });
+  }, [siteSettings?.homeSections, featuredReleases]);
+
+  const orderedFeaturedReleases = (() => {
+    const byId = new Map(featuredReleases.map((r) => [r.id, r] as const));
+    const ordered: Release[] = [];
+    for (const id of featuredReleaseIds) {
+      const r = byId.get(id);
+      if (r) ordered.push(r);
+    }
+    const orderedIds = new Set(ordered.map((r) => r.id));
+    for (const r of featuredReleases) {
+      if (!orderedIds.has(r.id)) ordered.push(r);
+    }
+    return ordered;
+  })();
+
+  const reorderFeaturedReleaseIds = (fromId: string, toId: string) => {
+    setFeaturedReleaseIds((prev) => {
+      const fromIndex = prev.indexOf(fromId);
+      const toIndex = prev.indexOf(toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (matchNew) {
@@ -506,6 +579,20 @@ export default function AdminReleases() {
     },
   });
 
+  const saveFeaturedOrderMutation = useMutation({
+    mutationFn: async (nextIds: string[]) => {
+      const nextHomeSections = updateHomeSectionsFeaturedOrder(siteSettings?.homeSections, nextIds);
+      return db.siteSettings.update({ homeSections: nextHomeSections });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["siteSettings"] });
+      toast({ title: "Featured order saved" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save featured order", variant: "destructive" });
+    },
+  });
+
   const handleSave = () => {
     if (!formData.title || !formData.artistName) {
       toast({
@@ -538,6 +625,29 @@ export default function AdminReleases() {
     });
   };
 
+  useEffect(() => {
+    if (!saveMutation.data?.id) return;
+    const savedRelease = saveMutation.data;
+    const releaseId = savedRelease.id;
+    if (!releaseId) return;
+
+    const isFeatured = !!savedRelease.featured;
+    setFeaturedReleaseIds((prev) => {
+      const has = prev.includes(releaseId);
+      if (isFeatured && !has) {
+        const next = [...prev, releaseId];
+        saveFeaturedOrderMutation.mutate(next);
+        return next;
+      }
+      if (!isFeatured && has) {
+        const next = prev.filter((id) => id !== releaseId);
+        saveFeaturedOrderMutation.mutate(next);
+        return next;
+      }
+      return prev;
+    });
+  }, [saveMutation.data]);
+
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "-";
     return new Date(date).toLocaleDateString("en-US", {
@@ -566,6 +676,116 @@ export default function AdminReleases() {
             Add Release
           </Button>
         </div>
+
+        {featuredReleases.length > 0 ? (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-medium">Featured Releases</div>
+                  <div className="text-xs text-muted-foreground">Drag to reorder featured releases on the homepage</div>
+                </div>
+                {saveFeaturedOrderMutation.isPending ? (
+                  <div className="text-xs text-muted-foreground">Saving...</div>
+                ) : null}
+              </div>
+
+              <div className="mt-4 w-full overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[56px]"></TableHead>
+                      <TableHead className="w-[44px] text-xs text-muted-foreground">#</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead className="hidden md:table-cell">Artist</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orderedFeaturedReleases.map((release, index) => (
+                      <TableRow
+                        key={release.id}
+                        className={
+                          "hover:bg-muted/50 " +
+                          (dragOverFeaturedReleaseId === release.id ? "ring-2 ring-primary" : "")
+                        }
+                        onDragOver={(e) => {
+                          if (!draggingFeaturedReleaseId) return;
+                          e.preventDefault();
+                          setDragOverFeaturedReleaseId(release.id);
+                        }}
+                        onDragLeave={() => {
+                          if (dragOverFeaturedReleaseId === release.id) setDragOverFeaturedReleaseId(null);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const fromId = e.dataTransfer.getData("text/plain") || draggingFeaturedReleaseId;
+                          if (!fromId) return;
+                          if (fromId === release.id) return;
+                          reorderFeaturedReleaseIds(fromId, release.id);
+                          setDraggingFeaturedReleaseId(null);
+                          setDragOverFeaturedReleaseId(null);
+                          const next = (() => {
+                            const ids = [...featuredReleaseIds];
+                            const fromIndex = ids.indexOf(fromId);
+                            const toIndex = ids.indexOf(release.id);
+                            if (fromIndex === -1 || toIndex === -1) return ids;
+                            const [moved] = ids.splice(fromIndex, 1);
+                            if (!moved) return ids;
+                            ids.splice(toIndex, 0, moved);
+                            return ids;
+                          })();
+                          saveFeaturedOrderMutation.mutate(next);
+                        }}
+                      >
+                        <TableCell>
+                          <div
+                            className="inline-flex items-center gap-2 text-xs text-muted-foreground select-none"
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggingFeaturedReleaseId(release.id);
+                              e.dataTransfer.setData("text/plain", release.id);
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragEnd={() => {
+                              setDraggingFeaturedReleaseId(null);
+                              setDragOverFeaturedReleaseId(null);
+                            }}
+                          >
+                            <GripVertical className="h-4 w-4" />
+                            Drag
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs tabular-nums text-muted-foreground">{index + 1}</TableCell>
+                        <TableCell>
+                          <div className="w-10 h-10 rounded overflow-hidden bg-muted">
+                            {release.coverUrl ? (
+                              <img
+                                src={resolveMediaUrl(release.coverUrl, "thumb")}
+                                alt={release.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{release.title}</div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">{release.artistName}</TableCell>
+                        <TableCell>
+                          <Badge variant={release.published ? "default" : "secondary"}>
+                            {release.published ? "Published" : "Draft"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardContent className="p-4">

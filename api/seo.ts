@@ -237,12 +237,12 @@ export default async function handler(req: Req, res: Res) {
     res.send(
       JSON.stringify({
         title: "GroupTherapy",
-        description: "GroupTherapy Records",
+        description: "GroupTherapy",
         keywords: [],
         canonical: "",
         robots: "index, follow",
         ogType: "website",
-        siteName: "GroupTherapy Records",
+        siteName: "GroupTherapy",
         ogImage: "",
         ogLogo: "",
         twitterImage: "",

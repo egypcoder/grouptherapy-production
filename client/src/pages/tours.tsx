@@ -5,6 +5,7 @@ import { MapPin, Calendar, Ticket, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ConfiguredPageHero } from "@/components/hero-section";
 import { queryFunctions } from "@/lib/queryClient";
 import { db } from "@/lib/database";
 import type { Tour, TourDate } from "@/lib/database";
@@ -46,20 +47,11 @@ export default function ToursPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 to-background">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Tours</h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Catch Your artists live around the world. Don't miss the opportunity to experience the music in person.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      <ConfiguredPageHero
+        pageKey="/tours"
+        title="Tours"
+        subtitle="Catch Your artists live around the world. Don't miss the opportunity to experience the music in person."
+      />
 
       <section className="py-12 md:py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

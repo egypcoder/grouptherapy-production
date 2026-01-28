@@ -268,7 +268,7 @@ export function HeroSection({
               <div className="text-2xl md:text-3xl font-semibold text-foreground stat-number">
                 {stat.value}
               </div>
-              <div className="text-xs md:text-sm text-muted-foreground uppercase tracking-wider mt-1">
+              <div className=" text-center text-xs w-20 md:w-auto md:text-sm  text-muted-foreground uppercase tracking-wider mt-1">
                 {stat.label}
               </div>
             </motion.div>

@@ -109,7 +109,7 @@ export function Footer() {
           <div className="lg:col-span-4">
             <div className="space-y-5">
               <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
-                <img src="/favicon.png" className="w-8 h-8" alt="GroupTherapy Records Logo" />
+                <img src="/favicon.png" className="w-8 h-8" alt="GroupTherapy Logo" />
                 <span className="text-lg lg:text-xl font-semibold tracking-tight">
                   GROUP<span className="text-primary transition-colors">THERAPY</span>
                 </span>
@@ -226,7 +226,7 @@ export function Footer() {
 
         <div className="border-t border-border/50 mt-12 pt-6 flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            {new Date().getFullYear()} GroupTherapy Records. All rights reserved.
+            {new Date().getFullYear()} GroupTherapy Eg. All rights reserved.
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">

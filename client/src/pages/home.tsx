@@ -7,6 +7,7 @@ import { PlaylistsSection } from "@/components/playlists-section";
 import { PostsCarousel } from "@/components/posts-carousel";
 import { AwardEntryCard } from "@/components/award-entry-card";
 import { FeaturedArtists } from "@/components/featured-artists";
+import { ArtistsCarousel } from "@/components/artists-carousel";
 import { NewsletterSection } from "@/components/newsletter-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { Marquee } from "@/components/marquee";
@@ -306,7 +307,7 @@ function SectionHeader({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.6 }}
-      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-12 relative"
+      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8 relative"
     >
       <div>
         <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
@@ -519,8 +520,8 @@ const defaultStatsItems: StatItem[] = [
 
 export default function HomePage() {
   const { data: releases } = useQuery<Release[]>({
-    queryKey: ["releases", "published", { limit: 10 }],
-    queryFn: () => db.releases.getPublishedPage(10, 0),
+    queryKey: ["releases", "featured", "published", { limit: 50 }],
+    queryFn: () => db.releases.getFeaturedPublishedPage(50, 0),
   });
 
   const { data: events } = useQuery<Event[]>({
@@ -638,6 +639,16 @@ export default function HomePage() {
 
         if (section.id === "releases") {
           if (!hasReleases) return null;
+          const featuredOrderIds = Array.isArray(section.featuredReleaseIds)
+            ? section.featuredReleaseIds
+            : [];
+          const releasesById = new Map((releases || []).map((r) => [r.id, r] as const));
+          const ordered = featuredOrderIds
+            .map((id) => releasesById.get(id))
+            .filter((r): r is Release => !!r);
+          const orderedIdsSet = new Set(ordered.map((r) => r.id));
+          const remaining = (releases || []).filter((r) => !orderedIdsSet.has(r.id));
+          const homeReleases = [...ordered, ...remaining];
           return (
             <section key={section.id} className="py-16 md:py-24">
               <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12">
@@ -656,9 +667,10 @@ export default function HomePage() {
                 />
               </div>
               <ReleasesCarousel
-                releases={releases || []}
+                releases={homeReleases}
                 title=""
-                autoPlay={true}
+                autoPlay={section.carouselEnabled ?? true}
+                autoPlayIntervalMs={section.carouselIntervalMs ?? 6000}
                 showViewAll={false}
               />
             </section>
@@ -667,6 +679,8 @@ export default function HomePage() {
 
         if (section.id === "artists") {
           if (!(artists && artists.filter((a) => a.featured).length > 0)) return null;
+          const featuredArtists = artists?.filter((a) => a.featured) || [];
+          const artistsCarouselEnabled = section.carouselEnabled ?? true;
           return (
             <section key={section.id} className="py-16 md:py-24 bg-muted/30  shadow-sm">
               <div className="max-w-7xl mx-auto px-6 md:px-8">
@@ -684,7 +698,15 @@ export default function HomePage() {
                   }
                 />
               </div>
-              <FeaturedArtists artists={artists?.filter((a) => a.featured) || []} title="" />
+              {artistsCarouselEnabled ? (
+                <ArtistsCarousel
+                  artists={featuredArtists}
+                  autoPlay={true}
+                  autoPlayIntervalMs={section.carouselIntervalMs ?? 6000}
+                />
+              ) : (
+                <FeaturedArtists artists={featuredArtists} title="" />
+              )}
             </section>
           );
         }
@@ -732,7 +754,12 @@ export default function HomePage() {
                   }
                 />
               </div>
-              <PlaylistsSection playlists={playlists || []} title="" autoPlay={true} />
+              <PlaylistsSection
+                playlists={playlists || []}
+                title=""
+                autoPlay={section.carouselEnabled ?? true}
+                autoPlayIntervalMs={section.carouselIntervalMs ?? 6000}
+              />
             </section>
           );
         }
@@ -756,7 +783,11 @@ export default function HomePage() {
                   }
                 />
               </div>
-              <PostsCarousel posts={(posts || []).slice(0, 8)} autoPlay={true} />
+              <PostsCarousel
+                posts={(posts || []).slice(0, 8)}
+                autoPlay={section.carouselEnabled ?? true}
+                autoPlayIntervalMs={section.carouselIntervalMs ?? 6000}
+              />
             </section>
           );
         }

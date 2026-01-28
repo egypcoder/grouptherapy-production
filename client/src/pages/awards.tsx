@@ -3,13 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Trophy, Vote, Music, User, Calendar, CheckCircle, Loader2, Crown } from "lucide-react";
 import { resolveMediaUrl } from "../lib/media";
-import { ConfiguredPageHero } from "@/components/hero-section";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { db, type AwardCategory, type AwardPeriod, type AwardEntry } from "@/lib/database";
+import { db, type AwardCategory, type AwardPeriod, type AwardEntry, type SiteSettings } from "@/lib/database";
 import { AwardEntryCard } from "@/components/award-entry-card";
 
 function generateFingerprint(): string {
@@ -69,6 +68,18 @@ export default function AwardsPage() {
     queryFn: () => db.awards.periods.getAll(),
   });
 
+  const { data: siteSettings } = useQuery<SiteSettings | null>({
+    queryKey: ["siteSettings"],
+    queryFn: () => db.siteSettings.get(),
+  });
+
+  const awardsOverride = siteSettings?.pageHeroOverrides?.["/awards"];
+  const heroTitle = awardsOverride?.title ?? "Therapy Awards";
+  const heroSubtitle =
+    awardsOverride?.subtitle ??
+    "Celebrate the best in electronic music. Vote for your favorite artists and tracks.";
+  const heroBackgroundImage = awardsOverride?.backgroundImage;
+
   const { data: periodsWithEntries = [], isLoading } = useQuery<PeriodWithEntries[]>({
     queryKey: ["awardPeriodsWithEntries", periods, categories],
     queryFn: async () => {
@@ -124,15 +135,21 @@ export default function AwardsPage() {
 
   return (
     <div className="min-h-screen">
-      <ConfiguredPageHero
-        pageKey="/awards"
-        title="Therapy Awards"
-        subtitle="Celebrate the best in electronic music. Vote for your favorite artists and tracks."
-      />
-
       <section className="relative min-h-[52vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="w-full h-full bg-gradient-to-b from-primary/10 via-background to-background" />
+          {heroBackgroundImage ? (
+            <motion.img
+              src={resolveMediaUrl(heroBackgroundImage, "hero")}
+              alt=""
+              className="w-full h-full object-cover"
+              initial={{ scale: 1.02 }}
+              animate={{ scale: 1.08 }}
+              transition={{ duration: 10, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-b from-primary/10 via-background to-background" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/85 to-background" />
         </div>
 
         <motion.div
@@ -166,8 +183,7 @@ export default function AwardsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
           >
-            <span className="text-foreground">THERAPY</span>
-            <span className="gradient-text"> AWARDS</span>
+            {heroTitle}
           </motion.h1>
 
           <motion.p
@@ -176,7 +192,7 @@ export default function AwardsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            Celebrate the best in electronic music. Vote for your favorite artists and tracks.
+            {heroSubtitle}
           </motion.p>
 
           <motion.div

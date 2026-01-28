@@ -463,6 +463,9 @@ export interface PageSectionConfig {
   tag?: string;
   actionLabel?: string;
   actionHref?: string;
+  carouselEnabled?: boolean;
+  carouselIntervalMs?: number;
+  featuredReleaseIds?: string[];
 }
 
 export interface SiteSettings {
@@ -592,6 +595,20 @@ export const db = {
     async getPublished(): Promise<Release[]> {
       if (!supabase) return [];
       const { data, error } = await supabase.from('releases').select('*').eq('published', true).order('release_date', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async getFeaturedPublishedPage(limit = 24, offset = 0): Promise<Release[]> {
+      if (!supabase) return [];
+      const from = Math.max(0, offset);
+      const to = from + Math.max(1, limit) - 1;
+      const { data, error } = await supabase
+        .from('releases')
+        .select('*')
+        .eq('published', true)
+        .eq('featured', true)
+        .order('release_date', { ascending: false, nullsFirst: false })
+        .range(from, to);
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
     },
@@ -1632,6 +1649,8 @@ export const db = {
       const { data, error } = await supabase
         .from('site_settings')
         .select('*')
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) return null;
@@ -1639,7 +1658,13 @@ export const db = {
     },
     async update(settings: Partial<SiteSettings>): Promise<SiteSettings> {
       if (!supabase) throw new Error('Database not configured');
-      const { data: existing } = await supabase.from('site_settings').select('id').limit(1).single();
+      const { data: existing } = await supabase
+        .from('site_settings')
+        .select('id')
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (existing) {
         const { data, error } = await supabase.from('site_settings').update(convertCamelToSnake(settings)).eq('id', existing.id).select().single();
         if (error) throw error;

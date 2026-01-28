@@ -3,15 +3,17 @@ import { motion } from "framer-motion";
 import { ArrowRight, Radio } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { useCarouselAutoplay } from "@/hooks/use-carousel-autoplay";
 import type { Post } from "@/lib/database";
 import { resolveMediaUrl } from "@/lib/media";
 
 interface PostsCarouselProps {
   posts: Post[];
   autoPlay?: boolean;
+  autoPlayIntervalMs?: number;
 }
 
-export function PostsCarousel({ posts = [], autoPlay = true }: PostsCarouselProps) {
+export function PostsCarousel({ posts = [], autoPlay = true, autoPlayIntervalMs = 6000 }: PostsCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -33,24 +35,12 @@ export function PostsCarousel({ posts = [], autoPlay = true }: PostsCarouselProp
     }
   }, []);
 
-  useEffect(() => {
-    if (!autoPlay) return;
-
-    const interval = setInterval(() => {
-      if (scrollRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-        const isAtEnd = scrollLeft >= scrollWidth - clientWidth - 10;
-
-        if (isAtEnd) {
-          scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          scrollRef.current.scrollBy({ left: 280, behavior: "smooth" });
-        }
-      }
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [autoPlay]);
+  useCarouselAutoplay({
+    scrollRef,
+    enabled: !!autoPlay,
+    intervalMs: autoPlayIntervalMs,
+    scrollByPx: 280,
+  });
 
   if (posts.length === 0) return null;
 
@@ -119,7 +109,7 @@ function PostCard({ post }: { post: Post }) {
           )}
         </div>
         <div className="p-4">
-          <h3 className="font-semibold text-base leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">
             {post.title}
           </h3>
           {post.excerpt && (

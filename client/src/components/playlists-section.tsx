@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SiSpotify } from "react-icons/si";
 import { SpotifyEmbed } from "@/components/playlist-player";
+import { useCarouselAutoplay } from "@/hooks/use-carousel-autoplay";
 import type { Playlist } from "@/lib/database";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -12,6 +13,7 @@ interface PlaylistsSectionProps {
   playlists?: Playlist[];
   title?: string;
   autoPlay?: boolean;
+  autoPlayIntervalMs?: number;
 }
 
 const demoPlaylists: Partial<Playlist>[] = [
@@ -64,6 +66,7 @@ export function PlaylistsSection({
   playlists,
   title = "",
   autoPlay = true,
+  autoPlayIntervalMs = 6000,
 }: PlaylistsSectionProps) {
   const [selectedPlaylist, setSelectedPlaylist] = useState<Partial<Playlist> | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
@@ -101,24 +104,12 @@ export function PlaylistsSection({
     }
   }, []);
 
-  useEffect(() => {
-    if (!autoPlay) return;
-
-    const interval = setInterval(() => {
-      if (scrollRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-        const isAtEnd = scrollLeft >= scrollWidth - clientWidth - 10;
-
-        if (isAtEnd) {
-          scrollRef.current.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          scrollRef.current.scrollBy({ left: 280, behavior: "smooth" });
-        }
-      }
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [autoPlay]);
+  useCarouselAutoplay({
+    scrollRef,
+    enabled: !!autoPlay,
+    intervalMs: autoPlayIntervalMs,
+    scrollByPx: 280,
+  });
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {

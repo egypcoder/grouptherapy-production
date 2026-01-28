@@ -123,8 +123,8 @@ export function Marquee({
         {visibleItems.map((item, idx) => {
           const Icon = iconMap[item.icon] || Disc3;
           return (
-            <div key={`${item.text}-${idx}`} className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Icon className="h-3.5 w-3.5 text-muted-foreground/80" />
+            <div key={`${item.text}-${idx}`} className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Icon className="h-4 w-4 text-muted-foreground/80" />
               <span className="whitespace-nowrap tracking-wide">{item.text}</span>
             </div>
           );
