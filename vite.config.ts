@@ -19,6 +19,7 @@ import robotsHandler from "./api/robots";
 import seoHandler from "./api/seo";
 import emailServiceSettingsHandler from "./api/email-service-settings";
 import newsletterSendHandler from "./api/newsletter-send";
+import cloudinarySignedUrlHandler from "./api/cloudinary-signed-url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -156,6 +157,7 @@ export default defineConfig(({ mode }) => {
                 "/api/sitemap-videos": sitemapVideosHandler,
                 "/api/robots": robotsHandler,
                 "/api/seo": seoHandler,
+                "/api/cloudinary-signed-url": cloudinarySignedUrlHandler,
                 "/api/email-service-settings": emailServiceSettingsHandler,
                 "/api/newsletter-send": newsletterSendHandler,
               };

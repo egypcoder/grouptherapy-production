@@ -38,11 +38,29 @@ export async function uploadToCloudinary(
     );
 
     if (!response.ok) {
-      throw new Error('Upload failed');
+      let errorMsg = `HTTP ${response.status}: Upload failed`;
+      try {
+        const data = await response.json();
+        errorMsg = data?.error?.message || data?.message || errorMsg;
+      } catch {
+        try {
+          const text = await response.text();
+          if (text) errorMsg = text;
+        } catch {
+          // ignore
+        }
+      }
+      throw new Error(errorMsg);
     }
 
     const data = await response.json();
-    return data.secure_url;
+    const secureUrl: unknown = data?.secure_url;
+
+    if (typeof secureUrl !== 'string' || !secureUrl) {
+      throw new Error('No URL in upload response');
+    }
+
+    return secureUrl;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
     throw error;
@@ -105,7 +123,8 @@ export async function uploadToCloudinaryWithProgress(
               resolve(data.secure_url);
             } else if (data.public_id) {
               // For async uploads, construct URL
-              const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload/${data.public_id}`;
+              const version = typeof data.version === 'number' || typeof data.version === 'string' ? `v${data.version}/` : '';
+              const url = `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload/${version}${data.public_id}`;
               resolve(url);
             } else {
               reject(new Error('No URL in upload response'));

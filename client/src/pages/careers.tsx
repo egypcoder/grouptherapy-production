@@ -25,7 +25,7 @@ import {
 import { queryFunctions } from "@/lib/queryClient";
 import { db, type Career } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
-import { isCloudinaryConfigured, uploadToCloudinary } from "@/lib/cloudinary";
+import { isCloudinaryConfigured, uploadToCloudinaryWithProgress } from "@/lib/cloudinary";
 
 const careerApplicationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -86,13 +86,14 @@ export default function CareersPage() {
         if (extension && !["pdf", "doc", "docx"].includes(extension)) {
           throw new Error("Please upload a PDF or Word document");
         }
-        resumeUrl = await uploadToCloudinary(resumeFile, {
-          folder: "resumes",
-          resourceType: "raw",
-          type: "upload",
-          accessMode: "public",
-        });
-        setResumeUploadProgress(100);
+        resumeUrl = await uploadToCloudinaryWithProgress(
+          resumeFile,
+          {
+            folder: "resumes",
+            resourceType: "auto",
+          },
+          (p) => setResumeUploadProgress(p)
+        );
       }
 
       await db.careerApplications.create({

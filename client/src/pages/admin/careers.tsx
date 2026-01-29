@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabase";
 
 export default function AdminCareers() {
   const { toast } = useToast();
@@ -40,6 +41,7 @@ export default function AdminCareers() {
   const [applicationStatus, setApplicationStatus] = useState("all");
   const [selectedApplication, setSelectedApplication] = useState<CareerApplication | null>(null);
   const [deleteApplicationId, setDeleteApplicationId] = useState<string | null>(null);
+  const [isSigningResume, setIsSigningResume] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     department: "",
@@ -124,6 +126,110 @@ export default function AdminCareers() {
     if (s === "hired") return { label: "hired", className: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" };
     if (s === "rejected") return { label: "rejected", className: "bg-red-500/15 text-red-700 border-red-500/30" };
     return { label: s, className: "bg-muted text-muted-foreground border-border" };
+  };
+
+  const handleDownloadResume = async (resumeUrl: string, filename?: string) => {
+    try {
+      if (!resumeUrl) return;
+
+      const isCloudinary = /\/\/res\.cloudinary\.com\//i.test(resumeUrl);
+
+      const isProtected = /\/authenticated\//i.test(resumeUrl) || /\/private\//i.test(resumeUrl);
+
+      const safeFilename = (filename || "resume")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9._-]/g, "");
+
+      // Prefer Cloudinary's real /download API when the URL is hosted on Cloudinary.
+      if (isCloudinary) {
+        if (!supabase) {
+          throw new Error("Supabase is not configured");
+        }
+
+        setIsSigningResume(true);
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) {
+          throw new Error("You must be logged in to download resumes");
+        }
+
+        const params = new URLSearchParams();
+        params.set("url", resumeUrl);
+        params.set("download_api", "1");
+        params.set("filename", safeFilename || "resume");
+        const resp = await fetch(`/api/cloudinary-signed-url?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const json = await resp.json().catch(() => null);
+        if (!resp.ok || !json?.success || !json?.signedUrl) {
+          const msg = json?.error || `Failed to generate download URL (HTTP ${resp.status})`;
+          throw new Error(msg);
+        }
+
+        window.open(String(json.signedUrl), "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      // Non-cloudinary: try to download directly.
+      if (!isProtected) {
+        const a = document.createElement("a");
+        a.href = resumeUrl;
+        a.download = safeFilename || "resume";
+        a.rel = "noreferrer";
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+
+      if (!supabase) {
+        throw new Error("Supabase is not configured");
+      }
+
+      setIsSigningResume(true);
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        throw new Error("You must be logged in to download resumes");
+      }
+
+      const params = new URLSearchParams();
+      params.set("url", resumeUrl);
+      params.set("download", "1");
+      const resp = await fetch(`/api/cloudinary-signed-url?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok || !json?.success || !json?.signedUrl) {
+        const msg = json?.error || `Failed to generate signed URL (HTTP ${resp.status})`;
+        throw new Error(msg);
+      }
+
+      const a = document.createElement("a");
+      a.href = String(json.signedUrl);
+      a.download = safeFilename || "resume";
+      a.rel = "noreferrer";
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      toast({
+        title: "Resume download failed",
+        description: e instanceof Error ? e.message : "Failed to download resume",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningResume(false);
+    }
   };
 
   const deleteMutation = useMutation({
@@ -581,8 +687,15 @@ export default function AdminCareers() {
               {selectedApplication?.resumeUrl && (
                 <div>
                   <p className="text-xs text-muted-foreground">Resume</p>
-                  <Button asChild variant="outline" size="sm">
-                    <a href={selectedApplication.resumeUrl} target="_blank" rel="noreferrer">View resume</a>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    disabled={isSigningResume}
+                    onClick={() => handleDownloadResume(selectedApplication.resumeUrl!, selectedApplication.name)}
+                  >
+                    {isSigningResume ? "Downloading…" : "Download resume"}
                   </Button>
                 </div>
               )}
