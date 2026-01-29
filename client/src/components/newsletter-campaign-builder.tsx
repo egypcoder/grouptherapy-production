@@ -10,6 +10,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { ImageUpload } from "@/components/image-upload";
 import { MarkdownEditor } from "@/components/markdown-editor";
@@ -18,7 +27,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 import { queryClient } from "@/lib/queryClient";
-import { db, NewsletterCampaign, NewsletterTemplate } from "@/lib/database";
+import { db, NewsletterCampaign, NewsletterState, NewsletterSubscriber, NewsletterTemplate } from "@/lib/database";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
 import {
   renderNewsletterHtml,
@@ -171,7 +180,15 @@ export function NewsletterCampaignBuilderDialog(props: {
   campaign?: NewsletterCampaign | null;
   initialTemplateId?: string;
   previewData?: RenderNewsletterData;
-  onSend?: (args: { subject: string; html: string }) => Promise<void>;
+  subscribers?: NewsletterSubscriber[];
+  states?: NewsletterState[];
+  onSend?: (args: {
+    subject: string;
+    html: string;
+    targeting?: {
+      stateIds?: string[];
+    };
+  }) => Promise<void>;
 }) {
   const isMobile = useIsMobile();
   const [state, setState] = useState<CampaignState>(() => toCampaignState(props.campaign, props.initialTemplateId));
@@ -181,6 +198,7 @@ export function NewsletterCampaignBuilderDialog(props: {
   const [selectedId, setSelectedId] = useState<string>(CAMPAIGN_ID);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [mobileTab, setMobileTab] = useState<"blocks" | "edit" | "preview">("blocks");
+  const [targetStateIds, setTargetStateIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!props.open) return;
@@ -190,7 +208,20 @@ export function NewsletterCampaignBuilderDialog(props: {
     setSelectedId(CAMPAIGN_ID);
     setPreviewMode("desktop");
     setMobileTab("blocks");
+    setTargetStateIds([]);
   }, [props.open, props.campaign, props.initialTemplateId]);
+
+  const recipientsPreview = useMemo(() => {
+    const subs = Array.isArray(props.subscribers) ? props.subscribers : [];
+    const stateIds = Array.isArray(targetStateIds) ? targetStateIds : [];
+
+    return subs.filter((s) => {
+      const stateOk = !stateIds.length || stateIds.includes(String(s.stateId || ""));
+      if (!stateOk) return false;
+
+      return true;
+    });
+  }, [props.subscribers, targetStateIds]);
 
   const selectBlock = (id: string) => {
     setSelectedId(id);
@@ -345,7 +376,13 @@ export function NewsletterCampaignBuilderDialog(props: {
       if (!state.subject.trim()) throw new Error("Please enter a subject.");
       if (!emailHtml.trim()) throw new Error("Nothing to send.");
 
-      await props.onSend({ subject: state.subject, html: emailHtml });
+      await props.onSend({
+        subject: state.subject,
+        html: emailHtml,
+        targeting: {
+          stateIds: targetStateIds,
+        },
+      });
 
       if (props.campaign?.id) {
         await db.newsletterCampaigns.update(props.campaign.id, {
@@ -590,6 +627,51 @@ export function NewsletterCampaignBuilderDialog(props: {
             <Label>Preheader</Label>
             <Input value={state.preheader} onChange={(e) => setState((p) => ({ ...p, preheader: e.target.value }))} />
           </div>
+
+          <div className="pt-2 border-t border-border/50" />
+
+          <div className="space-y-2">
+            <Label>Target states</Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" className="justify-start w-full">
+                  {targetStateIds.length ? `States: ${targetStateIds.length} selected` : "States: All"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[260px]">
+                <DropdownMenuLabel>States</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {(Array.isArray(props.states) ? props.states : []).map((st) => {
+                  const checked = targetStateIds.includes(st.id);
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={st.id}
+                      checked={checked}
+                      onCheckedChange={(v) => {
+                        const next = new Set(targetStateIds);
+                        if (v) next.add(st.id);
+                        else next.delete(st.id);
+                        setTargetStateIds(Array.from(next));
+                      }}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: st.color || "#64748b" }} />
+                        {st.name}
+                      </span>
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+                {(!props.states || props.states.length === 0) && (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">No states available.</div>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="text-xs text-muted-foreground">Leave empty to include all states.</div>
+          </div>
+
+          <div className="text-sm">
+            <span className="text-muted-foreground">Recipients preview:</span> {recipientsPreview.length}
+          </div>
         </CardContent>
       </Card>
 
@@ -614,7 +696,7 @@ export function NewsletterCampaignBuilderDialog(props: {
               </Button>
             </div>
             <div className="text-xs text-muted-foreground">
-              AI fills your template fields (subject, preheader, section content). It does not generate HTML.
+              Let AI Help you making your campaign.
             </div>
           </CardContent>
         </Card>

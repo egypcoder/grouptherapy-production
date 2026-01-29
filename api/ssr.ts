@@ -396,6 +396,6 @@ export default async function handler(req: Req, res: Res) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
     res.setHeader("X-Robots-Tag", "index, follow");
-    res.send(`<!doctype html><html><head><title>GroupTherapy</title><meta name="description" content="GroupTherapy Records" /></head><body><div id="root"></div></body></html>`);
+    res.send(`<!doctype html><html><head><title>GroupTherapy</title><meta name="description" content="GroupTherapy" /></head><body><div id="root"></div></body></html>`);
   }
 }

@@ -97,12 +97,12 @@ export default function ArtistDetailPage() {
   return (
     <div className="min-h-screen">
       <div ref={heroRef} className="relative">
-        <div className="absolute inset-0 h-[60vh] overflow-hidden">
+        <div className="absolute inset-0 h-[100vh] overflow-hidden">
           {artist.imageUrl ? (
             <motion.img
               src={resolveMediaUrl(artist.imageUrl, "full")}
               alt={artist.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover blur-xl"
               style={{ y: heroImageY, scale: heroImageScale }}
             />
           ) : (

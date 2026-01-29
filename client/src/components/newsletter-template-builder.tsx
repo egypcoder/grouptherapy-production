@@ -40,7 +40,7 @@ type EditableTemplate = {
 type TextAlign = "left" | "center" | "right";
 
 const DEFAULT_GLOBAL_SETTINGS: RenderNewsletterTemplate["globalSettings"] = {
-  brandName: "GroupTherapy Records",
+  brandName: "GroupTherapy",
   backgroundColor: "#0b0b0f",
   containerBackgroundColor: "#111827",
   textColor: "#ffffff",

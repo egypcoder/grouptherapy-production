@@ -237,6 +237,24 @@ export default function AdminContacts() {
     },
   });
 
+  const addToNewsletterMutation = useMutation({
+    mutationFn: async (payload: { email: string; name?: string; source: string }) => {
+      return db.newsletterSubscribers.upsert({
+        email: payload.email,
+        name: payload.name,
+        source: payload.source,
+        active: true,
+        optedOut: false,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Added to newsletter" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error?.message || "Failed to add to newsletter", variant: "destructive" });
+    },
+  });
+
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "-";
     const d = new Date(date);
@@ -440,6 +458,21 @@ export default function AdminContacts() {
                             <Mail className="h-4 w-4 mr-2" />
                             View Message
                           </DropdownMenuItem>
+                          {!!contact.email && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                addToNewsletterMutation.mutate({
+                                  email: contact.email,
+                                  name: contact.name || undefined,
+                                  source: contact.sourceTable === "contacts" ? "contact" : "message",
+                                })
+                              }
+                              disabled={addToNewsletterMutation.isPending}
+                            >
+                              <Mail className="h-4 w-4 mr-2" />
+                              Add to Newsletter
+                            </DropdownMenuItem>
+                          )}
                           {contact.status !== "read" && (
                             <DropdownMenuItem
                               onClick={() =>
@@ -518,11 +551,27 @@ export default function AdminContacts() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedContact(null)}>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button className="w-full sm:w-auto" variant="outline" onClick={() => setSelectedContact(null)}>
               Close
             </Button>
-            <Button asChild>
+            {!!selectedContact?.email && (
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                onClick={() =>
+                  addToNewsletterMutation.mutate({
+                    email: selectedContact.email,
+                    name: selectedContact.name || undefined,
+                    source: selectedContact.sourceTable === "contacts" ? "contact" : "message",
+                  })
+                }
+                disabled={addToNewsletterMutation.isPending}
+              >
+                Add to Newsletter
+              </Button>
+            )}
+            <Button className="w-full sm:w-auto" asChild>
               <a href={`mailto:${selectedContact?.email}`}>
                 <Mail className="h-4 w-4 mr-2" />
                 Reply

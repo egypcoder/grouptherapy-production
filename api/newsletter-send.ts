@@ -39,6 +39,21 @@ function json(res: Res, status: number, data: any) {
   res.send(JSON.stringify(data));
 }
 
+function hmacSha256Hex(secret: string, data: string): string {
+  return crypto.createHmac("sha256", secret).update(data).digest("hex");
+}
+
+function base64UrlEncode(buf: Buffer): string {
+  return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function makeToken(secret: string, email: string, ts: number): string {
+  const payload = { e: email, ts };
+  const sig = hmacSha256Hex(secret, `${payload.e}|${payload.ts}`);
+  const full = { ...payload, sig };
+  return base64UrlEncode(Buffer.from(JSON.stringify(full), "utf8"));
+}
+
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env: ${name}`);
@@ -89,6 +104,12 @@ function formatFrom(senderName: string | undefined, fromEmail: string): string {
   return `${name} <${v}>`;
 }
 
+function getBaseUrl(req: Req): string {
+  const proto = firstHeader(req.headers["x-forwarded-proto"]) || "http";
+  const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "localhost";
+  return `${proto}://${host}`;
+}
+
 async function getSettingsRow(sbAdmin: any) {
   const { data, error } = await sbAdmin
     .from("email_service_settings")
@@ -101,8 +122,19 @@ async function getSettingsRow(sbAdmin: any) {
   return data || null;
 }
 
-async function sendViaResend(args: { apiKey: string; fromEmail: string; to: string[]; subject: string; html: string }) {
+async function sendViaResend(args: {
+  apiKey: string;
+  fromEmail: string;
+  to: string[];
+  subject: string;
+  html: string;
+  headers?: Record<string, string>;
+}) {
   const text = htmlToText(args.html);
+
+  const replyTo = String(args.fromEmail || "").includes("<")
+    ? String(args.fromEmail || "").replace(/^.*<\s*([^>]+)\s*>.*$/, "$1")
+    : String(args.fromEmail || "").trim();
 
   for (const recipient of args.to) {
     const resp = await fetch("https://api.resend.com/emails", {
@@ -116,6 +148,7 @@ async function sendViaResend(args: { apiKey: string; fromEmail: string; to: stri
         to: [recipient],
         subject: args.subject,
         html: args.html,
+        headers: { ...(args.headers || {}), "Reply-To": replyTo },
         ...(text ? { text } : {}),
       }),
     });
@@ -139,7 +172,7 @@ async function sendViaSendGrid(args: { apiKey: string; fromEmail: string; to: st
     },
     body: JSON.stringify({
       personalizations: args.to.map((email) => ({ to: [{ email }] })),
-      from: { email: args.fromEmail, name: "GroupTherapy Records" },
+      from: { email: args.fromEmail, name: "GroupTherapy" },
       subject: args.subject,
       content: [
         ...(text ? [{ type: "text/plain", value: text }] : []),
@@ -243,11 +276,41 @@ export default async function handler(req: Req, res: Res) {
     const apiKey = String(emailService.apiKey || "").trim();
     const apiUrl = String(emailService.apiUrl || "").trim();
 
+    const baseUrl =
+      process.env.VITE_SITE_URL ||
+      process.env.SITE_URL ||
+      process.env.PUBLIC_SITE_URL ||
+      getBaseUrl(req);
+    const baseHtml = String(html || "");
+    const unsubscribeSecret =
+      process.env.NEWSLETTER_UNSUBSCRIBE_SECRET ||
+      process.env.EMAIL_SETTINGS_ENCRYPTION_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE ||
+      "";
     const unsubscribeMailto = fromEmail ? `mailto:${fromEmail}?subject=unsubscribe` : "";
-    const listUnsubHeader = unsubscribeMailto ? `<${unsubscribeMailto}>` : "";
-    const renderedHtml = String(html || "")
-      .split("{{NEWSLETTER_UNSUBSCRIBE_MAILTO}}")
-      .join(unsubscribeMailto || "#");
+
+    function buildUnsubscribeUrl(recipientEmail: string): string {
+      if (!unsubscribeSecret) return "";
+      const ts = Date.now();
+      const token = makeToken(unsubscribeSecret, String(recipientEmail || "").toLowerCase().trim(), ts);
+      const trimmedBase = String(baseUrl || "").replace(/\/+$/, "");
+      return `${trimmedBase}/api/newsletter-unsubscribe?token=${encodeURIComponent(token)}`;
+    }
+
+    function buildListUnsubscribeHeader(unsubscribeUrl: string): string {
+      const parts: string[] = [];
+      if (unsubscribeUrl) parts.push(`<${unsubscribeUrl}>`);
+      if (unsubscribeMailto) parts.push(`<${unsubscribeMailto}>`);
+      return parts.join(", ");
+    }
+
+    function personalizeHtml(recipientEmail: string): string {
+      const unsubscribeUrl = buildUnsubscribeUrl(recipientEmail) || unsubscribeMailto || "#";
+      return baseHtml
+        .split("{{NEWSLETTER_UNSUBSCRIBE_MAILTO}}")
+        .join(unsubscribeUrl);
+    }
 
     if (!fromEmail) {
       json(res, 400, { success: false, error: "From email not configured" });
@@ -266,35 +329,53 @@ export default async function handler(req: Req, res: Res) {
 
     if (service === "resend") {
       const from = formatFrom(senderName, fromEmail);
-      await sendViaResend({ apiKey, fromEmail: from, to, subject, html: renderedHtml });
+      for (const recipient of to) {
+        const perHtml = personalizeHtml(recipient);
+        const unsubscribeUrl = buildUnsubscribeUrl(recipient);
+        const listUnsubHeader = buildListUnsubscribeHeader(unsubscribeUrl);
+        await sendViaResend({
+          apiKey,
+          fromEmail: from,
+          to: [recipient],
+          subject,
+          html: perHtml,
+          headers: listUnsubHeader ? { "List-Unsubscribe": listUnsubHeader } : undefined,
+        });
+      }
       json(res, 200, { success: true });
       return;
     }
 
     if (service === "sendgrid") {
-      const text = htmlToText(renderedHtml);
-      const resp = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          personalizations: to.map((email) => ({ to: [{ email }] })),
-          from: { email: fromEmail, name: senderName || "GroupTherapy" },
-          subject,
-          content: [
-            ...(text ? [{ type: "text/plain", value: text }] : []),
-            { type: "text/html", value: renderedHtml },
-          ],
-          ...(listUnsubHeader ? { headers: { "List-Unsubscribe": listUnsubHeader } } : {}),
-          reply_to: { email: fromEmail },
-        }),
-      });
+      for (const recipient of to) {
+        const perHtml = personalizeHtml(recipient);
+        const unsubscribeUrl = buildUnsubscribeUrl(recipient);
+        const listUnsubHeader = buildListUnsubscribeHeader(unsubscribeUrl);
+        const text = htmlToText(perHtml);
 
-      if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(`SendGrid error: ${err}`);
+        const resp = await fetch("https://api.sendgrid.com/v3/mail/send", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: [{ email: recipient }] }],
+            from: { email: fromEmail, name: senderName || "GroupTherapy" },
+            subject,
+            content: [
+              ...(text ? [{ type: "text/plain", value: text }] : []),
+              { type: "text/html", value: perHtml },
+            ],
+            ...(listUnsubHeader ? { headers: { "List-Unsubscribe": listUnsubHeader } } : {}),
+            reply_to: { email: fromEmail },
+          }),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.text();
+          throw new Error(`SendGrid error: ${err}`);
+        }
       }
       json(res, 200, { success: true });
       return;
@@ -302,7 +383,8 @@ export default async function handler(req: Req, res: Res) {
 
     if (service === "ses" || service === "smtp") {
       for (const recipient of to) {
-        await sendViaApiUrl({ apiUrl, fromEmail, to: [recipient], subject, html: renderedHtml });
+        const perHtml = personalizeHtml(recipient);
+        await sendViaApiUrl({ apiUrl, fromEmail, to: [recipient], subject, html: perHtml });
       }
       json(res, 200, { success: true });
       return;

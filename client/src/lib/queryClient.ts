@@ -39,6 +39,7 @@ export const queryFunctions = {
   pressAssets: () => db.pressAssets.getAll(),
   pressAssetsPublished: () => db.pressAssets.getPublished(),
   newsletterSubscribers: () => db.newsletterSubscribers.getAll(),
+  newsletterStates: () => db.newsletterStates.getAll(),
   newsletterTemplates: () => db.newsletterTemplates.getAll(),
   newsletterCampaigns: () => db.newsletterCampaigns.getAll(),
   analyticsSummary: () => db.analytics.getSummary(),

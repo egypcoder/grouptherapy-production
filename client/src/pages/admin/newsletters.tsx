@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -34,7 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, NewsletterCampaign, NewsletterSubscriber, NewsletterTemplate } from "@/lib/database";
+import { db, NewsletterCampaign, NewsletterState, NewsletterSubscriber, NewsletterTemplate } from "@/lib/database";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { NewsletterTemplateBuilderDialog } from "@/components/newsletter-template-builder";
@@ -60,6 +61,23 @@ export default function AdminNewsletters() {
   const [isCampaignBuilderOpen, setIsCampaignBuilderOpen] = useState(false);
   const [campaignToEdit, setCampaignToEdit] = useState<NewsletterCampaign | null>(null);
   const [initialCampaignTemplateId, setInitialCampaignTemplateId] = useState<string | undefined>(undefined);
+  const [filterStateId, setFilterStateId] = useState<string>("all");
+  const [filterOptOut, setFilterOptOut] = useState<string>("deliverable");
+  const [isAddSubscriberOpen, setIsAddSubscriberOpen] = useState(false);
+  const [isManageStatesOpen, setIsManageStatesOpen] = useState(false);
+  const [newStateName, setNewStateName] = useState<string>("");
+  const [newStateColor, setNewStateColor] = useState<string>("#64748b");
+  const [newSubscriber, setNewSubscriber] = useState<{ email: string; name: string; stateId: string }>({
+    email: "",
+    name: "",
+    stateId: "",
+  });
+  const [isEditSubscriberOpen, setIsEditSubscriberOpen] = useState(false);
+  const [editingSubscriber, setEditingSubscriber] = useState<NewsletterSubscriber | null>(null);
+  const [editSubscriberForm, setEditSubscriberForm] = useState<{ stateId: string; optedOut: boolean }>({
+    stateId: "",
+    optedOut: false,
+  });
   const [emailData, setEmailData] = useState({
     subject: "",
     content: "",
@@ -69,6 +87,11 @@ export default function AdminNewsletters() {
   const { data: subscribers = [] } = useQuery<NewsletterSubscriber[]>({
     queryKey: ["newsletterSubscribers"],
     queryFn: queryFunctions.newsletterSubscribers,
+  });
+
+  const { data: states = [] } = useQuery<NewsletterState[]>({
+    queryKey: ["newsletterStates"],
+    queryFn: queryFunctions.newsletterStates,
   });
 
   const { data: templates = [] } = useQuery<NewsletterTemplate[]>({
@@ -96,8 +119,17 @@ export default function AdminNewsletters() {
     queryFn: fetchEmailServiceSettings,
   });
 
-  const activeSubscribers = subscribers.filter((s) => s.active);
+  const deliverableSubscribers = subscribers.filter((s) => s.active && !s.optedOut);
+  const optedOutOrInactiveCount = subscribers.filter((s) => !s.active || s.optedOut).length;
   const defaultTemplate = templates.find((t) => t.isDefault) || templates[0] || null;
+
+  const filteredSubscribers = subscribers.filter((s) => {
+    const stateOk = filterStateId === "all" || s.stateId === filterStateId;
+    const optOk =
+      filterOptOut === "all" ||
+      (filterOptOut === "deliverable" ? s.active && !s.optedOut : (s.optedOut || !s.active));
+    return stateOk && optOk;
+  });
 
   const emailConfig: EmailServiceConfig = emailServiceSettings
     ? {
@@ -217,7 +249,7 @@ export default function AdminNewsletters() {
     onSuccess: () => {
       toast({
         title: "Newsletter Sent!",
-        description: `Email sent to ${activeSubscribers.length} subscribers.`,
+        description: `Email sent to ${deliverableSubscribers.length} subscribers.`,
       });
       setIsComposeOpen(false);
       setEmailData({ subject: "", content: "", prompt: "" });
@@ -325,9 +357,104 @@ SUBJECT: [subject line here]
     sendEmailMutation.mutate({
       subject: emailData.subject,
       content: emailData.content,
-      recipients: activeSubscribers.map((s) => s.email),
+      recipients: deliverableSubscribers.map((s) => s.email),
     });
   };
+
+  const upsertSubscriberMutation = useMutation({
+    mutationFn: async (payload: { email: string; name?: string; stateId?: string }) => {
+      return db.newsletterSubscribers.upsert({
+        email: payload.email,
+        name: payload.name,
+        stateId: payload.stateId,
+        source: "manual",
+        active: true,
+        optedOut: false,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["newsletterSubscribers"] });
+      toast({ title: "Subscriber added" });
+      setIsAddSubscriberOpen(false);
+      setNewSubscriber({ email: "", name: "", stateId: "" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to add subscriber", variant: "destructive" });
+    },
+  });
+
+  const updateSubscriberMutation = useMutation({
+    mutationFn: async (payload: { id: string; stateId?: string | null; optedOut: boolean }) => {
+      const now = new Date().toISOString();
+      const update: any = {
+        stateId: payload.stateId || null,
+      };
+
+      if (payload.optedOut) {
+        update.optedOut = true;
+        update.optedOutAt = now;
+        update.active = false;
+        update.unsubscribedAt = now;
+      } else {
+        update.optedOut = false;
+        update.optedOutAt = null;
+        update.active = true;
+        update.unsubscribedAt = null;
+      }
+
+      return db.newsletterSubscribers.update(payload.id, update);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["newsletterSubscribers"] });
+      toast({ title: "Subscriber updated" });
+      setIsEditSubscriberOpen(false);
+      setEditingSubscriber(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update subscriber", variant: "destructive" });
+    },
+  });
+
+  const createStateMutation = useMutation({
+    mutationFn: async (payload: { name: string; color: string }) => {
+      return db.newsletterStates.create({ name: payload.name, color: payload.color });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["newsletterStates"] });
+      toast({ title: "State created" });
+      setNewStateName("");
+      setNewStateColor("#64748b");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to create state", variant: "destructive" });
+    },
+  });
+
+  const updateStateMutation = useMutation({
+    mutationFn: async (payload: { id: string; name: string; color: string }) => {
+      return db.newsletterStates.update(payload.id, { name: payload.name, color: payload.color });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["newsletterStates"] });
+      toast({ title: "State updated" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update state", variant: "destructive" });
+    },
+  });
+
+  const deleteStateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return db.newsletterStates.delete(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["newsletterStates"] });
+      toast({ title: "State deleted" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to delete state", variant: "destructive" });
+    },
+  });
 
   const handleExportSubscribers = () => {
     const csv = [
@@ -453,7 +580,7 @@ SUBJECT: [subject line here]
               disabled={!isConfigured || templates.length === 0}
             >
               <Mail className="h-4 w-4 mr-2" />
-              Compose Newsletter
+              Send Email
             </Button>
           </div>
         </div>
@@ -523,11 +650,11 @@ SUBJECT: [subject line here]
               <Card className="border-border/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active</CardTitle>
-                  <Badge variant="default">{activeSubscribers.length}</Badge>
+                  <Badge variant="default">{deliverableSubscribers.length}</Badge>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-semibold tracking-tight text-green-600 dark:text-green-400">
-                    {activeSubscribers.length}
+                    {deliverableSubscribers.length}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Ready to receive</p>
                 </CardContent>
@@ -535,11 +662,11 @@ SUBJECT: [subject line here]
               <Card className="border-border/50">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Unsubscribed</CardTitle>
-                  <Badge variant="secondary">{subscribers.length - activeSubscribers.length}</Badge>
+                  <Badge variant="secondary">{optedOutOrInactiveCount}</Badge>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-semibold tracking-tight text-muted-foreground">
-                    {subscribers.length - activeSubscribers.length}
+                    {optedOutOrInactiveCount}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Opted out</p>
                 </CardContent>
@@ -552,42 +679,201 @@ SUBJECT: [subject line here]
                 <CardDescription>Manage your newsletter subscriber list</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="w-full overflow-x-auto">
+                <div className="flex flex-col md:flex-row md:items-end gap-3 mb-4">
+                  <div className="space-y-2">
+                    <Label>State</Label>
+                    <Select value={filterStateId} onValueChange={setFilterStateId}>
+                      <SelectTrigger className="w-full md:w-[220px]">
+                        <SelectValue placeholder="All states" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All states</SelectItem>
+                        {states.map((st) => (
+                          <SelectItem key={st.id} value={st.id}>
+                            {st.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Delivery</Label>
+                    <Select value={filterOptOut} onValueChange={setFilterOptOut}>
+                      <SelectTrigger className="w-full md:w-[220px]">
+                        <SelectValue placeholder="Deliverable" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="deliverable">Deliverable only</SelectItem>
+                        <SelectItem value="optedout">Opted out / inactive</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="md:ml-auto">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button className="w-full sm:w-auto" variant="outline" onClick={() => setIsManageStatesOpen(true)}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Manage States
+                      </Button>
+                      <Button type="button" className="w-full sm:w-auto" variant="outline" onClick={() => setIsAddSubscriberOpen(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Subscriber
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="sm:hidden space-y-2">
+                  {filteredSubscribers.map((subscriber) => {
+                    const st = states.find((x) => x.id === subscriber.stateId);
+                    const color = st?.color || "#64748b";
+                    return (
+                      <div key={subscriber.id} className="rounded-lg border border-border/50 bg-card p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{subscriber.email}</div>
+                            <div className="text-xs text-muted-foreground truncate">{subscriber.name || "-"}</div>
+                          </div>
+                          <div className="inline-flex items-center gap-1 whitespace-nowrap">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingSubscriber(subscriber);
+                                setEditSubscriberForm({
+                                  stateId: subscriber.stateId || "",
+                                  optedOut: !!subscriber.optedOut || !subscriber.active,
+                                });
+                                setIsEditSubscriberOpen(true);
+                              }}
+                              disabled={updateSubscriberMutation.isPending}
+                              aria-label={`Edit ${subscriber.email}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteMutation.mutate(subscriber.id);
+                              }}
+                              aria-label={`Delete ${subscriber.email}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge variant={subscriber.active && !subscriber.optedOut ? "default" : "secondary"}>
+                            {subscriber.active && !subscriber.optedOut ? "Deliverable" : "Opted out"}
+                          </Badge>
+                          {st ? (
+                            <Badge variant="secondary" style={{ backgroundColor: color, borderColor: color, color: "white" }}>
+                              {st.name}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">No state</Badge>
+                          )}
+                          {subscriber.source === "contact" ? (
+                            <Badge variant="outline">Contact</Badge>
+                          ) : (
+                            <Badge variant="outline">{subscriber.source || "-"}</Badge>
+                          )}
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Subscribed: {new Date(subscriber.subscribedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden sm:block w-full overflow-x-auto">
                   <Table className="min-w-[720px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[280px]">Email</TableHead>
                         <TableHead className="hidden sm:table-cell">Name</TableHead>
+                        <TableHead className="hidden md:table-cell">State</TableHead>
                         <TableHead className="hidden md:table-cell">Source</TableHead>
                         <TableHead className="hidden md:table-cell">Subscribed</TableHead>
                         <TableHead className="w-[140px]">Status</TableHead>
-                        <TableHead className="w-[80px] text-right">Actions</TableHead>
+                        <TableHead className="w-[112px] text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {subscribers.map((subscriber) => (
+                      {filteredSubscribers.map((subscriber) => (
                         <TableRow key={subscriber.id}>
                           <TableCell className="font-medium">
                             <div className="max-w-[260px] truncate">{subscriber.email}</div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">{subscriber.name || "-"}</TableCell>
-                          <TableCell className="hidden md:table-cell">{subscriber.source || "-"}</TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {new Date(subscriber.subscribedAt).toLocaleDateString()}
+                            {(() => {
+                              const st = states.find((x) => x.id === subscriber.stateId);
+                              if (!st) return "-";
+                              const color = st.color || "#64748b";
+                              return (
+                                <Badge variant="secondary" style={{ backgroundColor: color, borderColor: color, color: "white" }}>
+                                  {st.name}
+                                </Badge>
+                              );
+                            })()}
                           </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {subscriber.source === "contact" ? <Badge variant="outline">Contact</Badge> : subscriber.source || "-"}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{new Date(subscriber.subscribedAt).toLocaleDateString()}</TableCell>
                           <TableCell>
-                            <Badge variant={subscriber.active ? "default" : "secondary"}>
-                              {subscriber.active ? "Active" : "Unsubscribed"}
+                            <Badge variant={subscriber.active && !subscriber.optedOut ? "default" : "secondary"}>
+                              {subscriber.active && !subscriber.optedOut ? "Deliverable" : "Opted out"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteMutation.mutate(subscriber.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setEditingSubscriber(subscriber);
+                                  setEditSubscriberForm({
+                                    stateId: subscriber.stateId || "",
+                                    optedOut: !!subscriber.optedOut || !subscriber.active,
+                                  });
+                                  setIsEditSubscriberOpen(true);
+                                }}
+                                disabled={updateSubscriberMutation.isPending}
+                                aria-label={`Edit ${subscriber.email}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteMutation.mutate(subscriber.id);
+                                }}
+                                aria-label={`Delete ${subscriber.email}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -595,7 +881,7 @@ SUBJECT: [subject line here]
                   </Table>
                 </div>
 
-                {subscribers.length === 0 && (
+                {filteredSubscribers.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">No subscribers yet</div>
                 )}
               </CardContent>
@@ -677,29 +963,37 @@ SUBJECT: [subject line here]
                             </Button>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setTemplateToEdit(t);
-                                setIsTemplateBuilderOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                deleteTemplateMutation.mutate(t.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setTemplateToEdit(t);
+                                  setIsTemplateBuilderOpen(true);
+                                }}
+                                aria-label={`Edit template ${t.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  deleteTemplateMutation.mutate(t.id);
+                                }}
+                                aria-label={`Delete template ${t.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -747,7 +1041,7 @@ SUBJECT: [subject line here]
                         <TableHead className="hidden md:table-cell">Template</TableHead>
                         <TableHead className="w-[120px]">Status</TableHead>
                         <TableHead className="hidden md:table-cell">Created</TableHead>
-                        <TableHead className="w-[140px] text-right">Actions</TableHead>
+                        <TableHead className="w-[112px] text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -783,19 +1077,24 @@ SUBJECT: [subject line here]
                               {c.createdAt ? new Date(c.createdAt).toLocaleString() : "-"}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setCampaignToEdit(c);
-                                  setInitialCampaignTemplateId(undefined);
-                                  setIsCampaignBuilderOpen(true);
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                              <div className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setCampaignToEdit(c);
+                                    setInitialCampaignTemplateId(undefined);
+                                    setIsCampaignBuilderOpen(true);
+                                  }}
+                                  aria-label={`Edit campaign ${c.subject || "(No subject)"}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         );
@@ -827,23 +1126,295 @@ SUBJECT: [subject line here]
         campaign={campaignToEdit}
         initialTemplateId={initialCampaignTemplateId}
         previewData={previewData as any}
-        onSend={async ({ subject, html }) => {
-          if (activeSubscribers.length === 0) {
-            throw new Error("No recipients to send to.");
+        subscribers={deliverableSubscribers}
+        states={states}
+        onSend={async ({ subject, html, targeting }) => {
+          const stateIds = Array.isArray(targeting?.stateIds) ? targeting?.stateIds : [];
+
+          const recipients = deliverableSubscribers.filter((s) => {
+            const stateOk = !stateIds.length || stateIds.includes(String(s.stateId || ""));
+            if (!stateOk) return false;
+
+            return true;
+          });
+
+          if (recipients.length === 0) {
+            throw new Error("No recipients match the selected targeting.");
           }
 
           await sendNewsletterViaApi({
-            to: activeSubscribers.map((s) => s.email),
+            to: recipients.map((s) => s.email),
             subject,
             html,
           });
 
           toast({
             title: "Newsletter Sent!",
-            description: `Email sent to ${activeSubscribers.length} subscribers.`,
+            description: `Email sent to ${recipients.length} subscribers.`,
           });
         }}
       />
+
+      <Dialog open={isAddSubscriberOpen} onOpenChange={setIsAddSubscriberOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add Subscriber</DialogTitle>
+            <DialogDescription>Add a subscriber manually. They will be included in the newsletter list.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newSubEmail">Email</Label>
+              <Input
+                id="newSubEmail"
+                value={newSubscriber.email}
+                onChange={(e) => setNewSubscriber((p) => ({ ...p, email: e.target.value }))}
+                placeholder="user@email.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newSubName">Name (optional)</Label>
+              <Input
+                id="newSubName"
+                value={newSubscriber.name}
+                onChange={(e) => setNewSubscriber((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>State (optional)</Label>
+              <Select
+                value={newSubscriber.stateId || "__none__"}
+                onValueChange={(value) => setNewSubscriber((p) => ({ ...p, stateId: value === "__none__" ? "" : value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No state</SelectItem>
+                  {states.map((st) => (
+                    <SelectItem key={st.id} value={st.id}>
+                      {st.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddSubscriberOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                upsertSubscriberMutation.mutate({
+                  email: newSubscriber.email,
+                  name: newSubscriber.name || undefined,
+                  stateId: newSubscriber.stateId || undefined,
+                });
+              }}
+              disabled={upsertSubscriberMutation.isPending}
+            >
+              {upsertSubscriberMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isEditSubscriberOpen}
+        onOpenChange={(open) => {
+          setIsEditSubscriberOpen(open);
+          if (!open) setEditingSubscriber(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Edit Subscriber</DialogTitle>
+            <DialogDescription>Update subscriber state and opt-out status.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={editingSubscriber?.email || ""} disabled />
+            </div>
+
+            <div className="space-y-2">
+              <Label>State</Label>
+              <Select
+                value={editSubscriberForm.stateId || "__none__"}
+                onValueChange={(value) => setEditSubscriberForm((p) => ({ ...p, stateId: value === "__none__" ? "" : value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No state</SelectItem>
+                  {states.map((st) => (
+                    <SelectItem key={st.id} value={st.id}>
+                      {st.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border border-border/50 p-3">
+              <div>
+                <div className="text-sm font-medium">Opted out</div>
+                <div className="text-xs text-muted-foreground">If enabled, subscriber will not receive emails.</div>
+              </div>
+              <Switch
+                checked={editSubscriberForm.optedOut}
+                onCheckedChange={(checked) => setEditSubscriberForm((p) => ({ ...p, optedOut: checked }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditSubscriberOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!editingSubscriber) return;
+                updateSubscriberMutation.mutate({
+                  id: editingSubscriber.id,
+                  stateId: editSubscriberForm.stateId || null,
+                  optedOut: !!editSubscriberForm.optedOut,
+                });
+              }}
+              disabled={!editingSubscriber || updateSubscriberMutation.isPending}
+            >
+              {updateSubscriberMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isManageStatesOpen} onOpenChange={setIsManageStatesOpen}>
+        <DialogContent className="sm:max-w-2xl sm:max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Subscriber States</DialogTitle>
+            <DialogDescription>Create and rename states globally. Existing subscribers update automatically.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="newStateName">New state name</Label>
+              <Input
+                id="newStateName"
+                value={newStateName}
+                onChange={(e) => setNewStateName(e.target.value)}
+                placeholder="DJ"
+              />
+              <div className="flex items-center gap-3">
+                <Label htmlFor="newStateColor" className="text-xs text-muted-foreground">Color</Label>
+                <Input
+                  id="newStateColor"
+                  type="color"
+                  value={newStateColor}
+                  onChange={(e) => setNewStateColor(e.target.value)}
+                  className="h-9 w-16 p-0"
+                />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Key is generated automatically.
+              </div>
+            </div>
+            <div>
+              <Button
+                onClick={() => createStateMutation.mutate({ name: newStateName, color: newStateColor })}
+                disabled={createStateMutation.isPending || !newStateName.trim()}
+              >
+                {createStateMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create State"
+                )}
+              </Button>
+            </div>
+
+            <div className="border-t border-border/50 pt-4 space-y-3">
+              {states.map((st) => (
+                <div key={st.id} className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      value={st.name}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        queryClient.setQueryData(["newsletterStates"], (prev: NewsletterState[] | undefined) =>
+                          (prev || []).map((x) => (x.id === st.id ? { ...x, name } : x))
+                        );
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <Input
+                      type="color"
+                      value={st.color || "#64748b"}
+                      onChange={(e) => {
+                        const color = e.target.value;
+                        queryClient.setQueryData(["newsletterStates"], (prev: NewsletterState[] | undefined) =>
+                          (prev || []).map((x) => (x.id === st.id ? { ...x, color } : x))
+                        );
+                      }}
+                      className="h-9 w-16 p-0"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => updateStateMutation.mutate({ id: st.id, name: st.name, color: st.color || "#64748b" })}
+                      disabled={updateStateMutation.isPending}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteStateMutation.mutate(st.id)}
+                      disabled={deleteStateMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {states.length === 0 && (
+                <div className="text-sm text-muted-foreground">No states found.</div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsManageStatesOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Email Settings Dialog */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
@@ -976,7 +1547,7 @@ SUBJECT: [subject line here]
           <DialogHeader>
             <DialogTitle>Compose Newsletter</DialogTitle>
             <DialogDescription>
-              Create and send a newsletter to {activeSubscribers.length} active subscribers
+              Create and send a newsletter to {deliverableSubscribers.length} deliverable subscribers
             </DialogDescription>
           </DialogHeader>
 

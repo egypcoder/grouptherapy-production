@@ -301,6 +301,19 @@ export interface NewsletterSubscriber {
   subscribedAt: string;
   unsubscribedAt?: string;
   active: boolean;
+  stateId?: string;
+  optedOut?: boolean;
+  optedOutAt?: string;
+  updatedAt?: string;
+}
+
+export interface NewsletterState {
+  id: string;
+  key: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NewsletterTemplate {
@@ -1387,8 +1400,20 @@ export const db = {
       if (!supabase) throw new Error('Database not configured');
       const existingResult = await supabase.from('newsletter_subscribers').select('*').eq('email', email.toLowerCase()).single();
       if (existingResult.data) {
-        if (!existingResult.data.active) {
-          const { data, error } = await supabase.from('newsletter_subscribers').update({ active: true, unsubscribed_at: null, source }).eq('email', email.toLowerCase()).select().single();
+        if (!existingResult.data.active || !!(existingResult.data as any).opted_out) {
+          const { data, error } = await supabase
+            .from('newsletter_subscribers')
+            .update({
+              active: true,
+              unsubscribed_at: null,
+              opted_out: false,
+              opted_out_at: null,
+              source,
+              ...(name ? { name } : {}),
+            })
+            .eq('email', email.toLowerCase())
+            .select()
+            .single();
           if (error) throw error;
           return convertSnakeToCamel(data);
         }
@@ -1398,11 +1423,56 @@ export const db = {
       if (error) throw error;
       return convertSnakeToCamel(data);
     },
+    async upsert(args: {
+      email: string;
+      name?: string;
+      source?: string;
+      stateId?: string;
+      active?: boolean;
+      optedOut?: boolean;
+    }): Promise<NewsletterSubscriber> {
+      if (!supabase) throw new Error('Database not configured');
+
+      const email = String(args.email || '').toLowerCase().trim();
+      if (!email || !email.includes('@')) throw new Error('Invalid email');
+
+      const payload: any = {
+        email,
+        source: args.source || 'manual',
+        active: args.active ?? true,
+        opted_out: args.optedOut ?? false,
+      };
+
+      if (args.name) payload.name = args.name;
+      if (args.stateId) payload.state_id = args.stateId;
+
+      if (payload.active) payload.unsubscribed_at = null;
+      if (!payload.opted_out) payload.opted_out_at = null;
+
+      const { data, error } = await supabase
+        .from('newsletter_subscribers')
+        .upsert(payload, { onConflict: 'email' })
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
     async getAll(): Promise<NewsletterSubscriber[]> {
       if (!supabase) return [];
       const { data, error } = await supabase.from('newsletter_subscribers').select('*').order('subscribed_at', { ascending: false });
       if (error) throw error;
       return (data || []).map(convertSnakeToCamel);
+    },
+    async update(id: string, subscriber: Partial<NewsletterSubscriber>): Promise<NewsletterSubscriber> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('newsletter_subscribers')
+        .update(convertCamelToSnake(subscriber))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
     },
     async unsubscribe(email: string): Promise<void> {
       if (!supabase) throw new Error('Database not configured');
@@ -1414,6 +1484,44 @@ export const db = {
       const { error } = await supabase.from('newsletter_subscribers').delete().eq('id', id);
       if (error) throw error;
     }
+  },
+
+  newsletterStates: {
+    async getAll(): Promise<NewsletterState[]> {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('newsletter_states')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(convertSnakeToCamel);
+    },
+    async create(state: { name: string; key?: string; color?: string }): Promise<NewsletterState> {
+      if (!supabase) throw new Error('Database not configured');
+      const payload: any = { name: String(state.name || '').trim() };
+      if (state.key && String(state.key).trim()) payload.key = String(state.key).trim();
+      if (state.color && String(state.color).trim()) payload.color = String(state.color).trim();
+      const { data, error } = await supabase.from('newsletter_states').insert(payload).select().single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async update(id: string, state: Partial<NewsletterState>): Promise<NewsletterState> {
+      if (!supabase) throw new Error('Database not configured');
+      const { data, error } = await supabase
+        .from('newsletter_states')
+        .update(convertCamelToSnake(state))
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return convertSnakeToCamel(data);
+    },
+    async delete(id: string): Promise<void> {
+      if (!supabase) throw new Error('Database not configured');
+      const { error } = await supabase.from('newsletter_states').delete().eq('id', id);
+      if (error) throw error;
+    },
   },
 
   newsletterTemplates: {
