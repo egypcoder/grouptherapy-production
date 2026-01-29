@@ -9,12 +9,6 @@ import { createClient } from "@supabase/supabase-js";
 import { computeSeo, normalizeSeoSettings } from "./shared/seo";
 
 import sitemapHandler from "./api/sitemap";
-import sitemapArtistsHandler from "./api/sitemap-artists";
-import sitemapEventsHandler from "./api/sitemap-events";
-import sitemapPagesHandler from "./api/sitemap-pages";
-import sitemapPostsHandler from "./api/sitemap-posts";
-import sitemapReleasesHandler from "./api/sitemap-releases";
-import sitemapVideosHandler from "./api/sitemap-videos";
 import robotsHandler from "./api/robots";
 import seoHandler from "./api/seo";
 import emailServiceSettingsHandler from "./api/email-service-settings";
@@ -140,21 +134,21 @@ export default defineConfig(({ mode }) => {
 
               const routes: Record<string, any> = {
                 "/sitemap.xml": sitemapHandler,
-                "/sitemap-pages.xml": sitemapPagesHandler,
-                "/sitemap-posts.xml": sitemapPostsHandler,
-                "/sitemap-releases.xml": sitemapReleasesHandler,
-                "/sitemap-events.xml": sitemapEventsHandler,
-                "/sitemap-artists.xml": sitemapArtistsHandler,
-                "/sitemap-videos.xml": sitemapVideosHandler,
+                "/sitemap-pages.xml": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "pages" } }, s),
+                "/sitemap-posts.xml": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "posts" } }, s),
+                "/sitemap-releases.xml": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "releases" } }, s),
+                "/sitemap-events.xml": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "events" } }, s),
+                "/sitemap-artists.xml": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "artists" } }, s),
+                "/sitemap-videos.xml": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "videos" } }, s),
                 "/robots.txt": robotsHandler,
 
                 "/api/sitemap": sitemapHandler,
-                "/api/sitemap-pages": sitemapPagesHandler,
-                "/api/sitemap-posts": sitemapPostsHandler,
-                "/api/sitemap-releases": sitemapReleasesHandler,
-                "/api/sitemap-events": sitemapEventsHandler,
-                "/api/sitemap-artists": sitemapArtistsHandler,
-                "/api/sitemap-videos": sitemapVideosHandler,
+                "/api/sitemap-pages": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "pages" } }, s),
+                "/api/sitemap-posts": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "posts" } }, s),
+                "/api/sitemap-releases": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "releases" } }, s),
+                "/api/sitemap-events": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "events" } }, s),
+                "/api/sitemap-artists": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "artists" } }, s),
+                "/api/sitemap-videos": (r: any, s: any) => sitemapHandler({ ...r, query: { ...(r.query || {}), kind: "videos" } }, s),
                 "/api/robots": robotsHandler,
                 "/api/seo": seoHandler,
                 "/api/cloudinary-signed-url": cloudinarySignedUrlHandler,
