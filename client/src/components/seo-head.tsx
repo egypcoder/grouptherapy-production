@@ -22,7 +22,7 @@ export function SEOHead({
   noindex = false,
 }: SEOProps) {
   const [location] = useLocation();
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://grouptherapyeg.com";
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://www.grouptherapyeg.com";
   const rawLocation = typeof location === "string" ? location : "/";
   const cleanPath = (rawLocation.split("?").shift() ?? "/").split("#").shift() ?? "/";
   const nonEmpty = (value: unknown): string | undefined => {

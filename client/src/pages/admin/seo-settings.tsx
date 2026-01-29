@@ -15,18 +15,18 @@ import { ImageUpload } from "@/components/image-upload";
 const defaultOrganizationSchema = {
   "@type": "Organization",
   "name": "GroupTherapy Records",
-  "url": "https://grouptherapyeg.com",
-  "logo": "https://grouptherapyeg.com/logo.png",
+  "url": "https://www.grouptherapyeg.com",
+  "logo": "https://www.grouptherapyeg.com/logo.png",
   "sameAs": []
 };
 
 const defaultWebsiteSchema = {
   "@type": "WebSite",
   "name": "GroupTherapy Records",
-  "url": "https://grouptherapyeg.com",
+  "url": "https://www.grouptherapyeg.com",
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://grouptherapyeg.com/search?q={search_term_string}",
+    "target": "https://www.grouptherapyeg.com/search?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
 };
@@ -35,7 +35,7 @@ const defaultMusicGroupSchema = {
   "@type": "MusicGroup",
   "name": "GroupTherapy",
   "genre": ["Electronic", "House", "Techno"],
-  "url": "https://grouptherapyeg.com"
+  "url": "https://www.grouptherapyeg.com"
 };
 
 export default function AdminSeoSettings() {

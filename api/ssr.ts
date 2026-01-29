@@ -200,7 +200,7 @@ export default async function handler(req: Req, res: Res) {
 
       res.status(200);
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=60");
+      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=300");
       res.setHeader("X-Robots-Tag", computed.robots);
       res.send(withSeo);
       return;
