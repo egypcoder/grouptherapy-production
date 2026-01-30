@@ -62,6 +62,8 @@ function NavDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [location] = useLocation();
 
+  const dropdownId = `nav-dropdown-${label.toLowerCase().replace(/\s+/g, "-")}`;
+
   const isCurrentActive = items.some(item => location === item.href);
 
   return (
@@ -71,6 +73,7 @@ function NavDropdown({
       onMouseLeave={() => setIsOpen(false)}
     >
       <button
+        type="button"
         className={cn(
           "relative px-4 py-2 text-sm font-medium transition-colors rounded-full flex items-center gap-1",
           isCurrentActive
@@ -78,6 +81,9 @@ function NavDropdown({
             : "text-muted-foreground hover:text-foreground"
         )}
         onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-controls={dropdownId}
       >
         {label}
         <ChevronDown className={cn(
@@ -102,11 +108,17 @@ function NavDropdown({
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="absolute top-full left-0 pt-2 z-50"
           >
-            <div className="bg-popover/95 border border-border/50 rounded-xl shadow-lg shadow-black/10 overflow-hidden min-w-[160px]">
+            <div
+              id={dropdownId}
+              role="menu"
+              aria-label={label}
+              className="bg-popover/95 border border-border/50 rounded-xl shadow-lg shadow-black/10 overflow-hidden min-w-[160px]"
+            >
               <div className="p-1.5">
                 {items.map((item, index) => (
                   <Link key={item.href} href={item.href}>
                     <motion.button
+                      type="button"
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.03 }}
@@ -117,6 +129,7 @@ function NavDropdown({
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       )}
                       onClick={() => setIsOpen(false)}
+                      role="menuitem"
                     >
                       {item.label}
                     </motion.button>
@@ -176,7 +189,14 @@ export function Navigation() {
         <div className="max-w-7xl mx-auto px-6 md:px-8">
           <nav className="flex items-center justify-between h-14 lg:h-16">
             <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
-            <img src="/favicon.png" className="w-8 h-8" alt="GroupTherapy Logo" />
+            <img
+              src="/favicon.png"
+              className="w-8 h-8"
+              alt="GroupTherapy Logo"
+              width={32}
+              height={32}
+              decoding="async"
+            />
               <span className="text-lg lg:text-xl font-semibold tracking-tight">
                 GROUP<span className="text-primary transition-colors">THERAPY</span>
               </span>
@@ -194,6 +214,7 @@ export function Navigation() {
                 ) : (
                   <Link key={link.href} href={link.href!}>
                     <button
+                      type="button"
                       className={cn(
                         "relative px-4 py-2 text-sm font-medium transition-colors rounded-full",
                         location === link.href
@@ -228,6 +249,7 @@ export function Navigation() {
                       : "border-border/50 hover:border-primary/30"
                   )}
                   data-testid="button-radio-cta"
+                  aria-label={isPlaying ? "Radio: Live" : "Radio: Listen"}
                 >
                   <Radio className="h-3 w-3" />
                   {isPlaying ? "Live" : "Listen"}
@@ -242,6 +264,9 @@ export function Navigation() {
                 className="lg:hidden rounded-full h-11 w-11"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 data-testid="button-mobile-menu"
+                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="mobile-nav"
               >
                 <motion.div
                   initial={false}
@@ -274,6 +299,8 @@ export function Navigation() {
             />
 
             <motion.nav
+              id="mobile-nav"
+              aria-label="Mobile"
               className="absolute inset-0 flex flex-col items-center justify-center px-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -291,6 +318,7 @@ export function Navigation() {
                   >
                     <Link href={link.href}>
                       <button
+                        type="button"
                         className={cn(
                           "text-2xl font-medium py-1.5 transition-colors",
                           location === link.href

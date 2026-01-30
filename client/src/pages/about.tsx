@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { PageHero } from "@/components/hero-section";
 import { Marquee } from "@/components/marquee";
+import { PartnersLogoMarquee } from "@/components/partners-logo-marquee";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SiLinkedin, SiX, SiInstagram } from "react-icons/si";
@@ -84,6 +85,7 @@ const defaultAboutSections: Array<{ id: string; enabled: boolean; order: number 
   { id: "timeline", enabled: true, order: 4 },
   { id: "team", enabled: true, order: 5 },
   { id: "cta", enabled: true, order: 6 },
+  { id: "partners", enabled: true, order: 7 },
 ];
 
 function normalizeAboutSections(
@@ -207,6 +209,19 @@ export default function AboutPage() {
               key={section.id}
               items={siteSettings?.marqueeItems || []}
               speed={siteSettings?.marqueeSpeed || 40}
+            />
+          );
+        }
+
+        if (section.id === "partners") {
+          return (
+            <PartnersLogoMarquee
+              key={section.id}
+              items={siteSettings?.partnersMarqueeItems || []}
+              speed={siteSettings?.partnersMarqueeSpeed || 40}
+              gap={siteSettings?.partnersMarqueeGap || 48}
+              logoHeight={siteSettings?.partnersMarqueeLogoHeight || 32}
+              useMutedBg={siteSettings?.partnersMarqueeUseMutedBg || false}
             />
           );
         }
@@ -399,21 +414,21 @@ function TeamCard({ member }: { member: TeamMember }) {
         <div className="flex items-center gap-2 mt-3">
           {member.socialLinks?.linkedin && (
             <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-              <a href={member.socialLinks.linkedin} target="_blank" rel="bookmark">
+              <a href={member.socialLinks.linkedin} target="_blank" rel="noopener noreferrer">
                 <SiLinkedin className="h-4 w-4" />
               </a>
             </Button>
           )}
           {member.socialLinks?.twitter && (
             <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-              <a href={member.socialLinks.twitter} target="_blank" rel="bookmark">
+              <a href={member.socialLinks.twitter} target="_blank" rel="noopener noreferrer">
                 <SiX className="h-4 w-4" />
               </a>
             </Button>
           )}
           {member.socialLinks?.instagram && (
             <Button size="icon" variant="ghost" className="h-8 w-8" asChild>
-              <a href={member.socialLinks.instagram} target="_blank" rel="bookmark">
+              <a href={member.socialLinks.instagram} target="_blank" rel="noopener noreferrer">
                 <SiInstagram className="h-4 w-4" />
               </a>
             </Button>

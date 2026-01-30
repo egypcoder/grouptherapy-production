@@ -54,12 +54,23 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./index";
 import { queryClient, queryFunctions } from "@/lib/queryClient";
-import { db, StaticPage, SiteSettings, MarqueeItem, StatItem, PageSectionConfig, PageHeroOverrides, Testimonial } from "@/lib/database";
+import {
+  db,
+  StaticPage,
+  SiteSettings,
+  MarqueeItem,
+  PartnerMarqueeItem,
+  StatItem,
+  PageSectionConfig,
+  PageHeroOverrides,
+  Testimonial,
+} from "@/lib/database";
 import { Link } from "wouter";
 import { VideoUpload } from "@/components/video-upload";
 import { ImageUpload } from "@/components/image-upload";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -95,6 +106,7 @@ const defaultAboutSections: Array<{ id: string; enabled: boolean; order: number 
   { id: "timeline", enabled: true, order: 4 },
   { id: "team", enabled: true, order: 5 },
   { id: "cta", enabled: true, order: 6 },
+  { id: "partners", enabled: true, order: 7 },
 ];
 
 const defaultAboutPageModel: AboutPageModel = {
@@ -314,6 +326,7 @@ const defaultHomeSections: PageSectionConfig[] = [
     description: "Our numbers tell the story of a community united by sound.",
   },
   { id: "marquee", enabled: true, order: 3 },
+  { id: "partners", enabled: true, order: 14 },
   {
     id: "releases",
     enabled: true,
@@ -372,11 +385,23 @@ const defaultHomeSections: PageSectionConfig[] = [
     carouselEnabled: true,
     carouselIntervalMs: 6000,
   },
-  { id: "testimonials", enabled: true, order: 9 },
+  {
+    id: "videos",
+    enabled: true,
+    order: 9,
+    title: "Latest",
+    highlight: "Videos",
+    description: "Watch music videos, live performances, and behind-the-scenes content",
+    actionLabel: "View All Videos",
+    actionHref: "/videos",
+    carouselEnabled: true,
+    carouselIntervalMs: 6000,
+  },
+  { id: "testimonials", enabled: true, order: 10 },
   {
     id: "awards",
     enabled: true,
-    order: 10,
+    order: 11,
     tag: "Therapy Awards",
     title: "Voting is",
     highlight: "live",
@@ -384,11 +409,11 @@ const defaultHomeSections: PageSectionConfig[] = [
     actionLabel: "View Awards",
     actionHref: "/awards",
   },
-  { id: "newsletter", enabled: true, order: 11 },
+  { id: "newsletter", enabled: true, order: 12 },
   {
     id: "newsCta",
     enabled: true,
-    order: 12,
+    order: 13,
     title: "Stay in the",
     highlight: "loop",
     description:
@@ -397,6 +422,29 @@ const defaultHomeSections: PageSectionConfig[] = [
     actionHref: "/news",
   },
 ];
+
+function normalizeSections(
+  incoming: PageSectionConfig[] | null | undefined,
+  defaults: PageSectionConfig[]
+): PageSectionConfig[] {
+  const incomingById = new Map(
+    (Array.isArray(incoming) ? incoming : [])
+      .filter((s): s is PageSectionConfig => !!s && typeof s.id === "string")
+      .map((s) => [s.id, s] as const)
+  );
+
+  return defaults.map((d) => {
+    const inc = incomingById.get(d.id);
+    if (!inc) return d;
+    return {
+      ...d,
+      ...inc,
+      id: d.id,
+      enabled: typeof inc.enabled === "boolean" ? inc.enabled : d.enabled,
+      order: typeof inc.order === "number" ? inc.order : d.order,
+    };
+  });
+}
 
 const heroOverridePages = [
   { key: "/releases", label: "Releases" },
@@ -418,12 +466,14 @@ const heroOverridePages = [
 const homeSectionMeta: Record<string, { label: string; Icon: any }> = {
   hero: { label: "Hero", Icon: Sparkles },
   marquee: { label: "Marquee", Icon: Repeat },
+  partners: { label: "Partners", Icon: Globe },
   stats: { label: "Stats", Icon: BarChart3 },
   releases: { label: "Releases", Icon: Disc3 },
   artists: { label: "Artists", Icon: Users },
   events: { label: "Events", Icon: Calendar },
   playlists: { label: "Playlists", Icon: ListMusic },
   news: { label: "News", Icon: Newspaper },
+  videos: { label: "Videos", Icon: Video },
   testimonials: { label: "Testimonials", Icon: MessageSquareQuote },
   awards: { label: "Awards", Icon: Trophy },
   newsletter: { label: "Newsletter", Icon: Mail },
@@ -481,6 +531,15 @@ export default function AdminStaticPages() {
 
   const [marqueeItems, setMarqueeItems] = useState<MarqueeItem[]>(defaultMarqueeItems);
   const [marqueeSpeed, setMarqueeSpeed] = useState(40);
+
+  const [partnersMarqueeItems, setPartnersMarqueeItems] = useState<PartnerMarqueeItem[]>([]);
+  const [partnersMarqueeSpeed, setPartnersMarqueeSpeed] = useState(40);
+  const [partnersMarqueeGap, setPartnersMarqueeGap] = useState(48);
+  const [partnersMarqueeLogoHeight, setPartnersMarqueeLogoHeight] = useState(32);
+  const [partnersMarqueeUseMutedBg, setPartnersMarqueeUseMutedBg] = useState(false);
+  const [draggingPartnerIndex, setDraggingPartnerIndex] = useState<number | null>(null);
+  const [dragOverPartnerIndex, setDragOverPartnerIndex] = useState<number | null>(null);
+  const [openPartnerIndex, setOpenPartnerIndex] = useState<number | null>(null);
 
   const [statsItems, setStatsItems] = useState<StatItem[]>(defaultStatsItems);
 
@@ -542,6 +601,11 @@ export default function AdminStaticPages() {
       });
       setMarqueeItems(siteSettings.marqueeItems || defaultMarqueeItems);
       setMarqueeSpeed(siteSettings.marqueeSpeed || 40);
+      setPartnersMarqueeItems(siteSettings.partnersMarqueeItems || []);
+      setPartnersMarqueeSpeed(siteSettings.partnersMarqueeSpeed || 40);
+      setPartnersMarqueeGap(siteSettings.partnersMarqueeGap || 48);
+      setPartnersMarqueeLogoHeight(siteSettings.partnersMarqueeLogoHeight || 32);
+      setPartnersMarqueeUseMutedBg(siteSettings.partnersMarqueeUseMutedBg || false);
       setStatsItems(siteSettings.statsItems || defaultStatsItems);
       setNewsletterContent({
         newsletterTitle: siteSettings.newsletterTitle || "Join the community",
@@ -551,10 +615,7 @@ export default function AdminStaticPages() {
         newsletterDisclaimer: siteSettings.newsletterDisclaimer || "No spam. Unsubscribe anytime.",
       });
       setHomeSections(
-        (siteSettings.homeSections && siteSettings.homeSections.length
-          ? siteSettings.homeSections
-          : defaultHomeSections
-        )
+        normalizeSections(siteSettings.homeSections, defaultHomeSections)
           .slice()
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       );
@@ -831,6 +892,11 @@ export default function AdminStaticPages() {
       ...heroSettings,
       marqueeItems,
       marqueeSpeed,
+      partnersMarqueeItems,
+      partnersMarqueeSpeed,
+      partnersMarqueeGap,
+      partnersMarqueeLogoHeight,
+      partnersMarqueeUseMutedBg,
       statsItems,
       ...newsletterContent,
       homeSections,
@@ -859,6 +925,36 @@ export default function AdminStaticPages() {
       updated[index] = { ...existing, [field]: value };
       setMarqueeItems(updated);
     }
+  };
+
+  const addPartnerMarqueeItem = () => {
+    setPartnersMarqueeItems((prev) => [...prev, { imageUrl: "", alt: "", href: "" }]);
+  };
+
+  const removePartnerMarqueeItem = (index: number) => {
+    setPartnersMarqueeItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updatePartnerMarqueeItem = (index: number, patch: Partial<PartnerMarqueeItem>) => {
+    setPartnersMarqueeItems((prev) => {
+      const next = [...prev];
+      const existing = next[index];
+      if (!existing) return prev;
+      next[index] = { ...existing, ...patch };
+      return next;
+    });
+  };
+
+  const reorderPartnerMarqueeItems = (fromIndex: number, toIndex: number) => {
+    setPartnersMarqueeItems((prev) => {
+      if (fromIndex === toIndex) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    setOpenPartnerIndex(null);
   };
 
   const addStatItem = () => {
@@ -1118,6 +1214,234 @@ export default function AdminStaticPages() {
                           </div>
                             ) : null}
 
+                            {section.id === "partners" ? (
+                              <div className="space-y-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="space-y-0.5">
+                                  <div className="font-medium text-sm">Partners</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {partnersMarqueeItems.filter((p) => (p.imageUrl || "").trim().length > 0).length} logos
+                                  </div>
+                                </div>
+
+                                <Button variant="outline" size="sm" onClick={addPartnerMarqueeItem}>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/10 px-2 py-1">
+                                  <Switch
+                                    checked={partnersMarqueeUseMutedBg}
+                                    onCheckedChange={(checked) => setPartnersMarqueeUseMutedBg(checked)}
+                                  />
+                                  <span className="text-xs text-muted-foreground">Muted BG</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/10 px-2 py-1">
+                                  <span className="text-xs text-muted-foreground">Size</span>
+                                  <Input
+                                    type="number"
+                                    value={partnersMarqueeLogoHeight}
+                                    onChange={(e) => setPartnersMarqueeLogoHeight(parseInt(e.target.value) || 32)}
+                                    className="w-20 h-8"
+                                    min={18}
+                                    max={56}
+                                  />
+                                  <span className="text-xs text-muted-foreground">px</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/10 px-2 py-1">
+                                  <span className="text-xs text-muted-foreground">Gap</span>
+                                  <Input
+                                    type="number"
+                                    value={partnersMarqueeGap}
+                                    onChange={(e) => setPartnersMarqueeGap(parseInt(e.target.value) || 48)}
+                                    className="w-20 h-8"
+                                    min={8}
+                                    max={160}
+                                  />
+                                  <span className="text-xs text-muted-foreground">px</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 rounded-md border border-border/50 bg-muted/10 px-2 py-1">
+                                  <span className="text-xs text-muted-foreground">Speed</span>
+                                  <Input
+                                    type="number"
+                                    value={partnersMarqueeSpeed}
+                                    onChange={(e) => setPartnersMarqueeSpeed(parseInt(e.target.value) || 40)}
+                                    className="w-20 h-8"
+                                    min={10}
+                                    max={100}
+                                  />
+                                  <span className="text-xs text-muted-foreground">s</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div
+                              className={cn(
+                                "relative overflow-hidden rounded-md border border-border/50",
+                                partnersMarqueeUseMutedBg ? "bg-muted/30" : "bg-background"
+                              )}
+                              style={{
+                                WebkitMaskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
+                                maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
+                              }}
+                            >
+                              <div className="overflow-x-auto">
+                                <div
+                                  className="flex w-max items-center px-6 py-4"
+                                  style={{ gap: Math.max(8, Math.min(160, partnersMarqueeGap || 48)) }}
+                                >
+                                  {Array.from({ length: 2 }, () =>
+                                    partnersMarqueeItems
+                                      .filter((p) => (p.imageUrl || "").trim().length > 0)
+                                      .map((p, i) => (
+                                        <img
+                                          key={`${p.imageUrl}-${i}`}
+                                          src={resolveMediaUrl(p.imageUrl, "thumb")}
+                                          alt={p.alt || "Partner logo"}
+                                          className="w-auto object-contain opacity-70 grayscale brightness-0 dark:invert"
+                                          style={{ height: Math.max(18, Math.min(56, partnersMarqueeLogoHeight || 32)) }}
+                                          loading="lazy"
+                                        />
+                                      ))
+                                  ).flat()}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              {partnersMarqueeItems.map((item, index) => {
+                                const isOpen = openPartnerIndex === index;
+                                return (
+                                  <div
+                                    key={index}
+                                    className={cn(
+                                      "rounded-md border border-border/50 bg-muted/10",
+                                      dragOverPartnerIndex === index ? "ring-2 ring-primary" : ""
+                                    )}
+                                    onDragOver={(e) => {
+                                      if (draggingPartnerIndex === null) return;
+                                      e.preventDefault();
+                                      setDragOverPartnerIndex(index);
+                                    }}
+                                    onDragLeave={() => {
+                                      if (dragOverPartnerIndex === index) setDragOverPartnerIndex(null);
+                                    }}
+                                    onDrop={(e) => {
+                                      e.preventDefault();
+                                      if (draggingPartnerIndex === null) return;
+                                      reorderPartnerMarqueeItems(draggingPartnerIndex, index);
+                                      setDraggingPartnerIndex(null);
+                                      setDragOverPartnerIndex(null);
+                                    }}
+                                  >
+                                    <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3">
+                                      <div
+                                        className="inline-flex items-center gap-2 text-xs text-muted-foreground select-none self-start sm:self-auto"
+                                        draggable
+                                        onDragStart={(e) => {
+                                          setDraggingPartnerIndex(index);
+                                          e.dataTransfer.setData("text/plain", String(index));
+                                          e.dataTransfer.effectAllowed = "move";
+                                        }}
+                                        onDragEnd={() => {
+                                          setDraggingPartnerIndex(null);
+                                          setDragOverPartnerIndex(null);
+                                        }}
+                                      >
+                                        <GripVertical className="h-4 w-4" />
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setOpenPartnerIndex((prev) => (prev === index ? null : index))}
+                                        className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 text-left"
+                                      >
+                                        <div className="h-10 w-24 sm:w-28 shrink-0 rounded-md border bg-background flex items-center justify-center px-3">
+                                          {item.imageUrl ? (
+                                            <img
+                                              src={resolveMediaUrl(item.imageUrl, "thumb")}
+                                              alt={item.alt || "Partner logo"}
+                                              className="h-6 w-auto object-contain opacity-70 grayscale brightness-0 dark:invert"
+                                              loading="lazy"
+                                            />
+                                          ) : (
+                                            <span className="text-xs text-muted-foreground">No logo</span>
+                                          )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 flex-1 w-full">
+                                          <Input
+                                            value={item.alt || ""}
+                                            onChange={(e) => updatePartnerMarqueeItem(index, { alt: e.target.value })}
+                                            placeholder="Alt (partner name)"
+                                            className="h-8"
+                                          />
+                                          <Input
+                                            value={item.href || ""}
+                                            onChange={(e) => updatePartnerMarqueeItem(index, { href: e.target.value })}
+                                            placeholder="Link (optional)"
+                                            className="h-8"
+                                          />
+                                        </div>
+                                      </button>
+
+                                      <div className="flex items-center gap-1 self-end sm:self-auto">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => setOpenPartnerIndex((prev) => (prev === index ? null : index))}
+                                          className="h-8 w-8"
+                                        >
+                                          <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen ? "rotate-180" : "")} />
+                                        </Button>
+
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => removePartnerMarqueeItem(index)}
+                                          className="text-muted-foreground hover:text-destructive h-8 w-8"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    {isOpen ? (
+                                      <div className="border-t border-border/50 p-3 space-y-2">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                          <div className="space-y-2">
+                                            <Label>Logo</Label>
+                                            <ImageUpload
+                                              currentImage={item.imageUrl}
+                                              onUploadComplete={(url) => updatePartnerMarqueeItem(index, { imageUrl: url })}
+                                              folder="partners"
+                                              aspectRatio="banner"
+                                            />
+                                          </div>
+                                          <div className="space-y-2">
+                                            <Label>Logo URL</Label>
+                                            <Input
+                                              value={item.imageUrl}
+                                              onChange={(e) => updatePartnerMarqueeItem(index, { imageUrl: e.target.value })}
+                                              placeholder="Paste image URL"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                            ) : null}
+
                             {section.id === "marquee" ? (
                               <div className="space-y-4">
                             <div className="flex items-center justify-between gap-3">
@@ -1128,7 +1452,7 @@ export default function AdminStaticPages() {
                                   type="number"
                                   value={marqueeSpeed}
                                   onChange={(e) => setMarqueeSpeed(parseInt(e.target.value) || 40)}
-                                  className="w-16 h-8"
+                                  className="w-20 h-8"
                                   min={10}
                                   max={100}
                                 />
@@ -1404,6 +1728,7 @@ export default function AdminStaticPages() {
                               "events",
                               "playlists",
                               "news",
+                              "videos",
                               "awards",
                               "newsCta",
                             ].includes(section.id) ? (
@@ -1451,6 +1776,7 @@ export default function AdminStaticPages() {
                               "artists",
                               "playlists",
                               "news",
+                              "videos",
                             ].includes(section.id) ? (
                               <>
                                 <div className="flex items-center gap-3">
@@ -1486,6 +1812,7 @@ export default function AdminStaticPages() {
                               "events",
                               "playlists",
                               "news",
+                              "videos",
                               "awards",
                               "newsCta",
                             ].includes(section.id) ? (

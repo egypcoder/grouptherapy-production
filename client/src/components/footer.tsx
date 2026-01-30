@@ -128,7 +128,7 @@ export function Footer() {
                         key={social.label}
                         href={social.href!}
                         target="_blank"
-                        rel="bookmark"
+                        rel="noopener noreferrer"
                         aria-label={social.label}
                         className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                         data-testid={`link-social-${social.label.toLowerCase()}`}
@@ -144,6 +144,8 @@ export function Footer() {
                 <p className="text-sm font-medium">Stay updated</p>
                 <div className="flex flex-row gap-2">
                   <Input
+                    id="newsletter-email-footer"
+                    name="newsletterEmailFooter"
                     type="email"
                     placeholder="your@email.com"
                     aria-label="Email address"

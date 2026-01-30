@@ -8,6 +8,8 @@ import { PostsCarousel } from "@/components/posts-carousel";
 import { AwardEntryCard } from "@/components/award-entry-card";
 import { FeaturedArtists } from "@/components/featured-artists";
 import { ArtistsCarousel } from "@/components/artists-carousel";
+import { VideosCarousel } from "@/components/videos-carousel";
+import { PartnersLogoMarquee } from "@/components/partners-logo-marquee";
 import { NewsletterSection } from "@/components/newsletter-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { Marquee } from "@/components/marquee";
@@ -21,6 +23,7 @@ import {
   type Playlist,
   type Artist,
   type Post,
+  type Video,
   type SiteSettings,
   type MarqueeItem,
   type StatItem,
@@ -83,6 +86,11 @@ const defaultHomeSections: PageSectionConfig[] = [
     order: 3,
   },
   {
+    id: "partners",
+    enabled: true,
+    order: 14,
+  },
+  {
     id: "releases",
     enabled: true,
     order: 4,
@@ -133,14 +141,26 @@ const defaultHomeSections: PageSectionConfig[] = [
     actionHref: "/news",
   },
   {
-    id: "testimonials",
+    id: "videos",
     enabled: true,
     order: 9,
+    title: "Latest",
+    highlight: "Videos",
+    description: "Watch music videos, live performances, and behind-the-scenes content",
+    actionLabel: "View All Videos",
+    actionHref: "/videos",
+    carouselEnabled: true,
+    carouselIntervalMs: 6000,
+  },
+  {
+    id: "testimonials",
+    enabled: true,
+    order: 10,
   },
   {
     id: "awards",
     enabled: true,
-    order: 10,
+    order: 11,
     tag: "Therapy Awards",
     title: "Voting is",
     highlight: "live",
@@ -151,12 +171,12 @@ const defaultHomeSections: PageSectionConfig[] = [
   {
     id: "newsletter",
     enabled: true,
-    order: 11,
+    order: 12,
   },
   {
     id: "newsCta",
     enabled: true,
-    order: 12,
+    order: 13,
     title: "Stay in the",
     highlight: "loop",
     description:
@@ -539,6 +559,11 @@ export default function HomePage() {
     queryFn: () => db.posts.getPublishedPage(12, 0),
   });
 
+  const { data: videos } = useQuery<Video[]>({
+    queryKey: ["videos", "published", { limit: 24 }],
+    queryFn: () => db.videos.getPublishedPage(24, 0),
+  });
+
   const { data: artists } = useQuery<Artist[]>({
     queryKey: ["artists", "featured"],
     queryFn: () => db.artists.getFeatured(),
@@ -576,6 +601,11 @@ export default function HomePage() {
   const showHeroRadio = siteSettings?.showHeroRadio ?? true;
   const marqueeItems = siteSettings?.marqueeItems || defaultMarqueeItems;
   const marqueeSpeed = siteSettings?.marqueeSpeed || 40;
+  const partnersMarqueeItems = siteSettings?.partnersMarqueeItems || [];
+  const partnersMarqueeSpeed = siteSettings?.partnersMarqueeSpeed || 40;
+  const partnersMarqueeGap = siteSettings?.partnersMarqueeGap || 48;
+  const partnersMarqueeLogoHeight = siteSettings?.partnersMarqueeLogoHeight || 32;
+  const partnersMarqueeUseMutedBg = siteSettings?.partnersMarqueeUseMutedBg || false;
   const statsItems = siteSettings?.statsItems?.length
     ? siteSettings.statsItems
     : defaultStatsItems;
@@ -591,6 +621,7 @@ export default function HomePage() {
   const hasEvents = featuredEvents.length > 0;
   const hasPlaylists = (playlists?.length ?? 0) > 0;
   const hasPosts = (posts?.length ?? 0) > 0;
+  const hasVideos = (videos?.length ?? 0) > 0;
 
   const heroStats = statsItems.slice(0, 3).map((stat) => ({
     value: `${stat.prefix || ""}${stat.value}${stat.suffix || ""}`,
@@ -620,6 +651,38 @@ export default function HomePage() {
           );
         }
 
+        if (section.id === "videos") {
+          if (!hasVideos) return null;
+          return (
+            <section key={section.id} className="py-16 md:py-24 bg-muted/30 shadow-sm">
+              <div className="max-w-7xl mx-auto px-6 md:px-8">
+                <SectionHeader
+                  title={section.title || "Latest"}
+                  highlight={section.highlight || "Videos"}
+                  description={
+                    section.description ||
+                    "Watch music videos, live performances, and behind-the-scenes content"
+                  }
+                  action={
+                    section.actionHref
+                      ? {
+                          label: section.actionLabel || "View All Videos",
+                          href: section.actionHref,
+                        }
+                      : { label: "View All Videos", href: "/videos" }
+                  }
+                />
+              </div>
+              <VideosCarousel
+                videos={(videos || []).slice(0, 12)}
+                title=""
+                autoPlay={section.carouselEnabled ?? true}
+                autoPlayIntervalMs={section.carouselIntervalMs ?? 6000}
+              />
+            </section>
+          );
+        }
+
         if (section.id === "stats") {
           if (!hasStats) return null;
           return (
@@ -635,6 +698,19 @@ export default function HomePage() {
 
         if (section.id === "marquee") {
           return <Marquee key={section.id} items={marqueeItems} speed={marqueeSpeed} />;
+        }
+
+        if (section.id === "partners") {
+          return (
+            <PartnersLogoMarquee
+              key={section.id}
+              items={partnersMarqueeItems}
+              speed={partnersMarqueeSpeed}
+              gap={partnersMarqueeGap}
+              logoHeight={partnersMarqueeLogoHeight}
+              useMutedBg={partnersMarqueeUseMutedBg}
+            />
+          );
         }
 
         if (section.id === "releases") {

@@ -489,6 +489,12 @@ export interface MarqueeItem {
   icon: string;
 }
 
+export interface PartnerMarqueeItem {
+  imageUrl: string;
+  alt?: string;
+  href?: string;
+}
+
 export interface StatItem {
   value: number;
   label: string;
@@ -549,6 +555,11 @@ export interface SiteSettings {
   showHeroRadio?: boolean;
   marqueeItems?: MarqueeItem[];
   marqueeSpeed?: number;
+  partnersMarqueeItems?: PartnerMarqueeItem[];
+  partnersMarqueeSpeed?: number;
+  partnersMarqueeGap?: number;
+  partnersMarqueeLogoHeight?: number;
+  partnersMarqueeUseMutedBg?: boolean;
   statsItems?: StatItem[];
   newsletterTitle?: string;
   newsletterDescription?: string;

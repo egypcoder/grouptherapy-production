@@ -142,24 +142,235 @@ export default async function handler(req: Req, res: Res) {
     }
 
     const body = `<!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Unsubscribed</title>
+    <title>Unsubscribed | GroupTherapy</title>
+    <meta name="robots" content="noindex, nofollow" />
     <style>
-      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #0b0b0f; color: #fff; margin:0; }
-      .wrap { max-width: 560px; margin: 0 auto; padding: 48px 20px; }
-      .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); border-radius: 16px; padding: 20px; }
-      .muted { color: rgba(255,255,255,0.70); font-size: 14px; line-height: 20px; }
-      a { color: #8b5cf6; }
+      :root {
+        --bg: #05060a;
+        --card: rgba(255, 255, 255, 0.06);
+        --card-border: rgba(255, 255, 255, 0.10);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.70);
+        --muted-2: rgba(255, 255, 255, 0.55);
+        --purple: #8b5cf6;
+        --purple-2: #a78bfa;
+        --blue: #22d3ee;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: radial-gradient(1100px 700px at 20% -10%, rgba(139,92,246,0.35), transparent 55%),
+                    radial-gradient(1000px 600px at 110% 10%, rgba(34,211,238,0.20), transparent 60%),
+                    radial-gradient(800px 500px at 40% 120%, rgba(167,139,250,0.18), transparent 55%),
+                    var(--bg);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px 16px;
+      }
+      .wrap {
+        width: 100%;
+        max-width: 920px;
+      }
+      .shell {
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 18px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        color: inherit;
+      }
+      .logo {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .logo img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        filter: drop-shadow(0 6px 16px rgba(0,0,0,0.35));
+      }
+      .brand-name {
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        font-size: 14px;
+        line-height: 18px;
+      }
+      .brand-sub {
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--muted-2);
+      }
+      .badge {
+        font-size: 12px;
+        color: rgba(255,255,255,0.75);
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.10);
+        padding: 6px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .content {
+        padding: 22px 18px 18px;
+      }
+      .card {
+        border-radius: 20px;
+        padding: 22px;
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        position: relative;
+        overflow: hidden;
+      }
+      .card:before {
+        content: "";
+        position: absolute;
+        inset: -2px;
+        background: radial-gradient(700px 220px at 30% 0%, rgba(139,92,246,0.25), transparent 55%),
+                    radial-gradient(650px 220px at 80% 110%, rgba(34,211,238,0.12), transparent 55%);
+        opacity: 0.85;
+        pointer-events: none;
+      }
+      .card > * { position: relative; }
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 34px;
+        letter-spacing: -0.2px;
+      }
+      .lead {
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 22px;
+      }
+      .email-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.88);
+        font-size: 13px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--purple), var(--blue));
+        box-shadow: 0 0 0 4px rgba(139,92,246,0.15);
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.06);
+        color: rgba(255,255,255,0.92);
+        padding: 10px 14px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        line-height: 18px;
+        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+      }
+      .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.20); }
+      .btn.primary {
+        background: linear-gradient(135deg, rgba(139,92,246,0.95), rgba(34,211,238,0.55));
+        border-color: rgba(255,255,255,0.22);
+      }
+      .btn.primary:hover { background: linear-gradient(135deg, rgba(167,139,250,0.95), rgba(34,211,238,0.65)); }
+      .foot {
+        padding: 14px 18px 16px;
+        color: var(--muted-2);
+        font-size: 12px;
+        line-height: 18px;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        background: rgba(0,0,0,0.18);
+      }
+      .foot a { color: rgba(255,255,255,0.78); text-decoration: none; }
+      .foot a:hover { text-decoration: underline; }
+      @media (max-width: 520px) {
+        h1 { font-size: 24px; line-height: 30px; }
+        .badge { display: none; }
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <div class="card">
-        <h1 style="margin:0 0 8px; font-size: 22px;">You’re unsubscribed</h1>
-        <p class="muted" style="margin:0;">${safeText(email)} has been opted out from future emails.</p>
+      <div class="shell">
+        <div class="topbar">
+          <a class="brand" href="/" aria-label="Go to GroupTherapy home">
+            <span class="logo" aria-hidden="true">
+              <img src="/favicon.png" alt="" />
+            </span>
+            <span>
+              <div class="brand-name">GroupTherapy</div>
+              <div class="brand-sub">Newsletter preferences</div>
+            </span>
+          </a>
+          <div class="badge">Update confirmed</div>
+        </div>
+
+        <div class="content">
+          <div class="card">
+            <h1>You’re unsubscribed</h1>
+            <p class="lead">${safeText(email)} has been opted out from future emails.</p>
+            <div class="email-chip" aria-label="Unsubscribed email">
+              <span class="dot" aria-hidden="true"></span>
+              <span>${safeText(email)}</span>
+            </div>
+            <div class="actions">
+              <a class="btn primary" href="/">Back to home</a>
+              <a class="btn" href="/contact">Contact support</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot">
+          <span>© ${new Date().getFullYear()} GroupTherapy. All rights reserved.</span>
+          <span>
+            <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a>
+          </span>
+        </div>
       </div>
     </div>
   </body>

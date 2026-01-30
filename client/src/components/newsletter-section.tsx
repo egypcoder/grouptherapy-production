@@ -110,12 +110,15 @@ export function NewsletterSection({
           ) : (
             <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
               <Input
+                id="newsletter-email-section"
+                name="newsletterEmailSection"
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={isLoading}
                 className="flex-1 h-12 min-h-12 px-5 rounded-full bg-background border-border/50"
+                autoComplete="email"
                 data-testid="input-newsletter-email-section"
               />
               <Button 

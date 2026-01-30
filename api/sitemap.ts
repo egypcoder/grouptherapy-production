@@ -44,6 +44,27 @@ function xmlEscape(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function toValidLastmod(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  if (value instanceof Date) {
+    const ts = value.getTime();
+    return Number.isFinite(ts) ? value.toISOString() : undefined;
+  }
+  if (typeof value === "number") {
+    const d = new Date(value);
+    const ts = d.getTime();
+    return Number.isFinite(ts) ? d.toISOString() : undefined;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const d = new Date(trimmed);
+    const ts = d.getTime();
+    return Number.isFinite(ts) ? d.toISOString() : undefined;
+  }
+  return undefined;
+}
+
 function sitemapIndex(urls: { loc: string; lastmod?: string }[]): string {
   const items = urls
     .map((u) => {
@@ -185,6 +206,7 @@ export default async function handler(req: Req, res: Res) {
       .map((v: any) => v.created_at)
       .filter(Boolean)
       .map((d: any) => new Date(d).getTime())
+      .filter((ts: number) => Number.isFinite(ts))
       .reduce((acc: number, ts: number) => (ts > acc ? ts : acc), 0);
 
     const videos = data.map((v: any) => {
@@ -215,7 +237,7 @@ export default async function handler(req: Req, res: Res) {
     const urls = [
       {
         loc: `${baseUrl}/videos`,
-        lastmod: mostRecent ? new Date(mostRecent).toISOString() : undefined,
+        lastmod: mostRecent ? toValidLastmod(new Date(mostRecent)) : undefined,
         images,
         videos,
       },
@@ -261,7 +283,7 @@ export default async function handler(req: Req, res: Res) {
       const lastmod = a.created_at;
       return {
         loc: `${baseUrl}/artists/${a.slug}`,
-        lastmod: lastmod ? new Date(lastmod).toISOString() : undefined,
+        lastmod: toValidLastmod(lastmod),
         images: a.image_url ? [{ loc: a.image_url, title: a.name || undefined }] : [],
       };
     });
@@ -307,7 +329,7 @@ export default async function handler(req: Req, res: Res) {
       const lastmod = e.date || e.created_at;
       return {
         loc: `${baseUrl}/events/${e.slug}`,
-        lastmod: lastmod ? new Date(lastmod).toISOString() : undefined,
+        lastmod: toValidLastmod(lastmod),
         images: e.image_url ? [{ loc: e.image_url, title: e.title || undefined }] : [],
       };
     });
@@ -354,7 +376,7 @@ export default async function handler(req: Req, res: Res) {
       const img = p.og_image_url || p.cover_url;
       return {
         loc: `${baseUrl}/news/${p.slug}`,
-        lastmod: lastmod ? new Date(lastmod).toISOString() : undefined,
+        lastmod: toValidLastmod(lastmod),
         images: img ? [{ loc: img, title: p.title || undefined }] : [],
       };
     });
@@ -400,7 +422,7 @@ export default async function handler(req: Req, res: Res) {
       const lastmod = r.release_date || r.created_at;
       return {
         loc: `${baseUrl}/releases/${r.slug}`,
-        lastmod: lastmod ? new Date(lastmod).toISOString() : undefined,
+        lastmod: toValidLastmod(lastmod),
         images: r.cover_url ? [{ loc: r.cover_url, title: r.title || undefined }] : [],
       };
     });
@@ -453,7 +475,7 @@ export default async function handler(req: Req, res: Res) {
           if (!slug) return;
           if (["terms", "privacy", "cookies"].includes(slug)) return;
           const lastmodRaw = p.updated_at || p.created_at;
-          const lastmod = lastmodRaw ? new Date(lastmodRaw).toISOString() : undefined;
+          const lastmod = toValidLastmod(lastmodRaw);
           urls.push({ loc: `${baseUrl}/${slug}`, changefreq: "yearly", priority: 0.3, lastmod });
         });
       }
