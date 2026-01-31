@@ -557,7 +557,7 @@ Return only valid JSON, no markdown code blocks or additional text.`;
                 <Label htmlFor="title">Title *</Label>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={handleGeneratePost}
                   disabled={isGenerating || !formData.title}

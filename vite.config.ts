@@ -11,7 +11,7 @@ import { computeSeo, normalizeSeoSettings } from "./shared/seo";
 import sitemapHandler from "./api/sitemap";
 import robotsHandler from "./api/robots";
 import seoHandler from "./api/seo";
-import emailServiceSettingsHandler from "./api/email-service-settings";
+import newsletterSenderProfilesHandler from "./api/newsletter-sender-profiles";
 import newsletterSendHandler from "./api/newsletter-send";
 import newsletterUnsubscribeHandler from "./api/newsletter-unsubscribe";
 import cloudinarySignedUrlHandler from "./api/cloudinary-signed-url";
@@ -153,7 +153,7 @@ export default defineConfig(({ mode }) => {
                 "/api/robots": robotsHandler,
                 "/api/seo": seoHandler,
                 "/api/cloudinary-signed-url": cloudinarySignedUrlHandler,
-                "/api/email-service-settings": emailServiceSettingsHandler,
+                "/api/newsletter-sender-profiles": newsletterSenderProfilesHandler,
                 "/api/newsletter-send": newsletterSendHandler,
                 "/api/newsletter-unsubscribe": newsletterUnsubscribeHandler,
               };

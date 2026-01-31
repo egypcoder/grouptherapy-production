@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Mail, Send, Loader2, Trash2, Download, Sparkles, Settings, CheckCircle2, AlertCircle, Plus, Pencil } from "lucide-react";
+import { Mail, Send, Loader2, Trash2, Download, Sparkles, Settings, CheckCircle2, AlertCircle, Plus, Pencil, Copy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,16 +40,16 @@ import { generateContent, isGeminiConfigured } from "@/lib/gemini";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { NewsletterTemplateBuilderDialog } from "@/components/newsletter-template-builder";
 import { NewsletterCampaignBuilderDialog } from "@/components/newsletter-campaign-builder";
-import { fetchEmailServiceSettings, updateEmailServiceSettings } from "@/lib/email-service-settings";
+import {
+  createNewsletterSenderProfile,
+  deleteNewsletterSenderProfile,
+  fetchNewsletterSenderProfiles,
+  NewsletterSenderProfile,
+  updateNewsletterSenderProfile,
+} from "@/lib/newsletter-sender-profiles";
 import { sendNewsletterViaApi } from "@/lib/newsletter-send";
 
-interface EmailServiceConfig {
-  service: string;
-  apiKey?: string;
-  apiUrl?: string;
-  fromEmail: string;
-  senderName: string;
-}
+const EMPTY_SENDER_PROFILES: NewsletterSenderProfile[] = [];
 
 export default function AdminNewsletters() {
   const { toast } = useToast();
@@ -74,7 +74,8 @@ export default function AdminNewsletters() {
   });
   const [isEditSubscriberOpen, setIsEditSubscriberOpen] = useState(false);
   const [editingSubscriber, setEditingSubscriber] = useState<NewsletterSubscriber | null>(null);
-  const [editSubscriberForm, setEditSubscriberForm] = useState<{ stateId: string; optedOut: boolean }>({
+  const [editSubscriberForm, setEditSubscriberForm] = useState<{ name: string; stateId: string; optedOut: boolean }>({
+    name: "",
     stateId: "",
     optedOut: false,
   });
@@ -114,9 +115,9 @@ export default function AdminNewsletters() {
     queryFn: queryFunctions.eventsUpcoming as any,
   });
 
-  const { data: emailServiceSettings } = useQuery({
-    queryKey: ["emailServiceSettings"],
-    queryFn: fetchEmailServiceSettings,
+  const { data: senderProfiles = EMPTY_SENDER_PROFILES } = useQuery<NewsletterSenderProfile[]>({
+    queryKey: ["newsletterSenderProfiles"],
+    queryFn: fetchNewsletterSenderProfiles,
   });
 
   const deliverableSubscribers = subscribers.filter((s) => s.active && !s.optedOut);
@@ -131,53 +132,140 @@ export default function AdminNewsletters() {
     return stateOk && optOk;
   });
 
-  const emailConfig: EmailServiceConfig = emailServiceSettings
-    ? {
-        service: emailServiceSettings.service,
-        apiUrl: emailServiceSettings.apiUrl || "",
-        fromEmail: emailServiceSettings.fromEmail || "",
-        senderName: emailServiceSettings.senderName || "",
-      }
-    : { service: "none", fromEmail: "", senderName: "" };
+  const defaultSenderProfile = senderProfiles.find((p) => p.isDefault) || null;
+  const firstSenderProfile = senderProfiles.length ? senderProfiles[0] : null;
 
-  const [emailSettings, setEmailSettings] = useState<EmailServiceConfig>(emailConfig);
+  const [selectedSenderProfileId, setSelectedSenderProfileId] = useState<string | null>(null);
+  const [isCreatingSenderProfile, setIsCreatingSenderProfile] = useState(false);
+  const [isSenderProfileFormDirty, setIsSenderProfileFormDirty] = useState(false);
+  const [senderProfileForm, setSenderProfileForm] = useState<{
+    name: string;
+    service: string;
+    fromEmail: string;
+    senderName: string;
+    apiUrl: string;
+    apiKey: string;
+    makeDefault: boolean;
+  }>({
+    name: "",
+    service: "resend",
+    fromEmail: "",
+    senderName: "",
+    apiUrl: "",
+    apiKey: "",
+    makeDefault: false,
+  });
 
   useEffect(() => {
-    if (!emailServiceSettings) return;
-    setEmailSettings({
-      service: emailServiceSettings.service,
-      apiKey: "",
-      apiUrl: emailServiceSettings.apiUrl || "",
-      fromEmail: emailServiceSettings.fromEmail || "",
-      senderName: emailServiceSettings.senderName || "",
-    });
-  }, [emailServiceSettings]);
+    if (isSettingsOpen) return;
+    setIsSenderProfileFormDirty(false);
+    setIsCreatingSenderProfile(false);
+    setSelectedSenderProfileId(null);
+  }, [isSettingsOpen]);
 
-  const saveEmailSettingsMutation = useMutation({
-    mutationFn: async (config: EmailServiceConfig) => {
-      const apiKey = String(config.apiKey || "").trim();
-      return updateEmailServiceSettings({
-        service: config.service,
-        apiUrl: config.apiUrl,
-        fromEmail: config.fromEmail,
-        senderName: config.senderName,
-        apiKey: apiKey.length ? apiKey : undefined,
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    if (isCreatingSenderProfile) return;
+    if (selectedSenderProfileId) return;
+    const initial = defaultSenderProfile?.id || firstSenderProfile?.id || null;
+    setSelectedSenderProfileId(initial);
+  }, [isSettingsOpen, defaultSenderProfile?.id, firstSenderProfile?.id, selectedSenderProfileId, isCreatingSenderProfile]);
+
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+    if (isSenderProfileFormDirty) return;
+    const profile = senderProfiles.find((p) => p.id === selectedSenderProfileId) || null;
+    if (!profile) {
+      setSenderProfileForm({
+        name: "",
+        service: "resend",
+        fromEmail: "",
+        senderName: "",
+        apiUrl: "",
+        apiKey: "",
+        makeDefault: senderProfiles.length === 0,
       });
+      return;
+    }
+
+    setSenderProfileForm({
+      name: profile.name,
+      service: profile.service,
+      fromEmail: profile.fromEmail,
+      senderName: profile.senderName || "",
+      apiUrl: profile.apiUrl || "",
+      apiKey: "",
+      makeDefault: !!profile.isDefault,
+    });
+  }, [isSettingsOpen, senderProfiles, selectedSenderProfileId, isSenderProfileFormDirty]);
+
+  const saveSenderProfileMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        name: senderProfileForm.name,
+        service: senderProfileForm.service,
+        fromEmail: senderProfileForm.fromEmail,
+        senderName: senderProfileForm.senderName || undefined,
+        apiUrl: senderProfileForm.apiUrl || undefined,
+        apiKey: senderProfileForm.apiKey || undefined,
+        isDefault: !!senderProfileForm.makeDefault,
+      };
+
+      if (selectedSenderProfileId) {
+        return updateNewsletterSenderProfile({ id: selectedSenderProfileId, ...payload });
+      }
+      return createNewsletterSenderProfile(payload);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["emailServiceSettings"] });
-      toast({
-        title: "Settings Saved",
-        description: "Email service configuration has been updated.",
-      });
-      setIsSettingsOpen(false);
+    onSuccess: async (profile: NewsletterSenderProfile) => {
+      await queryClient.invalidateQueries({ queryKey: ["newsletterSenderProfiles"] });
+      setSelectedSenderProfileId(profile.id);
+      setSenderProfileForm((p) => ({ ...p, apiKey: "" }));
+      setIsSenderProfileFormDirty(false);
+      setIsCreatingSenderProfile(false);
+      toast({ title: "Sender profile saved" });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save settings.",
-        variant: "destructive",
+      toast({ title: "Error", description: error.message || "Failed to save sender profile", variant: "destructive" });
+    },
+  });
+
+  const duplicateTemplateMutation = useMutation({
+    mutationFn: async (template: NewsletterTemplate) => {
+      const name = `${template.name} (Copy)`;
+      return db.newsletterTemplates.create({
+        name,
+        description: template.description || "",
+        schemaVersion: template.schemaVersion || 1,
+        isDefault: false,
+        globalSettings: (template.globalSettings || {}) as any,
+        assets: (template.assets || {}) as any,
+        sections: (Array.isArray(template.sections) ? template.sections : []) as any,
       });
+    },
+    onSuccess: async (template: NewsletterTemplate) => {
+      await queryClient.invalidateQueries({ queryKey: ["newsletterTemplates"] });
+      toast({ title: "Template duplicated" });
+      setTemplateToEdit(template);
+      setIsTemplateBuilderOpen(true);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to duplicate template.", variant: "destructive" });
+    },
+  });
+
+  const deleteSenderProfileMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteNewsletterSenderProfile(id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["newsletterSenderProfiles"] });
+      toast({ title: "Sender profile deleted" });
+      setSelectedSenderProfileId(null);
+      setIsSenderProfileFormDirty(false);
+      setIsCreatingSenderProfile(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to delete sender profile", variant: "destructive" });
     },
   });
 
@@ -240,8 +328,18 @@ export default function AdminNewsletters() {
         throw new Error("No recipients to send to.");
       }
 
+      const byEmail = new Map((deliverableSubscribers || []).map((s) => [String(s.email || "").toLowerCase(), s] as const));
+      const recipients = data.recipients
+        .map((email) => {
+          const e = String(email || "").trim();
+          if (!e) return null;
+          const sub = byEmail.get(e.toLowerCase());
+          return { email: e, name: sub?.name || null };
+        })
+        .filter((x): x is { email: string; name: string | null } => !!x);
+
       await sendNewsletterViaApi({
-        to: data.recipients,
+        recipients,
         subject: data.subject,
         html: data.content,
       });
@@ -384,9 +482,10 @@ SUBJECT: [subject line here]
   });
 
   const updateSubscriberMutation = useMutation({
-    mutationFn: async (payload: { id: string; stateId?: string | null; optedOut: boolean }) => {
+    mutationFn: async (payload: { id: string; name?: string | null; stateId?: string | null; optedOut: boolean }) => {
       const now = new Date().toISOString();
       const update: any = {
+        name: payload.name ?? null,
         stateId: payload.stateId || null,
       };
 
@@ -481,56 +580,18 @@ SUBJECT: [subject line here]
     URL.revokeObjectURL(url);
   };
 
-  const handleSaveEmailSettings = () => {
-    if (!emailSettings.service || emailSettings.service === "none") {
-      toast({
-        title: "Error",
-        description: "Please select an email service.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!emailSettings.fromEmail) {
-      toast({
-        title: "Error",
-        description: "Please provide a 'From' email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const hasStoredApiKey = !!emailServiceSettings?.hasApiKey;
-    const apiKeyProvided = !!String(emailSettings.apiKey || "").trim();
-
-    if ((emailSettings.service === "resend" || emailSettings.service === "sendgrid") && !apiKeyProvided && !hasStoredApiKey) {
-      toast({
-        title: "Error",
-        description: "Please provide an API key.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if ((emailSettings.service === "ses" || emailSettings.service === "smtp") && !emailSettings.apiUrl) {
-      toast({
-        title: "Error",
-        description: "Please provide an API URL.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    saveEmailSettingsMutation.mutate(emailSettings);
-  };
-
-  const isConfigured = emailConfig.service && emailConfig.service !== "none" && 
-    ((emailConfig.service === "resend" || emailConfig.service === "sendgrid") ? !!emailServiceSettings?.hasApiKey : true) &&
-    ((emailConfig.service === "ses" || emailConfig.service === "smtp") ? !!emailConfig.apiUrl : true) &&
-    !!emailConfig.fromEmail;
+  const isConfigured = (() => {
+    const p = defaultSenderProfile;
+    if (!p) return false;
+    if (!p.service || p.service === "none") return false;
+    if (!p.fromEmail) return false;
+    if ((p.service === "resend" || p.service === "sendgrid") && !p.hasApiKey) return false;
+    if ((p.service === "ses" || p.service === "smtp") && !String(p.apiUrl || "").trim()) return false;
+    return true;
+  })();
 
   const previewData = {
-    siteUrl: (import.meta as any).env?.VITE_SITE_URL || undefined,
+    siteUrl: (import.meta as any).env?.VITE_SITE_URL || (typeof window !== "undefined" ? window.location.origin : undefined),
     releases: (releases || []).map((r: any) => ({
       title: r.title,
       artistName: r.artistName,
@@ -568,7 +629,7 @@ SUBJECT: [subject line here]
             </Button>
             <Button className="w-full sm:w-auto" variant="outline" onClick={() => setIsSettingsOpen(true)}>
               <Settings className="h-4 w-4 mr-2" />
-              Email Settings
+              Sender Profiles
             </Button>
             <Button
               className="w-full sm:w-auto"
@@ -593,10 +654,10 @@ SUBJECT: [subject line here]
                 <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                    Email service not configured
+                    Sender profile not configured
                   </p>
                   <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                    Please configure your email service settings to send newsletters.
+                    Please create a sender profile and set a global default to send newsletters.
                   </p>
                 </div>
                 <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={() => setIsSettingsOpen(true)}>
@@ -614,10 +675,10 @@ SUBJECT: [subject line here]
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                    Email service configured: {emailConfig.service}
+                    Sender profile configured: {defaultSenderProfile?.name || "Default"}
                   </p>
                   <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
-                    From: {emailConfig.fromEmail}
+                    From: {defaultSenderProfile?.fromEmail || "-"} ({defaultSenderProfile?.service || "-"})
                   </p>
                 </div>
                 <Button className="w-full sm:w-auto" size="sm" variant="ghost" onClick={() => setIsSettingsOpen(true)}>
@@ -744,6 +805,7 @@ SUBJECT: [subject line here]
                                 e.stopPropagation();
                                 setEditingSubscriber(subscriber);
                                 setEditSubscriberForm({
+                                  name: subscriber.name || "",
                                   stateId: subscriber.stateId || "",
                                   optedOut: !!subscriber.optedOut || !subscriber.active,
                                 });
@@ -849,6 +911,7 @@ SUBJECT: [subject line here]
                                   e.stopPropagation();
                                   setEditingSubscriber(subscriber);
                                   setEditSubscriberForm({
+                                    name: subscriber.name || "",
                                     stateId: subscriber.stateId || "",
                                     optedOut: !!subscriber.optedOut || !subscriber.active,
                                   });
@@ -978,6 +1041,21 @@ SUBJECT: [subject line here]
                                 aria-label={`Edit template ${t.name}`}
                               >
                                 <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  duplicateTemplateMutation.mutate(t);
+                                }}
+                                disabled={duplicateTemplateMutation.isPending}
+                                aria-label={`Duplicate template ${t.name}`}
+                              >
+                                <Copy className="h-4 w-4" />
                               </Button>
                               <Button
                                 type="button"
@@ -1128,7 +1206,7 @@ SUBJECT: [subject line here]
         previewData={previewData as any}
         subscribers={deliverableSubscribers}
         states={states}
-        onSend={async ({ subject, html, targeting }) => {
+        onSend={async ({ subject, html, targeting, senderProfileId }) => {
           const stateIds = Array.isArray(targeting?.stateIds) ? targeting?.stateIds : [];
 
           const recipients = deliverableSubscribers.filter((s) => {
@@ -1143,9 +1221,10 @@ SUBJECT: [subject line here]
           }
 
           await sendNewsletterViaApi({
-            to: recipients.map((s) => s.email),
+            recipients: recipients.map((s) => ({ email: s.email, name: s.name || null })),
             subject,
             html,
+            senderProfileId,
           });
 
           toast({
@@ -1249,6 +1328,16 @@ SUBJECT: [subject line here]
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="editSubName">Name</Label>
+              <Input
+                id="editSubName"
+                value={editSubscriberForm.name}
+                onChange={(e) => setEditSubscriberForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Full name"
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>State</Label>
               <Select
                 value={editSubscriberForm.stateId || "__none__"}
@@ -1287,8 +1376,10 @@ SUBJECT: [subject line here]
             <Button
               onClick={() => {
                 if (!editingSubscriber) return;
+                const name = String(editSubscriberForm.name || "").trim();
                 updateSubscriberMutation.mutate({
                   id: editingSubscriber.id,
+                  name: name.length ? name : null,
                   stateId: editSubscriberForm.stateId || null,
                   optedOut: !!editSubscriberForm.optedOut,
                 });
@@ -1316,8 +1407,7 @@ SUBJECT: [subject line here]
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="newStateName">New state name</Label>
+            <div className="space-y-2 flex flex-row gap-3 items-end">
               <Input
                 id="newStateName"
                 value={newStateName}
@@ -1325,17 +1415,13 @@ SUBJECT: [subject line here]
                 placeholder="DJ"
               />
               <div className="flex items-center gap-3">
-                <Label htmlFor="newStateColor" className="text-xs text-muted-foreground">Color</Label>
                 <Input
                   id="newStateColor"
                   type="color"
                   value={newStateColor}
                   onChange={(e) => setNewStateColor(e.target.value)}
-                  className="h-9 w-16 p-0"
+                  className="h-10 w-16 p-0 border-none"
                 />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Key is generated automatically.
               </div>
             </div>
             <div>
@@ -1369,7 +1455,6 @@ SUBJECT: [subject line here]
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Color</Label>
                     <Input
                       type="color"
                       value={st.color || "#64748b"}
@@ -1379,7 +1464,7 @@ SUBJECT: [subject line here]
                           (prev || []).map((x) => (x.id === st.id ? { ...x, color } : x))
                         );
                       }}
-                      className="h-9 w-16 p-0"
+                      className="h-9 w-16 p-0 border-none"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -1418,126 +1503,287 @@ SUBJECT: [subject line here]
 
       {/* Email Settings Dialog */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="sm:max-w-2xl sm:max-h-[90vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader>
-            <DialogTitle>Email Service Configuration</DialogTitle>
-            <DialogDescription>
-              Configure your email service to send newsletters to subscribers
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-4xl overflow-hidden p-0">
+          <div className="flex flex-col max-h-[90vh]">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50">
+              <DialogTitle>Sender Profiles</DialogTitle>
+              <DialogDescription>Create multiple sender profiles and choose a global default.</DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="service">Email Service</Label>
-              <Select
-                value={emailSettings.service}
-                onValueChange={(value) => setEmailSettings({ ...emailSettings, service: value, apiKey: "", apiUrl: "" })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select email service" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None (Not Configured)</SelectItem>
-                  <SelectItem value="resend">Resend (Recommended)</SelectItem>
-                  <SelectItem value="sendgrid">SendGrid</SelectItem>
-                  <SelectItem value="ses">AWS SES</SelectItem>
-                  <SelectItem value="smtp">SMTP (via Backend)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {emailSettings.service === "resend" && "Sign up at resend.com - Easy setup, great deliverability"}
-                {emailSettings.service === "sendgrid" && "Sign up at sendgrid.com - Popular email service"}
-                {emailSettings.service === "ses" && "AWS Simple Email Service - Requires API Gateway endpoint"}
-                {emailSettings.service === "smtp" && "Custom SMTP server - Requires backend endpoint"}
-              </p>
-            </div>
+            <div className="flex-1 overflow-hidden px-6 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 h-full">
+                <Card className="border-border/50 flex flex-col overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                    <div>
+                      <CardTitle className="text-base">Profiles</CardTitle>
+                      <CardDescription>create a new profile.</CardDescription>
+                    </div>
+                    <Button
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingSenderProfile(true);
+                        setIsSenderProfileFormDirty(false);
+                        setSelectedSenderProfileId(null);
+                        setSenderProfileForm({
+                          name: "",
+                          service: "resend",
+                          fromEmail: "",
+                          senderName: "",
+                          apiUrl: "",
+                          apiKey: "",
+                          makeDefault: senderProfiles.length === 0,
+                        });
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      New
+                    </Button>
+                  </CardHeader>
 
-            <div className="space-y-2">
-              <Label htmlFor="fromEmail">From Email Address</Label>
-              <Input
-                id="fromEmail"
-                type="email"
-                placeholder="noreply@yourdomain.com"
-                value={emailSettings.fromEmail}
-                onChange={(e) => setEmailSettings({ ...emailSettings, fromEmail: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                This email address will appear as the sender. Must be verified with your email service.
-              </p>
-            </div>
+                  <CardContent className="flex-1 overflow-auto space-y-2">
+                    {senderProfiles.map((p) => {
+                      const selected = p.id === selectedSenderProfileId;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={
+                            "w-full text-left rounded-md border px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 " +
+                            (selected
+                              ? "bg-primary/10 border-primary/30"
+                              : "bg-muted/20 border-border/50 hover:bg-muted/30")
+                          }
+                          onClick={() => {
+                            setIsCreatingSenderProfile(false);
+                            setIsSenderProfileFormDirty(false);
+                            setSelectedSenderProfileId(p.id);
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm flex items-center gap-2">
+                                <span className="truncate">{p.name}</span>
+                                {p.isDefault && <Badge variant="default">Default</Badge>}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">{p.fromEmail}</div>
+                            </div>
+                            <Badge variant="secondary" className="shrink-0">
+                              {p.service}
+                            </Badge>
+                          </div>
+                        </button>
+                      );
+                    })}
 
-            <div className="space-y-2">
-              <Label htmlFor="senderName">Sender Name</Label>
-              <Input
-                id="senderName"
-                type="text"
-                placeholder="GroupTherapy Records"
-                value={emailSettings.senderName}
-                onChange={(e) => setEmailSettings({ ...emailSettings, senderName: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                This name will appear next to the sender email in inboxes.
-              </p>
-            </div>
+                    {senderProfiles.length === 0 && (
+                      <div className="text-sm text-muted-foreground py-10 text-center">
+                        No sender profiles yet. Create one to enable sending.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            {(emailSettings.service === "resend" || emailSettings.service === "sendgrid") && (
-              <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key</Label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  placeholder={
-                    emailServiceSettings?.hasApiKey
-                      ? `Saved (ends with ${emailServiceSettings.apiKeyLast4 || "****"}) — enter a new key to replace`
-                      : "Enter your API key"
-                  }
-                  value={emailSettings.apiKey || ""}
-                  onChange={(e) => setEmailSettings({ ...emailSettings, apiKey: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Your API key is stored locally in this browser. Leave blank to keep the existing key on this device.
-                </p>
+                <Card className="border-border/50 flex flex-col overflow-hidden">
+                  <CardHeader>
+                    <CardTitle className="text-base">
+                      {selectedSenderProfileId ? "Edit Profile" : isCreatingSenderProfile ? "New Profile" : "Profile Details"}
+                    </CardTitle>
+                    {(selectedSenderProfileId || isCreatingSenderProfile) && (
+                      <CardDescription>
+                        {selectedSenderProfileId ? "Update this sender configuration." : "Create a new sender configuration."}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+
+                  <CardContent className="flex-1 overflow-auto space-y-4">
+                    {!selectedSenderProfileId && !isCreatingSenderProfile ? (
+                      <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6 py-10">
+                        <div className="text-sm font-medium">Select a profile to edit</div>
+                        <div className="text-xs text-muted-foreground mt-1">Or create a new profile to start sending.</div>
+                        <Button
+                          type="button"
+                          className="mt-4"
+                          onClick={() => {
+                            setIsCreatingSenderProfile(true);
+                            setIsSenderProfileFormDirty(false);
+                            setSelectedSenderProfileId(null);
+                            setSenderProfileForm({
+                              name: "",
+                              service: "resend",
+                              fromEmail: "",
+                              senderName: "",
+                              apiUrl: "",
+                              apiKey: "",
+                              makeDefault: senderProfiles.length === 0,
+                            });
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create profile
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="profileName">Profile name</Label>
+                          <Input
+                            id="profileName"
+                            value={senderProfileForm.name}
+                            onChange={(e) => {
+                              setIsSenderProfileFormDirty(true);
+                              setSenderProfileForm((p) => ({ ...p, name: e.target.value }));
+                            }}
+                            placeholder="Main Resend sender"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Email service</Label>
+                          <Select
+                            value={senderProfileForm.service}
+                            onValueChange={(value) => {
+                              setIsSenderProfileFormDirty(true);
+                              setSenderProfileForm((p) => ({ ...p, service: value, apiKey: "" }));
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select email service" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="resend">Resend</SelectItem>
+                              <SelectItem value="sendgrid">SendGrid</SelectItem>
+                              <SelectItem value="ses">AWS SES</SelectItem>
+                              <SelectItem value="smtp">SMTP (via Backend)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="profileFromEmail">From email</Label>
+                            <Input
+                              id="profileFromEmail"
+                              type="email"
+                              value={senderProfileForm.fromEmail}
+                              onChange={(e) => {
+                                setIsSenderProfileFormDirty(true);
+                                setSenderProfileForm((p) => ({ ...p, fromEmail: e.target.value }));
+                              }}
+                              placeholder="user@yourdomain.com"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="profileSenderName">Sender name</Label>
+                            <Input
+                              id="profileSenderName"
+                              value={senderProfileForm.senderName}
+                              onChange={(e) => {
+                                setIsSenderProfileFormDirty(true);
+                                setSenderProfileForm((p) => ({ ...p, senderName: e.target.value }));
+                              }}
+                              placeholder="GroupTherapy Records"
+                            />
+                          </div>
+                        </div>
+
+                        {(senderProfileForm.service === "resend" || senderProfileForm.service === "sendgrid") && (
+                          <div className="space-y-2">
+                            <Label htmlFor="profileApiKey">API key</Label>
+                            <Input
+                              id="profileApiKey"
+                              type="password"
+                              placeholder={(() => {
+                                const current = senderProfiles.find((x) => x.id === selectedSenderProfileId);
+                                if (current?.hasApiKey) return `Saved (ends with ${current.apiKeyLast4 || "****"}) — enter to replace`;
+                                return "Enter API key";
+                              })()}
+                              value={senderProfileForm.apiKey}
+                              onChange={(e) => {
+                                setIsSenderProfileFormDirty(true);
+                                setSenderProfileForm((p) => ({ ...p, apiKey: e.target.value }));
+                              }}
+                            />
+                            <div className="text-xs text-muted-foreground">Stored securely in the database. Leave blank to keep current key.</div>
+                          </div>
+                        )}
+
+                        {(senderProfileForm.service === "ses" || senderProfileForm.service === "smtp") && (
+                          <div className="space-y-2">
+                            <Label htmlFor="profileApiUrl">API URL</Label>
+                            <Input
+                              id="profileApiUrl"
+                              type="url"
+                              value={senderProfileForm.apiUrl}
+                              onChange={(e) => {
+                                setIsSenderProfileFormDirty(true);
+                                setSenderProfileForm((p) => ({ ...p, apiUrl: e.target.value }));
+                              }}
+                              placeholder="https://api.example.com/send-email"
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between rounded-md border border-border/50 p-3">
+                          <div>
+                            <div className="text-sm font-medium">Global default</div>
+                            <div className="text-xs text-muted-foreground">Used when sending unless a campaign overrides it.</div>
+                          </div>
+                          <Switch
+                            checked={senderProfileForm.makeDefault}
+                            onCheckedChange={(checked) => {
+                              setIsSenderProfileFormDirty(true);
+                              setSenderProfileForm((p) => ({ ...p, makeDefault: checked }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+
+                  <div className="border-t border-border/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        if (!selectedSenderProfileId) return;
+                        deleteSenderProfileMutation.mutate(selectedSenderProfileId);
+                      }}
+                      disabled={!selectedSenderProfileId || deleteSenderProfileMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button variant="outline" type="button" onClick={() => setIsSettingsOpen(false)}>
+                        Close
+                      </Button>
+
+                      <Button
+                        type="button"
+                        onClick={() => saveSenderProfileMutation.mutate()}
+                        disabled={saveSenderProfileMutation.isPending}
+                      >
+                        {saveSenderProfileMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Save Profile
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
               </div>
-            )}
-
-            {(emailSettings.service === "ses" || emailSettings.service === "smtp") && (
-              <div className="space-y-2">
-                <Label htmlFor="apiUrl">API URL</Label>
-                <Input
-                  id="apiUrl"
-                  type="url"
-                  placeholder="https://api.example.com/send-email"
-                  value={emailSettings.apiUrl || ""}
-                  onChange={(e) => setEmailSettings({ ...emailSettings, apiUrl: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  The endpoint URL for your email service API.
-                </p>
-              </div>
-            )}
+            </div>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveEmailSettings}
-              disabled={saveEmailSettingsMutation.isPending}
-            >
-              {saveEmailSettingsMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Save Settings
-                </>
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 

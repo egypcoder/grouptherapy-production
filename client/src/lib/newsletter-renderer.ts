@@ -112,6 +112,39 @@ function joinUrl(base: string | undefined, path: string | undefined): string {
   return `${b}/${p.replace(/^\//, "")}`;
 }
 
+function normalizeCta(args: { label: string; href: string; baseUrl?: string }): { label: string; href: string } {
+  const rawLabel = String(args.label || "").trim();
+  const rawHref = String(args.href || "").trim();
+
+  let label = rawLabel;
+  let href = rawHref;
+
+  if (label) {
+    const md = label.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (md) {
+      label = String(md[1] || "").trim();
+      if (!href) href = String(md[2] || "").trim();
+    }
+
+    const pref = label.match(/^\(([^)]+)\)\s*(.+)$/);
+    if (pref) {
+      if (!href) href = String(pref[1] || "").trim();
+      label = String(pref[2] || "").trim();
+    }
+
+    const suff = label.match(/^(.+?)\s*\(([^)]+)\)$/);
+    if (suff) {
+      if (!href) href = String(suff[2] || "").trim();
+      label = String(suff[1] || "").trim();
+    }
+  }
+
+  const abs = joinUrl(args.baseUrl, href);
+  href = abs || href;
+
+  return { label, href };
+}
+
 function renderMarkdownToEmailHtml(markdown: string, styles: { textColor: string; accentColor: string; fontFamily: string; fontSize: number; lineHeight: number }): string {
   const raw = String(markdown || "").trim();
   if (!raw) return "";
@@ -292,7 +325,12 @@ function renderHeader(section: NewsletterTemplateSectionBase, template: RenderNe
   );
 }
 
-function renderHero(section: NewsletterTemplateSectionBase, campaign: RenderNewsletterCampaign, gs: Required<NewsletterTemplateGlobalSettings>): string {
+function renderHero(
+  section: NewsletterTemplateSectionBase,
+  campaign: RenderNewsletterCampaign,
+  gs: Required<NewsletterTemplateGlobalSettings>,
+  data: RenderNewsletterData
+): string {
   const c = { ...(section.content || {}), ...((campaign.content.sections || {})[section.id] || {}) };
 
   const s: any = section.settings || {};
@@ -309,8 +347,13 @@ function renderHero(section: NewsletterTemplateSectionBase, campaign: RenderNews
   const title = String(c.title || "").trim();
   const subtitle = String(c.subtitle || "").trim();
   const imageUrl = String(c.imageUrl || "").trim();
-  const buttonLabel = String(c.buttonLabel || "").trim();
-  const buttonHref = String(c.buttonHref || "").trim();
+  const cta = normalizeCta({
+    label: String(c.buttonLabel || ""),
+    href: String(c.buttonHref || ""),
+    baseUrl: data.siteUrl,
+  });
+  const buttonLabel = cta.label;
+  const buttonHref = cta.href;
 
   const parts: string[] = [];
 
@@ -666,7 +709,7 @@ export function renderNewsletterHtml(args: {
         inner = renderHeader(section, args.template, args.campaign, gs);
         break;
       case "hero":
-        inner = renderHero(section, args.campaign, gs);
+        inner = renderHero(section, args.campaign, gs, data);
         break;
       case "richText":
         inner = renderRichText(section, args.campaign, gs);

@@ -34,6 +34,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { MetricsChart } from "@/components/metrics-chart";
 import { AnalyticsChart } from "@/components/analytics-chart";
@@ -73,6 +75,40 @@ const sidebarLinks = [
   { href: "/admin/settings", icon: Settings, label: "Settings" },
   { href: "/admin/seo-settings", icon: Globe, label: "SEO Settings" },
 ];
+
+const adminMobileNavGroups = [
+  {
+    label: "Media",
+    items: [
+      "/admin/releases",
+      "/admin/artists",
+      "/admin/playlists",
+      "/admin/videos",
+      "/admin/radio",
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      "/admin/events",
+      "/admin/tours",
+      "/admin/posts",
+      "/admin/awards",
+      "/admin/careers",
+      "/admin/newsletters",
+      "/admin/contacts",
+    ],
+  },
+  {
+    label: "Site",
+    items: ["/admin/press-kit", "/admin/static-pages", "/admin/seo-settings", "/admin/settings"],
+  },
+];
+
+function getAdminLink(href: string) {
+  return sidebarLinks.find((l) => l.href === href);
+}
+
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -104,26 +140,203 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
+          onClick={() => setSidebarOpen(true)}
           className="rounded-full"
           data-testid="button-admin-menu"
+          aria-label="Open admin menu"
         >
-          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <Menu className="h-5 w-5" />
         </Button>
-         <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
-            <img src={favicon} className="w-6 h-6" alt="GroupTherapy Records Logo" />
-              <span className="text-md font-semibold tracking-tight">
-                GROUP<span className="text-primary transition-colors">THERAPY</span>
-              </span>
-            </Link>
+        <Link href="/" className="flex items-center gap-1 group" data-testid="link-logo">
+          <img src={favicon} className="w-6 h-6" alt="GroupTherapy Records Logo" />
+          <span className="text-md font-semibold tracking-tight">
+            GROUP<span className="text-primary transition-colors">THERAPY</span>
+          </span>
+        </Link>
         <ThemeToggle />
       </header>
 
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent
+          side="left"
+          hideClose
+          className={cn(
+            "lg:hidden p-0 w-[min(92vw,26rem)]",
+            "border border-border/40",
+            "bg-background/75 supports-[backdrop-filter]:bg-background/55",
+            "backdrop-blur-2xl",
+            "shadow-2xl shadow-black/30",
+            "ring-1 ring-white/10",
+            "shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_20px_70px_rgba(0,0,0,0.45)]"
+          )}
+          style={{ padding: 0 }}
+        >
+          <div className="relative h-full overflow-hidden">
+            <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+
+            <div className="relative flex h-full flex-col">
+              <div className="px-5 pt-5 pb-4 border-b border-border/25">
+                <div className="flex items-center justify-between gap-2">
+                  <Link href="/admin" className="flex items-center gap-1" onClick={() => setSidebarOpen(false)}>
+                    <img src={favicon} className="w-9 h-9" alt="GroupTherapy Records Logo" />
+                    <div className="leading-none">
+                      <div className="text-lg/20 font-semibold tracking-tight">
+                        ADMIN
+                        <span className="text-primary"> PANEL</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">Manage your site</div>
+                    </div>
+                  </Link>
+
+                  <div className="flex items-center gap-2">
+                    <ThemeToggle className="h-10 w-10 rounded-full" />
+                    <SheetClose asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full"
+                        aria-label="Close admin menu"
+                      >
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </SheetClose>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <Link href="/admin" onClick={() => setSidebarOpen(false)}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors border",
+                        location === "/admin"
+                          ? "bg-primary/10 text-primary border-primary/25"
+                          : "bg-background/15 hover:bg-background/25 text-foreground border-border/25"
+                      )}
+                    >
+                      Dashboard
+                    </button>
+                  </Link>
+                  <Link href="/" onClick={() => setSidebarOpen(false)}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors border",
+                        "bg-background/15 hover:bg-background/25 text-foreground border-border/25"
+                      )}
+                    >
+                      View Site
+                    </button>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 pb-6 pt-3">
+                <Accordion type="single" collapsible className="space-y-2">
+                  {adminMobileNavGroups.map((group) => {
+                    const groupLinks = group.items
+                      .map((href) => getAdminLink(href))
+                      .filter(Boolean) as { href: string; icon: any; label: string }[];
+                    const isGroupActive = groupLinks.some(
+                      (l) => location === l.href || (l.href !== "/admin" && location.startsWith(l.href))
+                    );
+
+                    return (
+                      <AccordionItem
+                        key={group.label}
+                        value={`admin-${group.label.toLowerCase()}`}
+                        className={cn(
+                          "border-0 rounded-2xl overflow-hidden",
+                          "border border-border/25 bg-background/10"
+                        )}
+                      >
+                        <AccordionTrigger
+                          className={cn(
+                            "px-4 py-3 hover:no-underline",
+                            "data-[state=open]:bg-background/10",
+                            isGroupActive ? "text-primary" : "text-foreground"
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base font-semibold tracking-tight">{group.label}</span>
+                              {isGroupActive ? <span className="h-1.5 w-1.5 rounded-full bg-primary" /> : null}
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+
+                        <AccordionContent className="px-3 pb-3">
+                          <div className="space-y-1">
+                            {groupLinks.map((link) => {
+                              const isActive =
+                                location === link.href ||
+                                (link.href !== "/admin" && location.startsWith(link.href));
+                              const showMessagesBadge = link.label === "Messages" && newMessageCount > 0;
+                              const showCareersBadge = link.label === "Careers" && newCareerApplicationCount > 0;
+
+                              return (
+                                <Link key={link.href} href={link.href} onClick={() => setSidebarOpen(false)}>
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "w-full rounded-xl px-3 py-2.5 text-left text-sm transition-colors border",
+                                      "flex items-center gap-3",
+                                      isActive
+                                        ? "bg-primary/10 text-primary font-medium border-primary/20"
+                                        : "text-foreground/85 hover:text-foreground bg-background/10 hover:bg-background/20 border-border/20"
+                                    )}
+                                    data-testid={`link-admin-mobile-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+                                  >
+                                    <link.icon className={cn("h-4 w-4", isActive && "text-primary")} />
+                                    <span className="flex-1">{link.label}</span>
+                                    {showMessagesBadge ? (
+                                      <span className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-medium px-1.5">
+                                        {newMessageCount > 9 ? "9+" : newMessageCount}
+                                      </span>
+                                    ) : null}
+                                    {showCareersBadge ? (
+                                      <span className="ml-auto h-5 min-w-[20px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-medium px-1.5">
+                                        {newCareerApplicationCount > 9 ? "9+" : newCareerApplicationCount}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+
+                <div className="mt-4 rounded-2xl border border-border/25 bg-background/10 overflow-hidden">
+                  <button
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                      "text-destructive hover:bg-destructive/10"
+                    )}
+                    data-testid="button-admin-logout"
+                    onClick={handleLogout}
+                    type="button"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-full w-60 bg-sidebar/50 backdrop-blur-xl border-r border-sidebar-border/50 transform transition-transform duration-300",
-          "lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          "hidden lg:block fixed top-0 left-0 z-40 h-full w-60 bg-sidebar/50 backdrop-blur-xl border-r border-sidebar-border/50"
         )}
       >
         <div className="flex flex-col h-full">
@@ -192,13 +405,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
-
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       <main className="lg:pl-60 pt-14 lg:pt-0 min-h-screen">
         <div className="hidden lg:flex h-14 items-center justify-between px-6 border-b border-border/50 bg-background/50 backdrop-blur-sm">

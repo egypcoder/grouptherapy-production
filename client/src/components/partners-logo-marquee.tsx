@@ -134,7 +134,7 @@ export function PartnersLogoMarquee({
               <img
                 src={resolveMediaUrl(item.imageUrl, "thumb")}
                 alt={item.alt}
-                className="h-full w-full object-contain opacity-70 grayscale brightness-0 dark:invert"
+                className="h-full w-full object-contain opacity-40 grayscale brightness-0 dark:invert"
                 loading="lazy"
               />
             </div>

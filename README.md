@@ -1642,7 +1642,7 @@ grouptherapy-production/
 │   ├── robots.ts
 │   ├── sitemap.ts
 │   ├── seo.ts
-│   ├── email-service-settings.ts
+│   ├── newsletter-sender-profiles.ts
 │   └── ...
 │
 ├── docs/                           # Documentation

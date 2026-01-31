@@ -374,9 +374,24 @@ export const newsletterTemplates = pgTable("newsletter_templates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const newsletterSenderProfiles = pgTable("newsletter_sender_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  service: text("service").notNull().default("none"),
+  fromEmail: text("from_email").notNull(),
+  senderName: text("sender_name"),
+  apiUrl: text("api_url"),
+  apiKeyEncrypted: text("api_key_encrypted"),
+  apiKeyLast4: text("api_key_last4"),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const newsletterCampaigns = pgTable("newsletter_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   templateId: varchar("template_id").references(() => newsletterTemplates.id),
+  senderProfileId: varchar("sender_profile_id").references(() => newsletterSenderProfiles.id),
   subject: text("subject"),
   preheader: text("preheader"),
   content: jsonb("content").notNull().default({}),

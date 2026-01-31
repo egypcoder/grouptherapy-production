@@ -1,5 +1,4 @@
 import { supabase } from "./supabase";
-import { getEmailServiceSettingsForSending } from "./email-service-settings";
 
 async function getAccessToken(): Promise<string> {
   if (!supabase) throw new Error("Supabase is not configured");
@@ -10,12 +9,23 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function sendNewsletterViaApi(args: {
-  to: string[];
+  to?: string[];
+  recipients?: Array<{ email: string; name?: string | null }>;
   subject: string;
   html: string;
+  senderProfileId?: string;
 }): Promise<void> {
   const token = await getAccessToken();
-  const emailService = await getEmailServiceSettingsForSending();
+
+  const recipients = Array.isArray(args.recipients)
+    ? args.recipients.filter((r) => r && typeof r.email === "string" && r.email.trim())
+    : [];
+
+  const to = recipients.length
+    ? recipients.map((r) => r.email)
+    : Array.isArray(args.to)
+      ? args.to
+      : [];
 
   const resp = await fetch("/api/newsletter-send", {
     method: "POST",
@@ -24,10 +34,11 @@ export async function sendNewsletterViaApi(args: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      to: args.to,
+      to,
+      recipients: recipients.length ? recipients : undefined,
       subject: args.subject,
       html: args.html,
-      emailService,
+      senderProfileId: args.senderProfileId,
     }),
   });
 

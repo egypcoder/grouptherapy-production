@@ -22,8 +22,9 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-[80] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
+      "fixed inset-0 bg-black/55 supports-[backdrop-filter]:bg-black/45 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className,
+      "z-[200]"
     )}
     {...props}
   />
@@ -220,21 +221,35 @@ const DialogContentInner = React.forwardRef<
       <div
         ref={composedRef}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-[90] grid w-full translate-x-0 translate-y-0 gap-4 border bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 rounded-t-2xl overflow-y-auto",
+          "grid w-full translate-x-0 translate-y-0 gap-4 border border-border/40 bg-background dark:bg-card sm:bg-background/85 sm:supports-[backdrop-filter]:bg-background/65 sm:backdrop-blur-2xl p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/40 ring-1 ring-white/10 dark:border-white/10 dark:ring-white/15 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-2 data-[state=open]:slide-in-from-bottom-2 rounded-t-2xl overflow-hidden overflow-y-auto relative isolate",
           disableCloseAnimation ? "data-[state=closed]:animate-none" : "",
           isExpanded ? "max-h-[95dvh]" : "max-h-[80dvh]",
           "sm:left-[50%] sm:right-auto sm:top-[50%] sm:bottom-auto sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:p-6 sm:pb-6 sm:max-h-[90vh] sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
-          className
+          className,
+          "fixed inset-x-0 bottom-0",
+          "z-[210]"
         )}
         style={
           isMobile
-            ? { willChange: "transform", transform: "translate3d(0, 0px, 0)" }
+            ? {
+                willChange: "transform",
+                transform: "translate3d(0, 0px, 0)",
+                position: "fixed",
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }
             : undefined
         }
       >
+        <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/25 blur-3xl -z-10" />
+        <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl -z-10" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent -z-10" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent -z-10" />
+
         <div
           className={cn(
-            "mx-auto mt-1 h-1.5 w-12 rounded-full bg-muted sm:hidden",
+            "mx-auto mt-1 h-1.5 w-12 rounded-full bg-white/4a0 sm:hidden",
             isMobile ? "cursor-grab active:cursor-grabbing touch-none" : ""
           )}
           onPointerDown={onHandlePointerDown}

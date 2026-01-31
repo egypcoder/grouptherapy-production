@@ -3,6 +3,8 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Radio, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Sheet, SheetClose, SheetContent } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 import { useRadio } from "@/lib/radio-context";
@@ -33,20 +35,6 @@ const navLinks = [
   { type: "dropdown", label: "Music", items: musicDropdownItems },
   { type: "dropdown", label: "Discover", items: discoverDropdownItems },
   { type: "dropdown", label: "Company", items: companyDropdownItems },
-  { href: "/contact", label: "Contact" },
-];
-
-const mobileLinks = [
-  { href: "/", label: "Home" },
-  { href: "/releases", label: "Releases" },
-  { href: "/artists", label: "Artists" },
-  { href: "/playlists", label: "Playlists" },
-  { href: "/radio", label: "Radio" },
-  { href: "/events", label: "Events" },
-  { href: "/tours", label: "Tours" },
-  { href: "/videos", label: "Videos" },
-  { href: "/news", label: "News" },
-  { href: "/awards", label: "Awards" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -281,70 +269,179 @@ export function Navigation() {
         </div>
       </motion.header>
 
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            className="fixed inset-0 z-40 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.div
-              className="absolute inset-0 bg-background/95 backdrop-blur-xl"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent
+          side="right"
+          hideClose
+          className={cn(
+            "lg:hidden p-0 w-[min(92vw,26rem)]",
+            "border border-border/40",
+            "bg-background/75 supports-[backdrop-filter]:bg-background/55",
+            "backdrop-blur-2xl",
+            "shadow-2xl shadow-black/30",
+            "ring-1 ring-white/10",
+            "shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_20px_70px_rgba(0,0,0,0.45)]"
+          )}
+        >
+          <div className="relative h-full">
+            <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
 
-            <motion.nav
-              id="mobile-nav"
-              aria-label="Mobile"
-              className="absolute inset-0 flex flex-col items-center justify-center px-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-            >
-              <div className="flex flex-col items-center gap-1.5 mb-8">
-                {mobileLinks.map((link, i) => (
-                  <motion.div
-                    key={link.href}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 20 }}
-                    transition={{ delay: i * 0.03 }}
-                  >
-                    <Link href={link.href}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "text-2xl font-medium py-1.5 transition-colors",
-                          location === link.href
-                            ? "text-primary"
-                            : "text-foreground/70 hover:text-foreground"
-                        )}
-                        data-testid={`link-mobile-${link.label.toLowerCase()}`}
-                      >
-                        {link.label}
-                      </button>
-                    </Link>
-                  </motion.div>
-                ))}
+            <div id="mobile-nav" aria-label="Mobile" className="relative flex h-full flex-col">
+            <div className="px-5 pt-5 pb-4 border-b border-border/25">
+              <div className="flex items-center justify-between gap-3">
+                <Link href="/" className="flex items-center gap-2" onClick={() => setIsMobileMenuOpen(false)}>
+                  <img
+                    src="/favicon.png"
+                    className="w-8 h-8"
+                    alt="GroupTherapy Logo"
+                    width={32}
+                    height={32}
+                    decoding="async"
+                  />
+                  <div className="leading-none">
+                    <div className="text-base font-semibold tracking-tight">
+                      GROUP<span className="text-primary">THERAPY</span>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="flex items-center gap-2">
+                  <ThemeToggle className="h-10 w-10 rounded-full" />
+                  <SheetClose asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-full"
+                      aria-label="Close menu"
+                      data-testid="button-mobile-menu-close"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </SheetClose>
+                </div>
               </div>
 
-              <motion.div
-                className="mt-8"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-              </motion.div>
-            </motion.nav>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <div className="mt-4 flex items-center gap-2">
+                <Link href="/radio" className="flex-1" onClick={() => setIsMobileMenuOpen(false)}>
+                  <Button
+                    variant={isPlaying ? "default" : "outline"}
+                    className={cn(
+                      "w-full justify-center gap-2 rounded-2xl h-11",
+                      isPlaying
+                        ? "shadow-md shadow-primary/20"
+                        : "border-border/40 hover:border-primary/30 bg-background/20 hover:bg-background/30"
+                    )}
+                    aria-label={isPlaying ? "Radio: Live" : "Radio: Listen"}
+                  >
+                    <Radio className="h-4 w-4" />
+                    {isPlaying ? "Live Radio" : "Listen"}
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 pb-6 pt-2">
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <Link href="/" onClick={() => setIsMobileMenuOpen(false)}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full rounded-2xl px-4 py-3 text-left text-base font-medium transition-colors border",
+                        location === "/"
+                          ? "bg-primary/10 text-primary border-primary/25"
+                          : "bg-background/15 hover:bg-background/25 text-foreground border-border/25"
+                      )}
+                      data-testid="link-mobile-home"
+                    >
+                      Home
+                    </button>
+                  </Link>
+                  <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)}>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full rounded-2xl px-4 py-3 text-left text-base font-medium transition-colors border",
+                        location === "/contact"
+                          ? "bg-primary/10 text-primary border-primary/25"
+                          : "bg-background/15 hover:bg-background/25 text-foreground border-border/25"
+                      )}
+                      data-testid="link-mobile-contact"
+                    >
+                      Contact
+                    </button>
+                  </Link>
+                </div>
+
+                <Accordion type="single" collapsible className="space-y-2">
+                  {navLinks
+                    .filter((l) => l.type === "dropdown")
+                    .map((l) => {
+                      const items = l.items || [];
+                      const isGroupActive = items.some((it) => it.href === location);
+                      const value = `mobile-${l.label.toLowerCase()}`;
+
+                      return (
+                        <AccordionItem
+                          key={l.label}
+                          value={value}
+                          className={cn(
+                            "border-0 rounded-2xl overflow-hidden",
+                            "border border-border/25 bg-background/10"
+                          )}
+                        >
+                          <AccordionTrigger
+                            className={cn(
+                              "px-4 py-3 hover:no-underline",
+                              "data-[state=open]:bg-background/10",
+                              isGroupActive ? "text-primary" : "text-foreground"
+                            )}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center gap-2">
+                                <span className="text-base font-semibold tracking-tight">{l.label}</span>
+                                {isGroupActive ? <span className="h-1.5 w-1.5 rounded-full bg-primary" /> : null}
+                              </div>
+                              <span className="sr-only">Toggle</span>
+                            </div>
+                          </AccordionTrigger>
+
+                          <AccordionContent className="px-3 pb-3">
+                            <div className="space-y-1">
+                              {items.map((it) => (
+                                <Link key={it.href} href={it.href} onClick={() => setIsMobileMenuOpen(false)}>
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "w-full rounded-xl px-3 py-2.5 text-left text-sm transition-colors border",
+                                      "flex items-center justify-between",
+                                      location === it.href
+                                        ? "bg-primary/10 text-primary font-medium border-primary/20"
+                                        : "text-foreground/85 hover:text-foreground bg-background/10 hover:bg-background/20 border-border/20"
+                                    )}
+                                    data-testid={`link-mobile-${it.label.toLowerCase().replace(/\s+/g, "-")}`}
+                                  >
+                                    <span>{it.label}</span>
+                                    <span className={cn("text-xs", location === it.href ? "text-primary" : "text-muted-foreground")}>Open</span>
+                                  </button>
+                                </Link>
+                              ))}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      );
+                    })}
+                </Accordion>
+              </div>
+            </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

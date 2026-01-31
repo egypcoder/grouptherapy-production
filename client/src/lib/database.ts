@@ -332,6 +332,7 @@ export interface NewsletterTemplate {
 export interface NewsletterCampaign {
   id: string;
   templateId?: string;
+  senderProfileId?: string;
   subject?: string;
   preheader?: string;
   content: Record<string, any>;

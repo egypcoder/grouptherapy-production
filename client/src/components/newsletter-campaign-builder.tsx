@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { nanoid } from "nanoid";
-import { Eye, Save, Send, Sparkles, Trash2 } from "lucide-react";
+import { Eye, Save, Send, Sparkles, Trash2, User } from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { queryClient } from "@/lib/queryClient";
 import { db, NewsletterCampaign, NewsletterState, NewsletterSubscriber, NewsletterTemplate } from "@/lib/database";
 import { generateContent, isGeminiConfigured } from "@/lib/gemini";
+import { fetchNewsletterSenderProfiles, NewsletterSenderProfile } from "@/lib/newsletter-sender-profiles";
 import {
   renderNewsletterHtml,
   RenderNewsletterData,
@@ -39,6 +41,7 @@ import { buildNewsletterCampaignAiPrompt, parseNewsletterAiJson } from "@/lib/ne
 
 type CampaignState = {
   templateId?: string;
+  senderProfileId?: string;
   subject: string;
   preheader: string;
   content: {
@@ -123,6 +126,7 @@ function toCampaignState(campaign?: NewsletterCampaign | null, templateId?: stri
   if (!campaign) {
     return {
       templateId,
+      senderProfileId: undefined,
       subject: "",
       preheader: "",
       content: { sections: {} },
@@ -132,6 +136,7 @@ function toCampaignState(campaign?: NewsletterCampaign | null, templateId?: stri
 
   return {
     templateId: campaign.templateId || templateId,
+    senderProfileId: campaign.senderProfileId,
     subject: campaign.subject || "",
     preheader: campaign.preheader || "",
     content: {
@@ -145,6 +150,7 @@ function toCampaignState(campaign?: NewsletterCampaign | null, templateId?: stri
 function toDbPayload(state: CampaignState, renderedHtml: string): Partial<NewsletterCampaign> {
   return {
     templateId: state.templateId,
+    senderProfileId: state.senderProfileId,
     subject: state.subject,
     preheader: state.preheader,
     content: state.content as any,
@@ -185,6 +191,7 @@ export function NewsletterCampaignBuilderDialog(props: {
   onSend?: (args: {
     subject: string;
     html: string;
+    senderProfileId?: string;
     targeting?: {
       stateIds?: string[];
     };
@@ -200,6 +207,22 @@ export function NewsletterCampaignBuilderDialog(props: {
   const [mobileTab, setMobileTab] = useState<"blocks" | "edit" | "preview">("blocks");
   const [targetStateIds, setTargetStateIds] = useState<string[]>([]);
 
+  const { data: senderProfiles = [] } = useQuery<NewsletterSenderProfile[]>({
+    queryKey: ["newsletterSenderProfiles"],
+    queryFn: fetchNewsletterSenderProfiles,
+  });
+
+  const defaultSenderProfile = senderProfiles.find((p) => p.isDefault) || null;
+
+  const insertNameToken = (value: string) => {
+    const token = "{name}";
+    const v = String(value || "");
+    if (v.includes(token)) return v;
+    if (!v.trim()) return token;
+    if (/\s$/.test(v)) return `${v}${token}`;
+    return `${v} ${token}`;
+  };
+
   useEffect(() => {
     if (!props.open) return;
     setState(toCampaignState(props.campaign, props.initialTemplateId));
@@ -210,6 +233,15 @@ export function NewsletterCampaignBuilderDialog(props: {
     setMobileTab("blocks");
     setTargetStateIds([]);
   }, [props.open, props.campaign, props.initialTemplateId]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    if (!defaultSenderProfile?.id) return;
+    setState((p) => {
+      if (p.senderProfileId) return p;
+      return { ...p, senderProfileId: defaultSenderProfile.id };
+    });
+  }, [props.open, defaultSenderProfile?.id]);
 
   const recipientsPreview = useMemo(() => {
     const subs = Array.isArray(props.subscribers) ? props.subscribers : [];
@@ -376,9 +408,14 @@ export function NewsletterCampaignBuilderDialog(props: {
       if (!state.subject.trim()) throw new Error("Please enter a subject.");
       if (!emailHtml.trim()) throw new Error("Nothing to send.");
 
+      if (!state.senderProfileId && !defaultSenderProfile?.id) {
+        throw new Error("Please configure a default sender profile before sending.");
+      }
+
       await props.onSend({
         subject: state.subject,
         html: emailHtml,
+        senderProfileId: state.senderProfileId || defaultSenderProfile?.id,
         targeting: {
           stateIds: targetStateIds,
         },
@@ -388,6 +425,7 @@ export function NewsletterCampaignBuilderDialog(props: {
         await db.newsletterCampaigns.update(props.campaign.id, {
           status: "sent",
           sentAt: new Date().toISOString() as any,
+          senderProfileId: state.senderProfileId,
         });
         await queryClient.invalidateQueries({ queryKey: ["newsletterCampaigns"] });
       }
@@ -403,11 +441,42 @@ export function NewsletterCampaignBuilderDialog(props: {
       return (
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Title</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Title</Label>
+              <Button
+                    className="px-2"
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setState((p) =>
+                    updateSectionContent(p, section.id, { title: insertNameToken(String(getSectionContent(p, section.id).title || "")) })
+                  )
+                }
+              >
+                {"{name}"}
+              </Button>
+            </div>
             <Input value={String(content.title || "")} onChange={(e) => setState((p) => updateSectionContent(p, section.id, { title: e.target.value }))} />
           </div>
           <div className="space-y-2">
-            <Label>Subtitle</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Subtitle</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  setState((p) =>
+                    updateSectionContent(p, section.id, {
+                      subtitle: insertNameToken(String(getSectionContent(p, section.id).subtitle || "")),
+                    })
+                  )
+                }
+              >
+                {"{name}"}
+              </Button>
+            </div>
             <Input value={String(content.subtitle || "")} onChange={(e) => setState((p) => updateSectionContent(p, section.id, { subtitle: e.target.value }))} />
           </div>
           <div className="space-y-2">
@@ -619,58 +688,36 @@ export function NewsletterCampaignBuilderDialog(props: {
           </div>
 
           <div className="space-y-2">
-            <Label>Subject</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Subject</Label>
+              <Button
+                className="px-2"
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setState((p) => ({ ...p, subject: insertNameToken(p.subject) }))}
+              >
+                {"{name}"}
+              </Button>
+            </div>
             <Input value={state.subject} onChange={(e) => setState((p) => ({ ...p, subject: e.target.value }))} />
           </div>
 
           <div className="space-y-2">
-            <Label>Preheader</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label>Preheader</Label>
+              <Button
+                className="px-2"
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setState((p) => ({ ...p, preheader: insertNameToken(p.preheader) }))}
+              >
+                {"{name}"}
+              </Button>
+            </div>
             <Input value={state.preheader} onChange={(e) => setState((p) => ({ ...p, preheader: e.target.value }))} />
-          </div>
-
-          <div className="pt-2 border-t border-border/50" />
-
-          <div className="space-y-2">
-            <Label>Target states</Label>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="outline" className="justify-start w-full">
-                  {targetStateIds.length ? `States: ${targetStateIds.length} selected` : "States: All"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[260px]">
-                <DropdownMenuLabel>States</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {(Array.isArray(props.states) ? props.states : []).map((st) => {
-                  const checked = targetStateIds.includes(st.id);
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={st.id}
-                      checked={checked}
-                      onCheckedChange={(v) => {
-                        const next = new Set(targetStateIds);
-                        if (v) next.add(st.id);
-                        else next.delete(st.id);
-                        setTargetStateIds(Array.from(next));
-                      }}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: st.color || "#64748b" }} />
-                        {st.name}
-                      </span>
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-                {(!props.states || props.states.length === 0) && (
-                  <div className="px-2 py-2 text-xs text-muted-foreground">No states available.</div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="text-xs text-muted-foreground">Leave empty to include all states.</div>
-          </div>
-
-          <div className="text-sm">
-            <span className="text-muted-foreground">Recipients preview:</span> {recipientsPreview.length}
+            <div className="text-xs text-muted-foreground">Use {"{name}"} to personalize. If a subscriber has no name, it falls back to "there".</div>
           </div>
         </CardContent>
       </Card>
@@ -682,7 +729,6 @@ export function NewsletterCampaignBuilderDialog(props: {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
-              <Label>Prompt</Label>
               <Input
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
@@ -695,9 +741,7 @@ export function NewsletterCampaignBuilderDialog(props: {
                 {aiLoading ? "Generating..." : "Generate Content"}
               </Button>
             </div>
-            <div className="text-xs text-muted-foreground">
-              Let AI Help you making your campaign.
-            </div>
+            <div className="text-xs text-muted-foreground">Let AI Help you making your campaign.</div>
           </CardContent>
         </Card>
       )}
@@ -769,11 +813,11 @@ export function NewsletterCampaignBuilderDialog(props: {
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold">Preview</div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant={previewMode === "desktop" ? "secondary" : "outline"} size="sm" onClick={() => setPreviewMode("desktop")}>
+          <Button type="button" variant={previewMode === "desktop" ? "secondary" : "link2"} size="sm" onClick={() => setPreviewMode("desktop")}>
             <Eye className="h-4 w-4 mr-2" />
             Desktop
           </Button>
-          <Button type="button" variant={previewMode === "mobile" ? "secondary" : "outline"} size="sm" onClick={() => setPreviewMode("mobile")}>
+          <Button type="button" variant={previewMode === "mobile" ? "secondary" : "link2"} size="sm" onClick={() => setPreviewMode("mobile")}>
             <Eye className="h-4 w-4 mr-2" />
             Mobile
           </Button>
@@ -796,7 +840,7 @@ export function NewsletterCampaignBuilderDialog(props: {
           <DialogDescription>Fill template content and preview before sending.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden pr-1 pb-4">
           {isMobile ? (
             <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as any)} className="w-full">
               <TabsList className="w-full">
@@ -823,33 +867,109 @@ export function NewsletterCampaignBuilderDialog(props: {
           )}
         </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {props.campaign?.id && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            )}
-          </div>
+        <DialogFooter className="border-t border-border/50 pt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full">
+            <div className="flex items-center gap-2">
+                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-9 w-full sm:w-[120px] justify-start">
+                      {targetStateIds.length ? `Target: ${targetStateIds.length} states` : "Target: All states"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-[260px]">
+                    <DropdownMenuLabel>Target states</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setTargetStateIds([])}>All states</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {(Array.isArray(props.states) ? props.states : []).map((st) => {
+                      const checked = targetStateIds.includes(st.id);
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={st.id}
+                          checked={checked}
+                          onCheckedChange={(v) => {
+                            const next = new Set(targetStateIds);
+                            if (v) next.add(st.id);
+                            else next.delete(st.id);
+                            setTargetStateIds(Array.from(next));
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: st.color || "#64748b" }} />
+                            {st.name}
+                          </span>
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                    {(!props.states || props.states.length === 0) && (
+                      <div className="px-2 py-2 text-xs text-muted-foreground">No states available.</div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => props.onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending || !props.onSend}>
-              <Send className="h-4 w-4 mr-2" />
-              Send
-            </Button>
+                <Select
+                  value={state.senderProfileId || ""}
+                  onValueChange={(v) => setState((p) => ({ ...p, senderProfileId: v }))}
+                  disabled={!senderProfiles.length}
+                >
+                  <SelectTrigger className="h-9 w-full sm:w-[160px]">
+                    <SelectValue placeholder="Send From" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {senderProfiles.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                        {p.isDefault ? " (Default)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Badge variant="secondary" className="h-9 px-3 rounded-md flex items-center justify-center w-full sm:w-auto">
+                  <User className="h-4 w-4 mr-2" />{recipientsPreview.length}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 w-full sm:w-auto">
+        
+
+              <div className="flex items-center gap-2 justify-end">
+                 {props.campaign?.id && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={deleteMutation.isPending}
+                  className="h-9"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+                <Button variant="outline" onClick={() => props.onOpenChange(false)} className="h-9">
+                  Cancel
+                </Button>
+                <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="h-9">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button
+                  onClick={() => sendMutation.mutate()}
+                  disabled={
+                    sendMutation.isPending ||
+                    !props.onSend ||
+                    (!state.senderProfileId && !defaultSenderProfile?.id)
+                  }
+                  className="h-9"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
+                </Button>
+              </div>
+              
+            </div>
           </div>
         </DialogFooter>
       </DialogContent>

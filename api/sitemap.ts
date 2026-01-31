@@ -45,22 +45,37 @@ function xmlEscape(value: string): string {
 }
 
 function toValidLastmod(value: unknown): string | undefined {
+  const isSaneDate = (d: Date): boolean => {
+    const ts = d.getTime();
+    if (!Number.isFinite(ts)) return false;
+    const year = d.getUTCFullYear();
+    return year >= 1990 && year <= 2100;
+  };
+
   if (value == null) return undefined;
   if (value instanceof Date) {
-    const ts = value.getTime();
-    return Number.isFinite(ts) ? value.toISOString() : undefined;
+    return isSaneDate(value) ? value.toISOString() : undefined;
   }
   if (typeof value === "number") {
     const d = new Date(value);
-    const ts = d.getTime();
-    return Number.isFinite(ts) ? d.toISOString() : undefined;
+    return isSaneDate(d) ? d.toISOString() : undefined;
   }
   if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
+
+    const twoDigitYmd = trimmed.match(/^(\d{2})[-/](\d{2})[-/](\d{2})$/);
+    if (twoDigitYmd) {
+      const yy = Number(twoDigitYmd[1]);
+      const mm = Number(twoDigitYmd[2]);
+      const dd = Number(twoDigitYmd[3]);
+      const yyyy = yy >= 70 ? 1900 + yy : 2000 + yy;
+      const d = new Date(Date.UTC(yyyy, mm - 1, dd));
+      return isSaneDate(d) ? d.toISOString() : undefined;
+    }
+
     const d = new Date(trimmed);
-    const ts = d.getTime();
-    return Number.isFinite(ts) ? d.toISOString() : undefined;
+    return isSaneDate(d) ? d.toISOString() : undefined;
   }
   return undefined;
 }

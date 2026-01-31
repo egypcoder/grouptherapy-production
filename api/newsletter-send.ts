@@ -13,12 +13,19 @@ type Res = {
   send: (body: string) => void;
 };
 
-type ClientEmailService = {
+type SenderProfileRow = {
+  id: string;
   service: string;
-  apiKey?: string;
-  apiUrl?: string;
-  fromEmail: string;
-  senderName?: string;
+  from_email: string;
+  sender_name?: string | null;
+  api_url?: string | null;
+  api_key_encrypted?: string | null;
+  is_default?: boolean | null;
+};
+
+type Recipient = {
+  email: string;
+  name?: string | null;
 };
 
 function firstHeader(value: string | string[] | undefined): string | undefined {
@@ -104,22 +111,34 @@ function formatFrom(senderName: string | undefined, fromEmail: string): string {
   return `${name} <${v}>`;
 }
 
+function escapeHtml(text: string): string {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function normalizeRecipientName(name: any): string {
+  const raw = String(name || "").trim();
+  if (!raw) return "there";
+  const first = raw.split(/\s+/)[0];
+  return first || "there";
+}
+
+function replaceNameToken(text: string, name: string, opts?: { escape?: boolean }): string {
+  const token = "{name}";
+  const raw = String(text || "");
+  if (!raw.includes(token)) return raw;
+  const rep = opts?.escape ? escapeHtml(name) : name;
+  return raw.split(token).join(rep);
+}
+
 function getBaseUrl(req: Req): string {
   const proto = firstHeader(req.headers["x-forwarded-proto"]) || "http";
   const host = firstHeader(req.headers["x-forwarded-host"]) || firstHeader(req.headers["host"]) || "localhost";
   return `${proto}://${host}`;
-}
-
-async function getSettingsRow(sbAdmin: any) {
-  const { data, error } = await sbAdmin
-    .from("email_service_settings")
-    .select("*")
-    .order("updated_at", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data || null;
 }
 
 async function sendViaResend(args: {
@@ -250,10 +269,23 @@ export default async function handler(req: Req, res: Res) {
     }
 
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const to: string[] = Array.isArray(body?.to) ? body.to.filter((x: any) => typeof x === "string") : [];
+    const toInput: string[] = Array.isArray(body?.to) ? body.to.filter((x: any) => typeof x === "string") : [];
     const subject = String(body?.subject || "");
     const html = String(body?.html || "");
-    const emailService: ClientEmailService | null = body?.emailService ? (body.emailService as any) : null;
+    const senderProfileId = String(body?.senderProfileId || "").trim();
+
+    const recipientsInput: Recipient[] = Array.isArray(body?.recipients)
+      ? body.recipients
+          .map((r: any) => ({ email: String(r?.email || "").trim(), name: r?.name ?? null }))
+          .filter((r: any) => !!r.email)
+      : [];
+
+    const recipients: Recipient[] = recipientsInput.length
+      ? recipientsInput
+      : toInput.map((email) => ({ email: String(email || "").trim(), name: null })).filter((r) => !!r.email);
+
+    const to = recipients.map((r) => r.email);
+    const nameByEmail = new Map(recipients.map((r) => [String(r.email || "").toLowerCase(), normalizeRecipientName(r.name)] as const));
 
     if (to.length === 0) {
       json(res, 400, { success: false, error: "No recipients" });
@@ -265,16 +297,66 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    if (!emailService || !emailService.service || emailService.service === "none") {
-      json(res, 400, { success: false, error: "Email service not configured" });
-      return;
+    let service = "none";
+    let fromEmail = "";
+    let senderName = "";
+    let apiKey = "";
+    let apiUrl = "";
+
+    if (supabaseUrl && serviceRoleKey) {
+      const sbAdmin = createClient(supabaseUrl, serviceRoleKey);
+      let profile: SenderProfileRow | null = null;
+
+      if (senderProfileId) {
+        const { data, error } = await sbAdmin
+          .from("newsletter_sender_profiles")
+          .select("id, service, from_email, sender_name, api_url, api_key_encrypted, is_default")
+          .eq("id", senderProfileId)
+          .maybeSingle();
+        if (error) throw error;
+        profile = (data as any) || null;
+      }
+
+      if (!profile) {
+        const { data, error } = await sbAdmin
+          .from("newsletter_sender_profiles")
+          .select("id, service, from_email, sender_name, api_url, api_key_encrypted, is_default")
+          .eq("is_default", true)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        profile = (data as any) || null;
+      }
+
+      if (!profile) {
+        const { data, error } = await sbAdmin
+          .from("newsletter_sender_profiles")
+          .select("id, service, from_email, sender_name, api_url, api_key_encrypted, is_default")
+          .order("is_default", { ascending: false })
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        profile = (data as any) || null;
+      }
+
+      if (profile) {
+        service = String(profile.service || "none");
+        fromEmail = String(profile.from_email || "").trim();
+        senderName = String(profile.sender_name || "").trim();
+        apiUrl = String(profile.api_url || "").trim();
+        if (profile.api_key_encrypted) {
+          const secret = requireEnv("EMAIL_SETTINGS_ENCRYPTION_KEY");
+          apiKey = decryptApiKey(String(profile.api_key_encrypted || ""), secret).trim();
+        }
+      }
     }
 
-    const service = String(emailService.service || "none");
-    const fromEmail = String(emailService.fromEmail || "").trim();
-    const senderName = String(emailService.senderName || "").trim();
-    const apiKey = String(emailService.apiKey || "").trim();
-    const apiUrl = String(emailService.apiUrl || "").trim();
+    if (!service || service === "none") {
+      json(res, 400, { success: false, error: "Sender profile not configured" });
+      return;
+    }
 
     const baseUrl =
       process.env.VITE_SITE_URL ||
@@ -305,11 +387,17 @@ export default async function handler(req: Req, res: Res) {
       return parts.join(", ");
     }
 
-    function personalizeHtml(recipientEmail: string): string {
+    function personalizeSubject(recipientName: string): string {
+      return replaceNameToken(subject, recipientName);
+    }
+
+    function personalizeHtml(recipientEmail: string, recipientName: string): string {
       const unsubscribeUrl = buildUnsubscribeUrl(recipientEmail) || unsubscribeMailto || "#";
-      return baseHtml
+      const withUnsub = baseHtml
         .split("{{NEWSLETTER_UNSUBSCRIBE_MAILTO}}")
         .join(unsubscribeUrl);
+
+      return replaceNameToken(withUnsub, recipientName, { escape: true });
     }
 
     if (!fromEmail) {
@@ -330,14 +418,16 @@ export default async function handler(req: Req, res: Res) {
     if (service === "resend") {
       const from = formatFrom(senderName, fromEmail);
       for (const recipient of to) {
-        const perHtml = personalizeHtml(recipient);
+        const recipientName = nameByEmail.get(String(recipient || "").toLowerCase()) || "there";
+        const perSubject = personalizeSubject(recipientName);
+        const perHtml = personalizeHtml(recipient, recipientName);
         const unsubscribeUrl = buildUnsubscribeUrl(recipient);
         const listUnsubHeader = buildListUnsubscribeHeader(unsubscribeUrl);
         await sendViaResend({
           apiKey,
           fromEmail: from,
           to: [recipient],
-          subject,
+          subject: perSubject,
           html: perHtml,
           headers: listUnsubHeader ? { "List-Unsubscribe": listUnsubHeader } : undefined,
         });
@@ -348,7 +438,9 @@ export default async function handler(req: Req, res: Res) {
 
     if (service === "sendgrid") {
       for (const recipient of to) {
-        const perHtml = personalizeHtml(recipient);
+        const recipientName = nameByEmail.get(String(recipient || "").toLowerCase()) || "there";
+        const perSubject = personalizeSubject(recipientName);
+        const perHtml = personalizeHtml(recipient, recipientName);
         const unsubscribeUrl = buildUnsubscribeUrl(recipient);
         const listUnsubHeader = buildListUnsubscribeHeader(unsubscribeUrl);
         const text = htmlToText(perHtml);
@@ -362,7 +454,7 @@ export default async function handler(req: Req, res: Res) {
           body: JSON.stringify({
             personalizations: [{ to: [{ email: recipient }] }],
             from: { email: fromEmail, name: senderName || "GroupTherapy" },
-            subject,
+            subject: perSubject,
             content: [
               ...(text ? [{ type: "text/plain", value: text }] : []),
               { type: "text/html", value: perHtml },
@@ -383,8 +475,10 @@ export default async function handler(req: Req, res: Res) {
 
     if (service === "ses" || service === "smtp") {
       for (const recipient of to) {
-        const perHtml = personalizeHtml(recipient);
-        await sendViaApiUrl({ apiUrl, fromEmail, to: [recipient], subject, html: perHtml });
+        const recipientName = nameByEmail.get(String(recipient || "").toLowerCase()) || "there";
+        const perSubject = personalizeSubject(recipientName);
+        const perHtml = personalizeHtml(recipient, recipientName);
+        await sendViaApiUrl({ apiUrl, fromEmail, to: [recipient], subject: perSubject, html: perHtml });
       }
       json(res, 200, { success: true });
       return;

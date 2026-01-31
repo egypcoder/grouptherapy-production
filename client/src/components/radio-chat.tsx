@@ -97,12 +97,16 @@ export function RadioChat({
 
   const scrollToBottom = (smooth: boolean = true) => {
     setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({
-          behavior: smooth ? "smooth" : "auto",
-          block: "nearest",
-        });
-      }
+      const scrollViewport = scrollAreaRef.current?.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
+
+      if (!scrollViewport) return;
+
+      scrollViewport.scrollTo({
+        top: scrollViewport.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
     }, 50);
   };
 

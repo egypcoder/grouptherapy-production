@@ -98,6 +98,12 @@ Goal:
 - Do NOT generate HTML.
 - Output STRICT JSON only.
 
+Personalization:
+- You MAY include the token {name} anywhere in subject, preheader, hero.title, and hero.subtitle.
+- Output the token literally as "{name}" in the string.
+- {name} will be replaced at send-time with the subscriber's first name.
+- If a subscriber has no name, {name} falls back to "there".
+
 Topic / brief:
 "${escJsonString(userPrompt)}"
 

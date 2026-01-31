@@ -29,7 +29,11 @@ const DrawerOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-[70] bg-black/80", className)}
+    className={cn(
+      "fixed inset-0 bg-black/55 supports-[backdrop-filter]:bg-black/45 backdrop-blur-sm",
+      className,
+      "z-[200]"
+    )}
     {...props}
   />
 ))
@@ -44,11 +48,16 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-[70] mt-24 flex h-auto flex-col rounded-t-2xl border bg-background",
-        className
+        "fixed inset-x-0 bottom-0 mt-24 flex h-auto flex-col rounded-t-2xl border border-border/40 bg-background/75 supports-[backdrop-filter]:bg-background/55 backdrop-blur-2xl shadow-lg shadow-black/30 ring-1 ring-white/10 overflow-hidden isolate",
+        className,
+        "z-[210]"
       )}
       {...props}
     >
+      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/25 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
       <DrawerPrimitive.Handle className="mx-auto mt-4 h-2 w-12 rounded-full bg-muted cursor-grab active:cursor-grabbing touch-none sm:hidden" />
       {children}
     </DrawerPrimitive.Content>
