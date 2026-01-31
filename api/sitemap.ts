@@ -52,13 +52,15 @@ function toValidLastmod(value: unknown): string | undefined {
     return year >= 1990 && year <= 2100;
   };
 
+  const toIsoNoMillis = (d: Date): string => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+
   if (value == null) return undefined;
   if (value instanceof Date) {
-    return isSaneDate(value) ? value.toISOString() : undefined;
+    return isSaneDate(value) ? toIsoNoMillis(value) : undefined;
   }
   if (typeof value === "number") {
     const d = new Date(value);
-    return isSaneDate(d) ? d.toISOString() : undefined;
+    return isSaneDate(d) ? toIsoNoMillis(d) : undefined;
   }
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -71,11 +73,11 @@ function toValidLastmod(value: unknown): string | undefined {
       const dd = Number(twoDigitYmd[3]);
       const yyyy = yy >= 70 ? 1900 + yy : 2000 + yy;
       const d = new Date(Date.UTC(yyyy, mm - 1, dd));
-      return isSaneDate(d) ? d.toISOString() : undefined;
+      return isSaneDate(d) ? toIsoNoMillis(d) : undefined;
     }
 
     const d = new Date(trimmed);
-    return isSaneDate(d) ? d.toISOString() : undefined;
+    return isSaneDate(d) ? toIsoNoMillis(d) : undefined;
   }
   return undefined;
 }
@@ -452,7 +454,7 @@ export default async function handler(req: Req, res: Res) {
   }
 
   if (kind === "pages") {
-    const now = new Date().toISOString();
+    const now = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 
     const urls: { loc: string; lastmod?: string; changefreq?: string; priority?: number }[] = [
       { loc: `${baseUrl}/`, changefreq: "daily", priority: 1.0, lastmod: now },
