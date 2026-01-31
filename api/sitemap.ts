@@ -44,6 +44,12 @@ function xmlEscape(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function setSitemapXmlHeaders(res: Res): void {
+  res.setHeader("Content-Type", "application/xml; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600, no-transform");
+  res.setHeader("Vary", "Accept-Encoding");
+}
+
 function toValidLastmod(value: unknown): string | undefined {
   const isSaneDate = (d: Date): boolean => {
     const ts = d.getTime();
@@ -196,8 +202,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImagesAndVideos([]));
       return;
     }
@@ -213,8 +218,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImagesAndVideos([]));
       return;
     }
@@ -263,8 +267,7 @@ export default async function handler(req: Req, res: Res) {
     if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
     res.status(200);
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+    setSitemapXmlHeaders(res);
     res.send(urlsetWithImagesAndVideos(urls));
     return;
   }
@@ -274,8 +277,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -290,8 +292,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -308,8 +309,7 @@ export default async function handler(req: Req, res: Res) {
     if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
     res.status(200);
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+    setSitemapXmlHeaders(res);
     res.send(urlsetWithImages(urls));
     return;
   }
@@ -319,8 +319,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -336,8 +335,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -354,8 +352,7 @@ export default async function handler(req: Req, res: Res) {
     if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
     res.status(200);
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+    setSitemapXmlHeaders(res);
     res.send(urlsetWithImages(urls));
     return;
   }
@@ -365,8 +362,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -382,8 +378,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -401,8 +396,7 @@ export default async function handler(req: Req, res: Res) {
     if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
     res.status(200);
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+    setSitemapXmlHeaders(res);
     res.send(urlsetWithImages(urls));
     return;
   }
@@ -412,8 +406,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", "missing_supabase_env");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -429,8 +422,7 @@ export default async function handler(req: Req, res: Res) {
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Reason", error?.message ? `supabase_error:${String(error.message).slice(0, 120)}` : "no_data");
       if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "0");
       res.status(200);
-      res.setHeader("Content-Type", "application/xml; charset=utf-8");
-      res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+      setSitemapXmlHeaders(res);
       res.send(urlsetWithImages([]));
       return;
     }
@@ -447,8 +439,7 @@ export default async function handler(req: Req, res: Res) {
     if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
     res.status(200);
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+    setSitemapXmlHeaders(res);
     res.send(urlsetWithImages(urls));
     return;
   }
@@ -503,8 +494,7 @@ export default async function handler(req: Req, res: Res) {
     if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", String(urls.length));
 
     res.status(200);
-    res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+    setSitemapXmlHeaders(res);
     res.send(xml);
     return;
   }
@@ -521,7 +511,6 @@ export default async function handler(req: Req, res: Res) {
   if (process.env.NODE_ENV !== "production") res.setHeader("X-Sitemap-Count", "6");
 
   res.status(200);
-  res.setHeader("Content-Type", "application/xml; charset=utf-8");
-  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600");
+  setSitemapXmlHeaders(res);
   res.send(xml);
 }
