@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Play, Music2, ListMusic } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { SiSpotify } from "react-icons/si";
 import { SpotifyEmbed } from "@/components/playlist-player";
 import { useCarouselAutoplay } from "@/hooks/use-carousel-autoplay";
@@ -186,6 +186,8 @@ export function PlaylistsSection({
 
       <Dialog open={isPlayerOpen} onOpenChange={setIsPlayerOpen}>
         <DialogContent className="sm:max-w-3xl sm:p-0 sm:overflow-hidden sm:bg-card sm:border-border/50 sm:rounded-2xl">
+          <DialogTitle className="sr-only">Playlist player</DialogTitle>
+          <DialogDescription className="sr-only">Listen to the selected playlist.</DialogDescription>
           {selectedPlaylist && (
             <>
            

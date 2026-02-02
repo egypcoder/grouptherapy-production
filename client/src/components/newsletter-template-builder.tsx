@@ -1196,7 +1196,7 @@ export function NewsletterTemplateBuilderDialog(props: {
       </div>
       <div className="rounded-md border overflow-hidden bg-muted/20">
         <div className={cn("mx-auto", previewMode === "mobile" ? "w-[380px] max-w-full" : "w-full")} style={previewMode === "mobile" ? { maxWidth: 380 } : undefined}>
-          <iframe title="Newsletter preview" className={cn("w-full bg-background", "min-h-[70vh]")} sandbox="allow-same-origin" srcDoc={previewHtml} />
+          <iframe title="Newsletter preview" className={cn("w-full bg-background", "min-h-[70vh]")} sandbox="allow-scripts" srcDoc={previewHtml} />
         </div>
         <div className="px-3 py-2 text-xs text-muted-foreground border-t">Tip: click a block in the preview to select it.</div>
       </div>
