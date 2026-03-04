@@ -47,9 +47,9 @@ import {
   Calendar,
   Trophy,
   Play,
-  Vote,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useCarouselAutoplay } from "@/hooks/use-carousel-autoplay";
 
 const iconMap: Record<string, LucideIcon> = {
   Disc3,
@@ -376,6 +376,7 @@ function AwardsSection({
   const { toast } = useToast();
   const [votedPeriods, setVotedPeriods] = useState<Set<string>>(new Set());
   const [fingerprint, setFingerprint] = useState<string>("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Generate fingerprint for duplicate vote prevention
@@ -415,6 +416,13 @@ function AwardsSection({
     }
     if (next.size > 0) setVotedPeriods(next);
   }, []);
+
+  useCarouselAutoplay({
+    scrollRef,
+    enabled: true,
+    intervalMs: 6000,
+    scrollByPx: 280,
+  });
 
   const voteMutation = useMutation({
     mutationFn: async (entryId: string) => {
@@ -470,44 +478,30 @@ function AwardsSection({
   if (!hasActiveVoting || entries.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 bg-muted/30  shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 md:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10"
+    <section className="py-16 md:py-24">
+      <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12">
+        <SectionHeader
+          title={title}
+          highlight={highlight}
+          description={description}
+          action={{ label: actionLabel, href: actionHref }}
+        />
+      </div>
+
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          className="flex gap-5 overflow-x-auto scrollbar-hide pb-4 px-6 md:px-8 snap-x snap-mandatory overflow-y-hidden"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-              <Trophy className="w-4 h-4 text-primary" />
-              {tag}
-            </div>
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-              {title} <span className="gradient-text">{highlight}</span>
-            </h2>
-            {description ? (
-              <p className="text-muted-foreground max-w-xl">{description}</p>
-            ) : null}
-          </div>
-
-          <Link href={actionHref}>
-            <Button variant="outline" size="lg" className="rounded-full px-7">
-              {actionLabel}
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
-        </motion.div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
           {entries.map((entry, index) => (
             <motion.div
               key={entry.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.5 }}
+              transition={{ delay: index * 0.05, duration: 0.4 }}
+              className="flex-shrink-0 w-[260px] snap-start"
             >
               <AwardEntryCard
                 entry={entry}
@@ -582,10 +576,23 @@ export default function HomePage() {
   const { data: featuredEntries = [] } = useQuery<AwardEntry[]>({
     queryKey: ["featuredAwardEntries", activeVotingPeriods],
     queryFn: async () => {
-      const firstPeriod = activeVotingPeriods[0];
-      if (!firstPeriod) return [];
-      const entries = await db.awards.entries.getByPeriodId(firstPeriod.id);
-      return entries.slice(0, 3);
+      if (activeVotingPeriods.length === 0) return [];
+
+      const all = await Promise.all(
+        activeVotingPeriods.map((p) => db.awards.entries.getByPeriodId(p.id))
+      );
+
+      const merged = all.flat();
+      merged.sort((a, b) => {
+        const orderA = typeof a.displayOrder === "number" ? a.displayOrder : 0;
+        const orderB = typeof b.displayOrder === "number" ? b.displayOrder : 0;
+        if (orderA !== orderB) return orderA - orderB;
+        const votesA = typeof a.voteCount === "number" ? a.voteCount : 0;
+        const votesB = typeof b.voteCount === "number" ? b.voteCount : 0;
+        return votesB - votesA;
+      });
+
+      return merged;
     },
     enabled: activeVotingPeriods.length > 0,
   });

@@ -251,29 +251,6 @@ export function HeroSection({
           </Link>
         </motion.div>
 
-        <motion.div
-          className="mt-20 flex items-center justify-center gap-12 md:gap-20"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-        >
-          {displayHeroStats.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              className="text-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 + i * 0.1 }}
-            >
-              <div className="text-2xl md:text-3xl font-semibold text-foreground stat-number">
-                {stat.value}
-              </div>
-              <div className=" text-center text-xs w-20 md:w-auto md:text-sm  text-muted-foreground uppercase tracking-wider mt-1">
-                {stat.label}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
       </div>
 
       <motion.div
