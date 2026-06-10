@@ -92,17 +92,24 @@ interface FetchedMetadata {
   source: 'soundcloud' | 'spotify';
 }
 
-// FIX: Routes through your backend proxy instead of calling SoundCloud directly.
-// SoundCloud now blocks browser-originated requests with 403.
-// Add this route to your server: GET /api/soundcloud-oembed?url=...
-// It should fetch https://soundcloud.com/oembed?url=<url>&format=json server-side and return the JSON.
+/**
+ * Fetch SoundCloud metadata via backend proxy
+ * Uses /api/soundcloud-oembed?url=... to bypass browser CORS/403 errors
+ */
 async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | null> {
   try {
-    const oembedUrl = `https://noembed.com/embed?url=${encodeURIComponent(url)}`;
-    const response = await fetch(oembedUrl);
-    if (!response.ok) throw new Error('Failed to fetch SoundCloud metadata');
+    // Use backend proxy instead of direct fetch
+    const proxyUrl = `/api/soundcloud-oembed?url=${encodeURIComponent(url)}`;
+    const response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `Failed to fetch SoundCloud metadata: ${response.status}`);
+    }
+    
     const data = await response.json();
 
+    // Normalize thumbnail URL to get larger image
     let coverUrl = data.thumbnail_url || '';
     if (coverUrl) {
       coverUrl = coverUrl.replace('-large', '-t500x500');
@@ -116,13 +123,12 @@ async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | n
       source: 'soundcloud',
     };
   } catch (error) {
-    console.error('SoundCloud fetch error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('SoundCloud fetch error:', errorMessage);
     return null;
   }
 }
 
-// FIX: replaced JSON.parse(...).catch() (invalid — JSON.parse is synchronous)
-// with a proper try/catch block.
 async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
   const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
@@ -464,7 +470,7 @@ export default function AdminReleases() {
       } else {
         const errorMsg = linkType === 'spotify'
           ? "Could not fetch metadata from Spotify. Please check your Spotify API credentials (VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET) or enter details manually."
-          : "Could not fetch metadata. Please enter the details manually.";
+          : "Could not fetch metadata from SoundCloud. Please enter the details manually.";
         toast({
           title: "Could not fetch metadata",
           description: errorMsg,
