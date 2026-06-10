@@ -81,7 +81,6 @@ function updateHomeSectionsFeaturedOrder(homeSections: PageSectionConfig[] | und
       },
     ];
   }
-
   return existing.map((s) => (s?.id === "releases" ? { ...s, featuredReleaseIds } : s));
 }
 
@@ -93,24 +92,25 @@ interface FetchedMetadata {
   source: 'soundcloud' | 'spotify';
 }
 
+// FIX: Routes through your backend proxy instead of calling SoundCloud directly.
+// SoundCloud now blocks browser-originated requests with 403.
+// Add this route to your server: GET /api/soundcloud-oembed?url=...
+// It should fetch https://soundcloud.com/oembed?url=<url>&format=json server-side and return the JSON.
 async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | null> {
   try {
-    const oembedUrl = `https://soundcloud.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-    const response = await fetch(oembedUrl);
+    const proxyUrl = `/api/soundcloud-oembed?url=${encodeURIComponent(url)}`;
+    const response = await fetch(proxyUrl);
     if (!response.ok) throw new Error('Failed to fetch SoundCloud metadata');
     const data = await response.json();
-    
+
     let coverUrl = data.thumbnail_url || '';
     if (coverUrl) {
-      coverUrl = coverUrl.replace('-t500x500', '-t500x500').replace('-large', '-t500x500');
+      coverUrl = coverUrl.replace('-large', '-t500x500');
     }
-    
-    const title = data.title || '';
-    const artistName = data.author_name || '';
-    
+
     return {
-      title,
-      artistName,
+      title: data.title || '',
+      artistName: data.author_name || '',
       coverUrl,
       sourceUrl: url,
       source: 'soundcloud',
@@ -121,15 +121,17 @@ async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | n
   }
 }
 
+// FIX: replaced JSON.parse(...).catch() (invalid — JSON.parse is synchronous)
+// with a proper try/catch block.
 async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
   const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
   const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
-  
+
   if (!clientId || !clientSecret) {
     console.error('Spotify credentials not configured. Please add VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET to your environment variables.');
     return null;
   }
-  
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await fetch('https://accounts.spotify.com/api/token', {
@@ -140,29 +142,34 @@ async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
         },
         body: 'grant_type=client_credentials',
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
-        const errorData = errorText ? JSON.parse(errorText).catch(() => ({})) : {};
+        let errorData: { error_description?: string; error?: string } = {};
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch {
+          // not JSON, ignore
+        }
         const errorMessage = errorData.error_description || errorData.error || `HTTP ${response.status}`;
-        
+
         if (attempt < retries) {
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
           continue;
         }
-        
+
         throw new Error(`Failed to get Spotify access token: ${errorMessage}`);
       }
-      
+
       const data = await response.json();
       if (!data.access_token) {
         throw new Error('No access token in response');
       }
-      
+
       return data.access_token;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       if (attempt === retries) {
         console.error(`Error getting Spotify access token after ${retries} attempts:`, errorMessage);
         if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
@@ -170,26 +177,25 @@ async function getSpotifyAccessToken(retries = 3): Promise<string | null> {
         }
         return null;
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
-  
+
   return null;
 }
 
 function extractSpotifyIdAndType(url: string): { id: string; type: 'track' | 'album' } | null {
-  // Handle both spotify.com and open.spotify.com URLs
   const trackMatch = url.match(/(?:open\.)?spotify\.com\/track\/([a-zA-Z0-9]+)/);
   if (trackMatch && trackMatch[1]) {
     return { id: trackMatch[1], type: 'track' };
   }
-  
+
   const albumMatch = url.match(/(?:open\.)?spotify\.com\/album\/([a-zA-Z0-9]+)/);
   if (albumMatch && albumMatch[1]) {
     return { id: albumMatch[1], type: 'album' };
   }
-  
+
   return null;
 }
 
@@ -207,7 +213,7 @@ async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null
       return null;
     }
 
-    const apiUrl = extracted.type === 'track' 
+    const apiUrl = extracted.type === 'track'
       ? `https://api.spotify.com/v1/tracks/${extracted.id}`
       : `https://api.spotify.com/v1/albums/${extracted.id}`;
 
@@ -224,13 +230,13 @@ async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null
         const errorData = JSON.parse(errorText);
         errorMessage = errorData.error?.message || errorMessage;
       } catch {
-        // If parsing fails, use default message
+        // not JSON, use default message
       }
       throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    
+
     let title = '';
     let artistName = '';
     let coverUrl = '';
@@ -244,7 +250,7 @@ async function fetchSpotifyMetadata(url: string): Promise<FetchedMetadata | null
       artistName = data.artists?.map((a: { name: string }) => a.name).join(', ') || '';
       coverUrl = data.images?.[0]?.url || '';
     }
-    
+
     return {
       title,
       artistName,
@@ -297,7 +303,7 @@ export default function AdminReleases() {
   const [matchNew] = useRoute("/admin/releases/new");
   const [matchEdit, params] = useRoute("/admin/releases/:id");
   const PAGE_SIZE = 10;
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -328,7 +334,6 @@ export default function AdminReleases() {
   });
 
   const displayReleases = releases || [];
-
   const featuredReleases = displayReleases.filter((r) => r.featured);
 
   useEffect(() => {
@@ -423,25 +428,23 @@ export default function AdminReleases() {
 
   const handleQuickAddLink = async (url: string) => {
     setQuickAddLink(url);
-    
+
     if (!url.trim()) return;
-    
+
     const linkType = detectLinkType(url);
-    if (!linkType) {
-      return;
-    }
-    
+    if (!linkType) return;
+
     setIsFetchingMetadata(true);
-    
+
     try {
       let metadata: FetchedMetadata | null = null;
-      
+
       if (linkType === 'soundcloud') {
         metadata = await fetchSoundCloudMetadata(url);
       } else if (linkType === 'spotify') {
         metadata = await fetchSpotifyMetadata(url);
       }
-      
+
       if (metadata) {
         setFormData(prev => ({
           ...prev,
@@ -451,15 +454,15 @@ export default function AdminReleases() {
           ...(linkType === 'soundcloud' ? { soundcloudUrl: url } : {}),
           ...(linkType === 'spotify' ? { spotifyUrl: url } : {}),
         }));
-        
+
         setMetadataFetched(true);
-        
+
         toast({
           title: "Metadata fetched",
           description: `Successfully imported from ${linkType === 'soundcloud' ? 'SoundCloud' : 'Spotify'}`,
         });
       } else {
-        const errorMsg = linkType === 'spotify' 
+        const errorMsg = linkType === 'spotify'
           ? "Could not fetch metadata from Spotify. Please check your Spotify API credentials (VITE_SPOTIFY_CLIENT_ID and VITE_SPOTIFY_CLIENT_SECRET) or enter details manually."
           : "Could not fetch metadata. Please enter the details manually.";
         toast({
@@ -617,7 +620,7 @@ export default function AdminReleases() {
       featured: formData.featured,
       published: formData.published,
     };
-    
+
     saveMutation.mutate({
       isEdit: !!editingRelease,
       id: editingRelease?.id,
@@ -663,12 +666,10 @@ export default function AdminReleases() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold" data-testid="text-admin-releases-title">Releases</h1>
-            <p className="text-muted-foreground">
-              Manage your music catalog
-            </p>
+            <p className="text-muted-foreground">Manage your music catalog</p>
           </div>
-          <Button 
-            className="gap-2" 
+          <Button
+            className="gap-2"
             data-testid="button-new-release"
             onClick={() => navigatePreserveScroll("/admin/releases/new")}
           >
@@ -843,8 +844,8 @@ export default function AdminReleases() {
                 </TableHeader>
                 <TableBody>
                   {pagedReleases.map((release, index) => (
-                    <TableRow 
-                      key={release.id} 
+                    <TableRow
+                      key={release.id}
                       data-testid={`row-release-${release.id}`}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => navigatePreserveScroll(`/admin/releases/${release.id}`)}
@@ -879,9 +880,7 @@ export default function AdminReleases() {
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">{formatDate(release.releaseDate)}</TableCell>
                       <TableCell>
-                        <Badge
-                          variant={release.published ? "default" : "secondary"}
-                        >
+                        <Badge variant={release.published ? "default" : "secondary"}>
                           {release.published ? "Published" : "Draft"}
                         </Badge>
                       </TableCell>
@@ -919,11 +918,7 @@ export default function AdminReleases() {
                             </DropdownMenuItem>
                             {release.spotifyUrl && (
                               <DropdownMenuItem asChild>
-                                <a
-                                  href={release.spotifyUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
+                                <a href={release.spotifyUrl} target="_blank" rel="noopener noreferrer">
                                   <ExternalLink className="h-4 w-4 mr-2" />
                                   View on Spotify
                                 </a>
@@ -998,7 +993,7 @@ export default function AdminReleases() {
               {editingRelease ? "Update the release details below." : "Fill in the details to create a new release."}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-4 py-4">
             {!editingRelease && (
               <div className="grid gap-2 p-4 border rounded-lg bg-muted/30">
@@ -1026,9 +1021,7 @@ export default function AdminReleases() {
             )}
 
             <div className="grid gap-2">
-              <Label htmlFor="title">
-                Title {!quickAddLink && '*'}
-              </Label>
+              <Label htmlFor="title">Title {!quickAddLink && '*'}</Label>
               <Input
                 id="title"
                 value={formData.title}
@@ -1038,9 +1031,7 @@ export default function AdminReleases() {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="artistName">
-                Artist Name {!quickAddLink && '*'}
-              </Label>
+              <Label htmlFor="artistName">Artist Name {!quickAddLink && '*'}</Label>
               <Input
                 id="artistName"
                 value={formData.artistName}
@@ -1078,9 +1069,9 @@ export default function AdminReleases() {
               <Label>Cover Art {metadataFetched && formData.coverUrl && "(fetched from link)"}</Label>
               {metadataFetched && formData.coverUrl ? (
                 <div className="relative w-full aspect-square max-w-[200px] rounded-lg overflow-hidden border bg-muted">
-                  <img 
-                    src={formData.coverUrl} 
-                    alt="Cover art" 
+                  <img
+                    src={formData.coverUrl}
+                    alt="Cover art"
                     className="w-full h-full object-cover"
                   />
                 </div>
