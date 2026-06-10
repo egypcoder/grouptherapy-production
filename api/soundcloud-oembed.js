@@ -1,6 +1,7 @@
 /**
  * SoundCloud oEmbed proxy
  * Fetches SoundCloud metadata server-side to bypass browser CORS/403 errors
+ * Uses cors-anywhere or allorigins as fallback
  * 
  * Usage: GET /api/soundcloud-oembed?url=<encoded-soundcloud-url>
  * Returns: { title, author_name, thumbnail_url, ... } or { error: "..." }
@@ -24,14 +25,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'URL must be a SoundCloud link' });
     }
 
-    // Call SoundCloud oEmbed API server-side
+    // Try the official SoundCloud oEmbed endpoint first
     const oembedUrl = `https://soundcloud.com/oembed?url=${encodeURIComponent(url)}&format=json`;
 
-    const response = await fetch(oembedUrl, {
+    let response = await fetch(oembedUrl, {
       headers: { 
-        'User-Agent': 'Mozilla/5.0 (compatible; GroupTherapy/1.0)' 
+        'User-Agent': 'Mozilla/5.0 (compatible; GroupTherapy/1.0)'
       },
     });
+
+    // If blocked, try with allorigins CORS proxy
+    if (!response.ok && response.status === 403) {
+      const corsProxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(oembedUrl)}`;
+      response = await fetch(corsProxyUrl, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (compatible; GroupTherapy/1.0)'
+        },
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
