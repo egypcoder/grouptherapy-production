@@ -98,8 +98,8 @@ interface FetchedMetadata {
 // It should fetch https://soundcloud.com/oembed?url=<url>&format=json server-side and return the JSON.
 async function fetchSoundCloudMetadata(url: string): Promise<FetchedMetadata | null> {
   try {
-    const proxyUrl = `/api/soundcloud-oembed?url=${encodeURIComponent(url)}`;
-    const response = await fetch(proxyUrl);
+    const oembedUrl = `https://noembed.com/embed?url=${encodeURIComponent(url)}`;
+    const response = await fetch(oembedUrl);
     if (!response.ok) throw new Error('Failed to fetch SoundCloud metadata');
     const data = await response.json();
 
